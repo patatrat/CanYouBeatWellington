@@ -20,8 +20,8 @@ const fetchWeather = async () => {
 const fetchRules = async () => {
   // Replace with actual API call or local storage
   return {
-    maxTemp: 25,
-    maxWind: 15,
+    minTemp: 18,
+    minWind: 5,
     minSunnyness: 70
   };
 };
@@ -41,8 +41,8 @@ const Index = () => {
   const isGoodDay = () => {
     if (!weather || !rules) return false;
     return (
-      weather.temperature <= rules.maxTemp &&
-      weather.windSpeed <= rules.maxWind &&
+      weather.temperature >= rules.minTemp &&
+      weather.windSpeed >= rules.minWind &&
       weather.sunnyness >= rules.minSunnyness
     );
   };
