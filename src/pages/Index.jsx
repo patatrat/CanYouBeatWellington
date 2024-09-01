@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { loadRules } from '../utils/rulesStorage';
 
 const fetchWeather = async () => {
   // Replace with actual API call
@@ -18,15 +19,6 @@ const fetchWeather = async () => {
   return response;
 };
 
-const fetchRules = async () => {
-  // Replace with actual API call or local storage
-  return {
-    minTemp: 18,
-    maxWind: 20,
-    minSunnyness: 70
-  };
-};
-
 const Index = () => {
   const { data: weather, isLoading: weatherLoading } = useQuery({
     queryKey: ['weather'],
@@ -36,7 +28,7 @@ const Index = () => {
 
   const { data: rules, isLoading: rulesLoading } = useQuery({
     queryKey: ['rules'],
-    queryFn: fetchRules
+    queryFn: loadRules
   });
 
   const isGoodDay = () => {

@@ -3,12 +3,35 @@ import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { saveRules, loadRules } from '../utils/rulesStorage';
+import { toast } from "sonner";
 
 const Admin = () => {
+  const queryClient = useQueryClient();
   const [rules, setRules] = useState({
     minTemp: 18,
     maxWind: 20,
     minSunnyness: 70
+  });
+
+  const { data: savedRules, isLoading } = useQuery({
+    queryKey: ['rules'],
+    queryFn: loadRules,
+    onSuccess: (data) => {
+      if (data) setRules(data);
+    }
+  });
+
+  const mutation = useMutation({
+    mutationFn: saveRules,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['rules']);
+      toast.success("Rules saved successfully!");
+    },
+    onError: () => {
+      toast.error("Failed to save rules. Please try again.");
+    }
   });
 
   const handleChange = (e) => {
@@ -21,10 +44,12 @@ const Admin = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Save rules (replace with actual API call or local storage)
-    console.log('Saving rules:', rules);
-    alert('Rules saved!');
+    mutation.mutate(rules);
   };
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -74,7 +99,9 @@ const Admin = () => {
             onChange={handleChange}
           />
         </div>
-        <Button type="submit" className="w-full mb-4">Save Rules</Button>
+        <Button type="submit" className="w-full mb-4" disabled={mutation.isLoading}>
+          {mutation.isLoading ? 'Saving...' : 'Save Rules'}
+        </Button>
       </form>
       <Link to="/">
         <Button variant="outline">Back to Home</Button>
