@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
+import { ExternalLink } from 'lucide-react';
 
 const fetchWeather = async () => {
   // Replace with actual API call
-  return {
+  const response = {
     temperature: 20,
     windSpeed: 10,
-    sunnyness: 80
+    sunnyness: 80,
+    timestamp: new Date().toISOString(),
+    source: 'https://www.metservice.com/towns-cities/locations/wellington'
   };
+  return response;
 };
 
 const fetchRules = async () => {
@@ -24,7 +28,8 @@ const fetchRules = async () => {
 const Index = () => {
   const { data: weather, isLoading: weatherLoading } = useQuery({
     queryKey: ['weather'],
-    queryFn: fetchWeather
+    queryFn: fetchWeather,
+    refetchInterval: 300000 // Refetch every 5 minutes
   });
 
   const { data: rules, isLoading: rulesLoading } = useQuery({
@@ -55,11 +60,22 @@ const Index = () => {
           ? "You can't beat Wellington on a good day"
           : 'You can beat Wellington today'}
       </p>
-      <div className="text-lg mb-8">
+      <div className="text-lg mb-4">
         <p>Temperature: {weather.temperature}°C</p>
         <p>Wind Speed: {weather.windSpeed} km/h</p>
         <p>Sunnyness: {weather.sunnyness}%</p>
       </div>
+      <p className="text-sm mb-2">
+        Weather checked at: {new Date(weather.timestamp).toLocaleString()}
+      </p>
+      <a 
+        href={weather.source} 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        className="text-blue-500 hover:text-blue-700 flex items-center mb-8"
+      >
+        Weather data source <ExternalLink className="ml-1 h-4 w-4" />
+      </a>
       <Link to="/admin">
         <Button>Admin Settings</Button>
       </Link>
