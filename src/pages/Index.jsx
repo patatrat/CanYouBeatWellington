@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Check, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
@@ -61,9 +61,21 @@ const Index = () => {
               : "You can beat Wellington today"}
           </p>
           <div className="grid grid-cols-3 gap-4 mb-6">
-            <WeatherStat label="Temperature" value={`${weather.temperature}°C`} />
-            <WeatherStat label="Wind Speed" value={`${weather.windSpeed} km/h`} />
-            <WeatherStat label="Sunnyness" value={`${weather.sunnyness}%`} />
+            <WeatherStat 
+              label="Temperature" 
+              value={`${weather.temperature}°C`} 
+              meets={weather.temperature >= rules.minTemp}
+            />
+            <WeatherStat 
+              label="Wind Speed" 
+              value={`${weather.windSpeed} km/h`} 
+              meets={weather.windSpeed < rules.maxWind}
+            />
+            <WeatherStat 
+              label="Sunnyness" 
+              value={`${weather.sunnyness}%`} 
+              meets={weather.sunnyness >= rules.minSunnyness}
+            />
           </div>
           <p className="text-sm text-center mb-2">
             Weather checked at: {format(parseISO(weather.timestamp), 'PPpp')}
@@ -89,10 +101,17 @@ const Index = () => {
   );
 };
 
-const WeatherStat = ({ label, value }) => (
-  <div className="text-center">
+const WeatherStat = ({ label, value, meets }) => (
+  <div className="text-center flex flex-col items-center">
     <h3 className="text-lg font-semibold">{label}</h3>
-    <p className="text-2xl">{value}</p>
+    <div className="flex items-center">
+      <p className="text-2xl mr-2">{value}</p>
+      {meets ? (
+        <Check className="h-6 w-6 text-green-500" />
+      ) : (
+        <X className="h-6 w-6 text-red-500" />
+      )}
+    </div>
   </div>
 );
 
