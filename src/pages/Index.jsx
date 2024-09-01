@@ -51,14 +51,14 @@ const Index = () => {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-center">
-            <h1 className="text-6xl font-bold mb-4">{goodDay ? "You can't beat Wellington!" : 'Not quite a perfect day'}</h1>
+            <h1 className="text-6xl font-bold mb-4">{goodDay ? "You can't beat Wellington!" : 'YES'}</h1>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-2xl text-center mb-8">
             {goodDay
               ? "It's a good day in Wellington!"
-              : "Wellington's weather isn't at its best today"}
+              : "You can beat Wellington today"}
           </p>
           <div className="grid grid-cols-3 gap-4 mb-6">
             <WeatherStat label="Temperature" value={`${weather.temperature}°C`} />
