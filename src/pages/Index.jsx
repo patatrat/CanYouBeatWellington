@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 const fetchWeather = async () => {
   // Replace with actual API call
@@ -66,7 +67,7 @@ const Index = () => {
         <p>Sunnyness: {weather.sunnyness}%</p>
       </div>
       <p className="text-sm mb-2">
-        Weather checked at: {new Date(weather.timestamp).toLocaleString()}
+        Weather checked at: {format(parseISO(weather.timestamp), 'PPpp')}
       </p>
       <a 
         href={weather.source} 
