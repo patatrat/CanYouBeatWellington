@@ -22,7 +22,7 @@ const fetchRules = async () => {
   // Replace with actual API call or local storage
   return {
     minTemp: 18,
-    minWind: 5,
+    maxWind: 20,
     minSunnyness: 70
   };
 };
@@ -43,7 +43,7 @@ const Index = () => {
     if (!weather || !rules) return false;
     return (
       weather.temperature >= rules.minTemp &&
-      weather.windSpeed >= rules.minWind &&
+      weather.windSpeed < rules.maxWind &&
       weather.sunnyness >= rules.minSunnyness
     );
   };

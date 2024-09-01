@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 const Admin = () => {
   const [rules, setRules] = useState({
     minTemp: 18,
-    minWind: 5,
+    maxWind: 20,
     minSunnyness: 70
   });
 
@@ -36,7 +36,7 @@ const Admin = () => {
         </p>
         <ul className="list-disc list-inside text-gray-700 mb-4">
           <li>Temperature must be at least the minimum set value</li>
-          <li>Wind speed must be at least the minimum set value</li>
+          <li>Wind speed must be below the maximum set value</li>
           <li>Sunnyness must be at least the minimum set percentage</li>
         </ul>
         <p className="text-gray-700">
@@ -55,12 +55,12 @@ const Admin = () => {
           />
         </div>
         <div className="mb-4">
-          <Label htmlFor="minWind">Minimum Wind Speed (km/h)</Label>
+          <Label htmlFor="maxWind">Maximum Wind Speed (km/h)</Label>
           <Input
             type="number"
-            id="minWind"
-            name="minWind"
-            value={rules.minWind}
+            id="maxWind"
+            name="maxWind"
+            value={rules.maxWind}
             onChange={handleChange}
           />
         </div>
