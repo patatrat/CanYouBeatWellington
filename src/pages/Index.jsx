@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Check, X } from 'lucide-react';
+import { ExternalLink, Check, X, Thermometer } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
@@ -105,6 +105,7 @@ const Index = () => {
               label="Temperature" 
               value={`${weather.temperature.toFixed(1)}°C`} 
               meets={weather.temperature >= rules.minTemp}
+              icon={<Thermometer className="h-6 w-6 mr-2" />}
             />
             <WeatherStat 
               label="Wind Speed" 
@@ -141,10 +142,11 @@ const Index = () => {
   );
 };
 
-const WeatherStat = ({ label, value, meets }) => (
+const WeatherStat = ({ label, value, meets, icon }) => (
   <div className="text-center flex flex-col items-center">
     <h3 className="text-lg font-semibold">{label}</h3>
     <div className="flex items-center">
+      {icon && icon}
       <p className="text-2xl mr-2">{value}</p>
       {meets ? (
         <Check className="h-6 w-6 text-green-500" />
