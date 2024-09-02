@@ -8,22 +8,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
 
 const fetchWeather = async () => {
-  // Replace with actual API call
-  const response = {
-    temperature: 20,
-    windSpeed: 10,
-    sunnyness: 80,
-    timestamp: new Date().toISOString(),
-    source: 'https://www.metservice.com/towns-cities/locations/wellington'
+  const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-41.2866&longitude=174.7756&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max&timezone=Pacific%2FAuckland');
+  const data = await response.json();
+  
+  // Process the data
+  const today = {
+    temperature: (data.daily.temperature_2m_max[0] + data.daily.temperature_2m_min[0]) / 2,
+    windSpeed: data.daily.wind_speed_10m_max[0],
+    sunnyness: calculateSunnyness(data.daily.weather_code[0], data.daily.precipitation_sum[0]),
+    timestamp: data.daily.time[0],
+    source: 'https://open-meteo.com/'
   };
-  return response;
+  
+  return today;
+};
+
+const calculateSunnyness = (weatherCode, precipitationSum) => {
+  // Simple logic to estimate sunnyness based on weather code and precipitation
+  if (weatherCode <= 3) return 100; // Clear sky or mainly clear
+  if (weatherCode <= 48) return 70; // Cloudy conditions
+  if (weatherCode <= 67) return 50; // Rain
+  if (weatherCode <= 77) return 30; // Snow
+  return 10; // Thunderstorm
 };
 
 const Index = () => {
   const { data: weather, isLoading: weatherLoading, error: weatherError } = useQuery({
     queryKey: ['weather'],
     queryFn: fetchWeather,
-    refetchInterval: 300000 // Refetch every 5 minutes
+    refetchInterval: 3600000 // Refetch every hour
   });
 
   const { data: rules, isLoading: rulesLoading, error: rulesError } = useQuery({
@@ -71,12 +84,12 @@ const Index = () => {
           <div className="grid grid-cols-3 gap-4 mb-6">
             <WeatherStat 
               label="Temperature" 
-              value={`${weather.temperature}°C`} 
+              value={`${weather.temperature.toFixed(1)}°C`} 
               meets={weather.temperature >= rules.minTemp}
             />
             <WeatherStat 
               label="Wind Speed" 
-              value={`${weather.windSpeed} km/h`} 
+              value={`${weather.windSpeed.toFixed(1)} km/h`} 
               meets={weather.windSpeed < rules.maxWind}
             />
             <WeatherStat 
@@ -86,7 +99,7 @@ const Index = () => {
             />
           </div>
           <p className="text-sm text-center mb-2">
-            Weather checked at: {format(parseISO(weather.timestamp), 'PPpp')}
+            Weather forecast for: {format(parseISO(weather.timestamp), 'PPP')}
           </p>
           <div className="flex justify-center mb-6">
             <a 
