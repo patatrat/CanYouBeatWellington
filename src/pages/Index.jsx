@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Check, X, Thermometer, ThermometerSun, ThermometerSnowflake, Wind, Sun, Cloud, CloudSun } from 'lucide-react';
+import { ExternalLink, Check, X, Thermometer, ThermometerSun, ThermometerSnowflake, Wind, Sun, Cloud, CloudSun, CloudRain } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
@@ -20,6 +20,7 @@ const fetchWeather = async () => {
       temperature: (data.daily.temperature_2m_max[0] + data.daily.temperature_2m_min[0]) / 2,
       windSpeed: data.daily.wind_speed_10m_max[0],
       sunnyness: calculateSunnyness(data.daily.weather_code[0], data.daily.precipitation_sum[0]),
+      rain: data.daily.precipitation_sum[0],
       timestamp: data.daily.time[0],
       source: 'https://open-meteo.com/'
     };
@@ -61,7 +62,8 @@ const Index = () => {
     return (
       weather.temperature >= rules.minTemp &&
       weather.windSpeed < rules.maxWind &&
-      weather.sunnyness >= rules.minSunnyness
+      weather.sunnyness >= rules.minSunnyness &&
+      weather.rain <= rules.maxRain
     );
   };
 
@@ -99,7 +101,7 @@ const Index = () => {
               ? "You can't beat Wellington today"
               : "You can beat Wellington today"}
           </p>
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <WeatherStat 
               label="Temperature" 
               value={`${weather.temperature.toFixed(1)}°C`} 
@@ -117,6 +119,12 @@ const Index = () => {
               value={`${weather.sunnyness}%`} 
               meets={weather.sunnyness >= rules.minSunnyness}
               icon={getSunIcon(weather.sunnyness)}
+            />
+            <WeatherStat 
+              label="Rain" 
+              value={`${weather.rain.toFixed(1)} mm`} 
+              meets={weather.rain <= rules.maxRain}
+              icon={<CloudRain className="h-6 w-6 mr-2" />}
             />
           </div>
           <p className="text-sm text-center mb-2">

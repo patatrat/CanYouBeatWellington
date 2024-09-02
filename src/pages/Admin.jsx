@@ -12,7 +12,8 @@ const Admin = () => {
   const [rules, setRules] = useState({
     minTemp: 18,
     maxWind: 10,
-    minSunnyness: 90
+    minSunnyness: 90,
+    maxRain: 0
   });
 
   const { data: savedRules, isLoading } = useQuery({
@@ -38,7 +39,7 @@ const Admin = () => {
     const { name, value } = e.target;
     setRules(prevRules => ({
       ...prevRules,
-      [name]: parseInt(value)
+      [name]: parseFloat(value)
     }));
   };
 
@@ -57,12 +58,13 @@ const Admin = () => {
       <div className="bg-white p-6 rounded-lg shadow-md mb-8 max-w-md w-full">
         <h2 className="text-xl font-semibold mb-4">How the Rules Work</h2>
         <p className="text-gray-700 mb-4">
-          For a day to be considered "good" in Wellington, all three conditions must be met:
+          For a day to be considered "good" in Wellington, all four conditions must be met:
         </p>
         <ul className="list-disc list-inside text-gray-700 mb-4">
           <li>Temperature must be at least the minimum set value</li>
           <li>Wind speed must be below the maximum set value</li>
           <li>Sunnyness must be at least the minimum set percentage</li>
+          <li>Rain must not exceed the maximum set value</li>
         </ul>
         <p className="text-gray-700">
           If all conditions are met, it's considered a day you "can't beat Wellington."
@@ -77,6 +79,7 @@ const Admin = () => {
             name="minTemp"
             value={rules.minTemp}
             onChange={handleChange}
+            step="0.1"
           />
         </div>
         <div className="mb-4">
@@ -87,6 +90,7 @@ const Admin = () => {
             name="maxWind"
             value={rules.maxWind}
             onChange={handleChange}
+            step="0.1"
           />
         </div>
         <div className="mb-4">
@@ -97,6 +101,18 @@ const Admin = () => {
             name="minSunnyness"
             value={rules.minSunnyness}
             onChange={handleChange}
+            step="1"
+          />
+        </div>
+        <div className="mb-4">
+          <Label htmlFor="maxRain">Maximum Rain (mm)</Label>
+          <Input
+            type="number"
+            id="maxRain"
+            name="maxRain"
+            value={rules.maxRain}
+            onChange={handleChange}
+            step="0.1"
           />
         </div>
         <Button type="submit" className="w-full mb-4" disabled={mutation.isLoading}>
