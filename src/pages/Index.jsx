@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Check, X, Thermometer } from 'lucide-react';
+import { ExternalLink, Check, X, Thermometer, Wind } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
@@ -111,6 +111,7 @@ const Index = () => {
               label="Wind Speed" 
               value={`${weather.windSpeed.toFixed(1)} km/h`} 
               meets={weather.windSpeed < rules.maxWind}
+              icon={<Wind className={`h-6 w-6 mr-2 ${getWindAnimation(weather.windSpeed)}`} />}
             />
             <WeatherStat 
               label="Sunnyness" 
@@ -156,5 +157,12 @@ const WeatherStat = ({ label, value, meets, icon }) => (
     </div>
   </div>
 );
+
+const getWindAnimation = (windSpeed) => {
+  if (windSpeed < 5) return 'animate-none';
+  if (windSpeed < 10) return 'animate-spin-slow';
+  if (windSpeed < 20) return 'animate-spin';
+  return 'animate-spin-fast';
+};
 
 export default Index;
