@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from "@/components/ui/button";
 import { ExternalLink, Check, X, Thermometer, Wind, Sun, Cloud, CloudSun } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,13 +132,13 @@ const Index = () => {
               Weather data source <ExternalLink className="ml-1 h-4 w-4" />
             </a>
           </div>
-          <div className="flex justify-center">
-            <Link to="/admin">
-              <Button>Admin Settings</Button>
-            </Link>
-          </div>
         </CardContent>
       </Card>
+      <div className="mt-4">
+        <Link to="/about" className="text-blue-500 hover:text-blue-700">
+          What is this?
+        </Link>
+      </div>
     </div>
   );
 };
