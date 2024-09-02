@@ -8,19 +8,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
 
 const fetchWeather = async () => {
-  const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-41.2866&longitude=174.7756&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max&timezone=Pacific%2FAuckland');
-  const data = await response.json();
-  
-  // Process the data
-  const today = {
-    temperature: (data.daily.temperature_2m_max[0] + data.daily.temperature_2m_min[0]) / 2,
-    windSpeed: data.daily.wind_speed_10m_max[0],
-    sunnyness: calculateSunnyness(data.daily.weather_code[0], data.daily.precipitation_sum[0]),
-    timestamp: data.daily.time[0],
-    source: 'https://open-meteo.com/'
-  };
-  
-  return today;
+  try {
+    const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-41.2866&longitude=174.7756&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max&timezone=Pacific%2FAuckland');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    console.log('Fetched weather data:', data);
+    
+    // Process the data
+    const today = {
+      temperature: (data.daily.temperature_2m_max[0] + data.daily.temperature_2m_min[0]) / 2,
+      windSpeed: data.daily.wind_speed_10m_max[0],
+      sunnyness: calculateSunnyness(data.daily.weather_code[0], data.daily.precipitation_sum[0]),
+      timestamp: data.daily.time[0],
+      source: 'https://open-meteo.com/'
+    };
+    
+    console.log('Processed weather data:', today);
+    return today;
+  } catch (error) {
+    console.error('Error fetching weather data:', error);
+    throw error;
+  }
 };
 
 const calculateSunnyness = (weatherCode, precipitationSum) => {
@@ -44,6 +54,9 @@ const Index = () => {
     queryFn: loadRules
   });
 
+  console.log('Weather data:', weather);
+  console.log('Rules data:', rules);
+
   const isGoodDay = () => {
     if (!weather || !rules) return false;
     return (
@@ -57,12 +70,22 @@ const Index = () => {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
-  if (weatherError || rulesError) {
-    return <div className="flex justify-center items-center h-screen">Error loading data. Please try again later.</div>;
+  if (weatherError) {
+    console.error('Weather error:', weatherError);
+    return <div className="flex justify-center items-center h-screen">Error loading weather data. Please try again later.</div>;
   }
 
-  if (!weather || !rules) {
-    return <div className="flex justify-center items-center h-screen">No data available. Please try again later.</div>;
+  if (rulesError) {
+    console.error('Rules error:', rulesError);
+    return <div className="flex justify-center items-center h-screen">Error loading rules. Please try again later.</div>;
+  }
+
+  if (!weather) {
+    return <div className="flex justify-center items-center h-screen">No weather data available. Please try again later.</div>;
+  }
+
+  if (!rules) {
+    return <div className="flex justify-center items-center h-screen">No rules data available. Please check admin settings.</div>;
   }
 
   const goodDay = isGoodDay();
