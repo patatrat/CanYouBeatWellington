@@ -110,7 +110,7 @@ const Index = () => {
               label="Wind Speed" 
               value={`${weather.windSpeed.toFixed(1)} km/h`} 
               meets={weather.windSpeed < rules.maxWind}
-              icon={<Wind className={`h-6 w-6 mr-2 ${getWindAnimation(weather.windSpeed)}`} />}
+              icon={<Wind className="h-6 w-6 mr-2" />}
             />
             <WeatherStat 
               label="Sunnyness" 
@@ -157,13 +157,6 @@ const WeatherStat = ({ label, value, meets, icon }) => (
     </div>
   </div>
 );
-
-const getWindAnimation = (windSpeed) => {
-  if (windSpeed < 5) return 'animate-none';
-  if (windSpeed < 10) return 'animate-spin-slow';
-  if (windSpeed < 20) return 'animate-spin';
-  return 'animate-spin-fast';
-};
 
 const getSunIcon = (sunnyness) => {
   if (sunnyness >= 90) {
