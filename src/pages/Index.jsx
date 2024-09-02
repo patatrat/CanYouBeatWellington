@@ -84,10 +84,6 @@ const Index = () => {
     return <div className="flex justify-center items-center h-screen">No weather data available. Please try again later.</div>;
   }
 
-  if (!rules) {
-    return <div className="flex justify-center items-center h-screen">No rules data available. Please check admin settings.</div>;
-  }
-
   const goodDay = isGoodDay();
 
   return (

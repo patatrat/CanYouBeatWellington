@@ -11,8 +11,8 @@ const Admin = () => {
   const queryClient = useQueryClient();
   const [rules, setRules] = useState({
     minTemp: 18,
-    maxWind: 20,
-    minSunnyness: 70
+    maxWind: 10,
+    minSunnyness: 90
   });
 
   const { data: savedRules, isLoading } = useQuery({
