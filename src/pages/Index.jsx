@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Check, X, Thermometer, Wind, Sun, Cloud, CloudSun } from 'lucide-react';
+import { ExternalLink, Check, X, Thermometer, ThermometerSun, ThermometerSnowflake, Wind, Sun, Cloud, CloudSun } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
@@ -104,7 +104,7 @@ const Index = () => {
               label="Temperature" 
               value={`${weather.temperature.toFixed(1)}°C`} 
               meets={weather.temperature >= rules.minTemp}
-              icon={<Thermometer className="h-6 w-6 mr-2" />}
+              icon={getTemperatureIcon(weather.temperature)}
             />
             <WeatherStat 
               label="Wind Speed" 
@@ -165,6 +165,16 @@ const getSunIcon = (sunnyness) => {
     return <CloudSun className="h-6 w-6 mr-2 text-yellow-400" />;
   } else {
     return <Cloud className="h-6 w-6 mr-2 text-gray-400" />;
+  }
+};
+
+const getTemperatureIcon = (temperature) => {
+  if (temperature >= 25) {
+    return <ThermometerSun className="h-6 w-6 mr-2 text-red-500" />;
+  } else if (temperature <= 10) {
+    return <ThermometerSnowflake className="h-6 w-6 mr-2 text-blue-500" />;
+  } else {
+    return <Thermometer className="h-6 w-6 mr-2 text-gray-500" />;
   }
 };
 
