@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Check, X, Thermometer, Wind } from 'lucide-react';
+import { ExternalLink, Check, X, Thermometer, Wind, Sun, Cloud, CloudSun } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
@@ -117,6 +117,7 @@ const Index = () => {
               label="Sunnyness" 
               value={`${weather.sunnyness}%`} 
               meets={weather.sunnyness >= rules.minSunnyness}
+              icon={getSunIcon(weather.sunnyness)}
             />
           </div>
           <p className="text-sm text-center mb-2">
@@ -163,6 +164,16 @@ const getWindAnimation = (windSpeed) => {
   if (windSpeed < 10) return 'animate-spin-slow';
   if (windSpeed < 20) return 'animate-spin';
   return 'animate-spin-fast';
+};
+
+const getSunIcon = (sunnyness) => {
+  if (sunnyness >= 90) {
+    return <Sun className="h-6 w-6 mr-2 text-yellow-500" />;
+  } else if (sunnyness >= 60) {
+    return <CloudSun className="h-6 w-6 mr-2 text-yellow-400" />;
+  } else {
+    return <Cloud className="h-6 w-6 mr-2 text-gray-400" />;
+  }
 };
 
 export default Index;
