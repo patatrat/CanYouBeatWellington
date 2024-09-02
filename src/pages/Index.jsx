@@ -20,13 +20,13 @@ const fetchWeather = async () => {
 };
 
 const Index = () => {
-  const { data: weather, isLoading: weatherLoading } = useQuery({
+  const { data: weather, isLoading: weatherLoading, error: weatherError } = useQuery({
     queryKey: ['weather'],
     queryFn: fetchWeather,
     refetchInterval: 300000 // Refetch every 5 minutes
   });
 
-  const { data: rules, isLoading: rulesLoading } = useQuery({
+  const { data: rules, isLoading: rulesLoading, error: rulesError } = useQuery({
     queryKey: ['rules'],
     queryFn: loadRules
   });
@@ -42,6 +42,14 @@ const Index = () => {
 
   if (weatherLoading || rulesLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
+
+  if (weatherError || rulesError) {
+    return <div className="flex justify-center items-center h-screen">Error loading data. Please try again later.</div>;
+  }
+
+  if (!weather || !rules) {
+    return <div className="flex justify-center items-center h-screen">No data available. Please try again later.</div>;
   }
 
   const goodDay = isGoodDay();
@@ -60,25 +68,23 @@ const Index = () => {
               ? "You can't beat Wellington today"
               : "You can beat Wellington today"}
           </p>
-          {rules && (
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <WeatherStat 
-                label="Temperature" 
-                value={`${weather.temperature}°C`} 
-                meets={weather.temperature >= rules.minTemp}
-              />
-              <WeatherStat 
-                label="Wind Speed" 
-                value={`${weather.windSpeed} km/h`} 
-                meets={weather.windSpeed < rules.maxWind}
-              />
-              <WeatherStat 
-                label="Sunnyness" 
-                value={`${weather.sunnyness}%`} 
-                meets={weather.sunnyness >= rules.minSunnyness}
-              />
-            </div>
-          )}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <WeatherStat 
+              label="Temperature" 
+              value={`${weather.temperature}°C`} 
+              meets={weather.temperature >= rules.minTemp}
+            />
+            <WeatherStat 
+              label="Wind Speed" 
+              value={`${weather.windSpeed} km/h`} 
+              meets={weather.windSpeed < rules.maxWind}
+            />
+            <WeatherStat 
+              label="Sunnyness" 
+              value={`${weather.sunnyness}%`} 
+              meets={weather.sunnyness >= rules.minSunnyness}
+            />
+          </div>
           <p className="text-sm text-center mb-2">
             Weather checked at: {format(parseISO(weather.timestamp), 'PPpp')}
           </p>
