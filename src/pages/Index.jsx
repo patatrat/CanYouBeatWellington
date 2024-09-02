@@ -60,23 +60,25 @@ const Index = () => {
               ? "You can't beat Wellington today"
               : "You can beat Wellington today"}
           </p>
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <WeatherStat 
-              label="Temperature" 
-              value={`${weather.temperature}°C`} 
-              meets={weather.temperature >= rules.minTemp}
-            />
-            <WeatherStat 
-              label="Wind Speed" 
-              value={`${weather.windSpeed} km/h`} 
-              meets={weather.windSpeed < rules.maxWind}
-            />
-            <WeatherStat 
-              label="Sunnyness" 
-              value={`${weather.sunnyness}%`} 
-              meets={weather.sunnyness >= rules.minSunnyness}
-            />
-          </div>
+          {rules && (
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <WeatherStat 
+                label="Temperature" 
+                value={`${weather.temperature}°C`} 
+                meets={weather.temperature >= rules.minTemp}
+              />
+              <WeatherStat 
+                label="Wind Speed" 
+                value={`${weather.windSpeed} km/h`} 
+                meets={weather.windSpeed < rules.maxWind}
+              />
+              <WeatherStat 
+                label="Sunnyness" 
+                value={`${weather.sunnyness}%`} 
+                meets={weather.sunnyness >= rules.minSunnyness}
+              />
+            </div>
+          )}
           <p className="text-sm text-center mb-2">
             Weather checked at: {format(parseISO(weather.timestamp), 'PPpp')}
           </p>
