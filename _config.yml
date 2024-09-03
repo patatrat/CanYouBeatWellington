@@ -1,0 +1,38 @@
+# Jekyll configuration for GitHub Pages
+
+# Site settings
+title: Can You Beat Wellington?
+description: Check if you can beat Wellington's weather today!
+baseurl: "/can-you-beat-wellington" # the subpath of your site, e.g. /blog
+url: "" # the base hostname & protocol for your site, e.g. http://example.com
+
+# Build settings
+markdown: kramdown
+exclude:
+  - node_modules
+  - package.json
+  - package-lock.json
+  - README.md
+  - vite.config.js
+  - .gitignore
+  - .gpt_engineer
+
+# Include specific files/folders
+include:
+  - index.html
+  - dist
+
+# Set the default layout for pages
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+# Plugin settings
+plugins:
+  - jekyll-seo-tag
+
+# Serving
+port: 4000
+host: 0.0.0.0
