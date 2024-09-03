@@ -9,13 +9,13 @@ const About = () => {
       <Card className="w-full max-w-2xl mb-8">
         <CardHeader>
           <CardTitle className="text-center">
-            <h1 className="text-3xl font-bold mb-4">About Can You Beat Wellington?</h1>
+            <h1 className="text-3xl font-bold mb-4">What is this all about?</h1>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="mb-4">
-            This website is a fun and interactive way to check if today is a day when "you can't beat Wellington" weather-wise. It's based on the popular saying among Wellingtonians that on a good day, "You can't beat Wellington on a good day."
-          </p>
+            We've all heard the saying 'You can't beat Wellington on a good day', but how do you know when its a good day? 
+            </p>
           <p className="mb-4">
             Here's how it works:
           </p>
@@ -34,18 +34,16 @@ const About = () => {
             <li>Maximum Rainfall: 0 mm</li>
           </ul>
           <p className="mb-4">
-            If all these conditions are met, it's considered a day when "you can't beat Wellington." Otherwise, it's a day when Wellington can be beaten!
+            If all these conditions are met, it's considered a day when "you can't beat Wellington." Otherwise...
           </p>
-          <p className="mb-4">
-            Remember, this is all in good fun and meant to celebrate Wellington's famously variable weather. Enjoy your day, whether you can beat Wellington or not!
-          </p>
+          
         </CardContent>
       </Card>
       
       <Card className="w-full max-w-2xl mb-8">
         <CardHeader>
           <CardTitle className="text-center">
-            <h2 className="text-2xl font-bold mb-4">Wellington: You Can't Beat It on a Good Day</h2>
+            <h2 className="text-2xl font-bold mb-4">You can't beat Wellington on a good day - The Datsun Violets</h2>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -53,7 +51,7 @@ const About = () => {
             <iframe
               className="absolute top-0 left-0 w-full h-full"
               src="https://www.youtube.com/embed/a4xNdyVPDJQ"
-              title="Wellington: You Can't Beat It on a Good Day"
+              title="You can't beat Wellington on a good day - The Datsun Violets"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
