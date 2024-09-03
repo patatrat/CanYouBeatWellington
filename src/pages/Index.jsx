@@ -128,7 +128,7 @@ const Index = () => {
             />
           </div>
           <p className="text-sm text-center mb-2">
-            Weather forecast for: {format(parseISO(weather.timestamp), 'PPP')}
+            Weather updated {format(parseISO(weather.timestamp), 'PPP')}
           </p>
           <div className="flex justify-center mb-6">
             <a 
@@ -137,7 +137,7 @@ const Index = () => {
               rel="noopener noreferrer" 
               className="text-blue-500 hover:text-blue-700 flex items-center"
             >
-              Weather data source <ExternalLink className="ml-1 h-4 w-4" />
+              Weather data provided by open-meteo.com <ExternalLink className="ml-1 h-4 w-4" />
             </a>
           </div>
         </CardContent>
