@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Globe, ExternalLink } from 'lucide-react';
 
 const About = () => {
   return (
@@ -38,16 +37,11 @@ const About = () => {
             If all these conditions are met, it's considered a day when "you can't beat Wellington." Otherwise...
           </p>
           <p className="mt-6 mb-4">
-            Built by Patrick Radomski, with some AI help.
+            Built by <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Patrick Radomski</a>, with <a href="https://gptengineer.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">some AI help</a>.
           </p>
-          <div className="flex items-center space-x-4">
-            <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">
-              <Globe className="h-6 w-6" />
-            </a>
-            <a href="https://mastodon.nz/@Pat" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">
-              <ExternalLink className="h-6 w-6" />
-            </a>
-          </div>
+          <p className="mb-4">
+            Contact me on <a href="https://mastodon.nz/@Pat" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Mastodon</a>.
+          </p>
         </CardContent>
       </Card>
       
