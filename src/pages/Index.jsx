@@ -99,7 +99,7 @@ const Index = () => {
           <p className="text-2xl text-center mb-8">
             {goodDay
               ? "You can't beat Wellington today"
-              : "You can beat Wellington today"}
+              : "You can beat Wellington today... it's not a good day"}
           </p>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <WeatherStat 
