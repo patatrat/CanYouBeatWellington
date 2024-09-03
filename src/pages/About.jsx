@@ -9,7 +9,7 @@ const About = () => {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-center">
-            <h1 className="text-3xl font-bold mb-4">About This Website</h1>
+            <h1 className="text-3xl font-bold mb-4">About Can You Beat Wellington?</h1>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -21,7 +21,7 @@ const About = () => {
           </p>
           <ul className="list-disc list-inside mb-4">
             <li>We fetch real-time weather data for Wellington from a reliable weather API.</li>
-            <li>We analyze three key factors: temperature, wind speed, and sunnyness.</li>
+            <li>We analyze four key factors: temperature, wind speed, sunnyness, and rainfall.</li>
             <li>Based on predefined thresholds, we determine if today is a day you "can't beat Wellington."</li>
           </ul>
           <p className="mb-4">
@@ -31,6 +31,7 @@ const About = () => {
             <li>Minimum Temperature: 18°C</li>
             <li>Maximum Wind Speed: 10 km/h</li>
             <li>Minimum Sunnyness: 90%</li>
+            <li>Maximum Rainfall: 0 mm</li>
           </ul>
           <p className="mb-4">
             If all these conditions are met, it's considered a day when "you can't beat Wellington." Otherwise, it's a day when Wellington can be beaten!
