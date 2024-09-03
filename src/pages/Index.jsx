@@ -143,7 +143,7 @@ const Index = () => {
         </CardContent>
       </Card>
       <div className="mt-4">
-        <Link to="/about" className="text-blue-500 hover:text-blue-700">
+        <Link to="./about" className="text-blue-500 hover:text-blue-700">
           What is this?
         </Link>
       </div>

@@ -42,7 +42,7 @@ const About = () => {
         </CardContent>
       </Card>
       <div className="mt-4">
-        <Link to="/">
+        <Link to="./">
           <Button variant="outline">Back to Home</Button>
         </Link>
       </div>
