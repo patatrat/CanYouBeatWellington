@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Check, X, Thermometer, ThermometerSun, ThermometerSnowflake, Wind, Sun, Cloud, CloudSun, CloudRain, AlertTriangle } from 'lucide-react';
+import { ExternalLink, Check, X, Thermometer, ThermometerSun, ThermometerSnowflake, Wind, Sun, Cloud, CloudSun, CloudRain } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
@@ -42,28 +42,6 @@ const calculateSunnyness = (weatherCode, precipitationSum) => {
   return 10; // Thunderstorm
 };
 
-const ErrorMessage = ({ error }) => (
-  <Card className="w-full max-w-2xl bg-red-50 border-red-200">
-    <CardHeader>
-      <CardTitle className="text-center text-red-600 flex items-center justify-center">
-        <AlertTriangle className="mr-2" />
-        Error Loading Weather Data
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <p className="text-center mb-4">
-        We're sorry, but we couldn't access the weather information at this time.
-      </p>
-      <p className="text-sm text-center mb-2">
-        Error details: {error.message}
-      </p>
-      <p className="text-sm text-center">
-        Please try again later or contact support if the problem persists.
-      </p>
-    </CardContent>
-  </Card>
-);
-
 const Index = () => {
   const { data: weather, isLoading: weatherLoading, error: weatherError } = useQuery({
     queryKey: ['weather'],
@@ -95,7 +73,7 @@ const Index = () => {
 
   if (weatherError) {
     console.error('Weather error:', weatherError);
-    return <ErrorMessage error={weatherError} />;
+    return <div className="flex justify-center items-center h-screen">Error loading weather data. Please try again later.</div>;
   }
 
   if (rulesError) {
@@ -121,7 +99,7 @@ const Index = () => {
           <p className="text-2xl text-center mb-8">
             {goodDay
               ? "You can't beat Wellington today"
-              : "You can beat Wellington today... it's not a good day"}
+              : "You can beat Wellington today"}
           </p>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <WeatherStat 
