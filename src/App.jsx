@@ -10,7 +10,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <HashRouter basename="/CanYouBeatWellington">
+      <HashRouter>
         <Routes>
           {navItems.map(({ to, page }) => (
             <Route key={to} path={to} element={page} />
