@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 const About = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-2xl mb-8">
         <CardHeader>
           <CardTitle className="text-center">
             <h1 className="text-3xl font-bold mb-4">About Can You Beat Wellington?</h1>
@@ -36,11 +36,32 @@ const About = () => {
           <p className="mb-4">
             If all these conditions are met, it's considered a day when "you can't beat Wellington." Otherwise, it's a day when Wellington can be beaten!
           </p>
-          <p>
+          <p className="mb-4">
             Remember, this is all in good fun and meant to celebrate Wellington's famously variable weather. Enjoy your day, whether you can beat Wellington or not!
           </p>
         </CardContent>
       </Card>
+      
+      <Card className="w-full max-w-2xl mb-8">
+        <CardHeader>
+          <CardTitle className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Wellington: You Can't Beat It on a Good Day</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative" style={{ paddingBottom: '56.25%', height: 0 }}>
+            <iframe
+              className="absolute top-0 left-0 w-full h-full"
+              src="https://www.youtube.com/embed/a4xNdyVPDJQ"
+              title="Wellington: You Can't Beat It on a Good Day"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          </div>
+        </CardContent>
+      </Card>
+      
       <div className="mt-4">
         <Link to="/">
           <Button variant="outline">Back to Home</Button>
