@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Globe, Mastodon } from 'lucide-react';
+import { Globe, ExternalLink } from 'lucide-react';
 
 const About = () => {
   return (
@@ -45,7 +45,7 @@ const About = () => {
               <Globe className="h-6 w-6" />
             </a>
             <a href="https://mastodon.nz/@Pat" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">
-              <Mastodon className="h-6 w-6" />
+              <ExternalLink className="h-6 w-6" />
             </a>
           </div>
         </CardContent>
