@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ExternalLink } from 'lucide-react';
 
 const About = () => {
   return (
@@ -20,7 +21,7 @@ const About = () => {
             Here's how it works:
           </p>
           <ul className="list-disc list-inside mb-4">
-            <li>We fetch real-time weather data for <a href="https://en.wikipedia.org/wiki/Wellington" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Wellington, New Zealand</a> from a reliable weather API.</li>
+            <li>We fetch real-time weather data for <a href="https://en.wikipedia.org/wiki/Wellington" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Wellington, New Zealand <ExternalLink className="inline-block w-4 h-4 ml-1" /></a> from a reliable weather API.</li>
             <li>We analyze four key factors: temperature, wind speed, sunnyness, and rainfall.</li>
             <li>Based on predefined thresholds, we determine if today is a day you "can't beat Wellington."</li>
           </ul>
@@ -37,10 +38,10 @@ const About = () => {
             If all these conditions are met, it's considered a day when "you can't beat Wellington." Otherwise...
           </p>
           <p className="mt-6 mb-4">
-            Built by <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Patrick Radomski</a>, with <a href="https://gptengineer.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">some AI help</a>.
+            Built by <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Patrick Radomski <ExternalLink className="inline-block w-4 h-4 ml-1" /></a>, with <a href="https://gptengineer.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">some AI help <ExternalLink className="inline-block w-4 h-4 ml-1" /></a>.
           </p>
           <p className="mb-4">
-            Contact me on <a href="https://mastodon.nz/@Pat" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Mastodon</a>.
+            Contact me on <a href="https://mastodon.nz/@Pat" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Mastodon <ExternalLink className="inline-block w-4 h-4 ml-1" /></a>.
           </p>
         </CardContent>
       </Card>
