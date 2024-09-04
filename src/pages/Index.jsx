@@ -19,7 +19,7 @@ const fetchWeather = async () => {
     const today = {
       temperature: (data.daily.temperature_2m_max[0] + data.daily.temperature_2m_min[0]) / 2,
       windSpeed: data.daily.wind_speed_10m_max[0],
-      sunnyness: calculateSunnyness(data.daily.weather_code[0], data.daily.precipitation_sum[0]),
+      sunniness: calculateSunniness(data.daily.weather_code[0], data.daily.precipitation_sum[0]),
       rain: data.daily.precipitation_sum[0],
       timestamp: data.daily.time[0],
       source: 'https://open-meteo.com/'
@@ -33,8 +33,8 @@ const fetchWeather = async () => {
   }
 };
 
-const calculateSunnyness = (weatherCode, precipitationSum) => {
-  // Simple logic to estimate sunnyness based on weather code and precipitation
+const calculateSunniness = (weatherCode, precipitationSum) => {
+  // Simple logic to estimate sunniness based on weather code and precipitation
   if (weatherCode <= 3) return 100; // Clear sky or mainly clear
   if (weatherCode <= 48) return 70; // Cloudy conditions
   if (weatherCode <= 67) return 50; // Rain
@@ -62,7 +62,7 @@ const Index = () => {
     return (
       weather.temperature >= rules.minTemp &&
       weather.windSpeed < rules.maxWind &&
-      weather.sunnyness >= rules.minSunnyness &&
+      weather.sunniness >= rules.minSunniness &&
       weather.rain <= rules.maxRain
     );
   };
@@ -115,10 +115,10 @@ const Index = () => {
               icon={<Wind className="h-6 w-6 mr-2" />}
             />
             <WeatherStat 
-              label="Sunnyness" 
-              value={`${weather.sunnyness}%`} 
-              meets={weather.sunnyness >= rules.minSunnyness}
-              icon={getSunIcon(weather.sunnyness)}
+              label="Sunniness" 
+              value={`${weather.sunniness}%`} 
+              meets={weather.sunniness >= rules.minSunniness}
+              icon={getSunIcon(weather.sunniness)}
             />
             <WeatherStat 
               label="Rain" 
@@ -166,10 +166,10 @@ const WeatherStat = ({ label, value, meets, icon }) => (
   </div>
 );
 
-const getSunIcon = (sunnyness) => {
-  if (sunnyness >= 90) {
+const getSunIcon = (sunniness) => {
+  if (sunniness >= 90) {
     return <Sun className="h-6 w-6 mr-2 text-yellow-500" />;
-  } else if (sunnyness >= 60) {
+  } else if (sunniness >= 60) {
     return <CloudSun className="h-6 w-6 mr-2 text-yellow-400" />;
   } else {
     return <Cloud className="h-6 w-6 mr-2 text-gray-400" />;
