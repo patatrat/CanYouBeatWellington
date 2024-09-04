@@ -22,7 +22,7 @@ const About = () => {
           </p>
           <ul className="list-disc list-inside mb-4">
             <li>We fetch real-time weather data for <a href="https://en.wikipedia.org/wiki/Wellington" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Wellington, New Zealand <ExternalLink className="inline-block w-4 h-4 ml-1" /></a> from a reliable weather API.</li>
-            <li>We analyze four key factors: temperature, wind speed, sunnyness, and rainfall.</li>
+            <li>We analyze four key factors: temperature, wind speed, sunniness, and rainfall.</li>
             <li>Based on predefined thresholds, we determine if today is a day you "can't beat Wellington."</li>
           </ul>
           <p className="mb-4">
@@ -31,7 +31,7 @@ const About = () => {
           <ul className="list-disc list-inside mb-4">
             <li>Minimum Temperature: 18°C</li>
             <li>Maximum Wind Speed: 10 km/h</li>
-            <li>Minimum Sunnyness: 90%</li>
+            <li>Minimum Sunniness: 90%</li>
             <li>Maximum Rainfall: 0 mm</li>
           </ul>
           <p className="mb-4">
