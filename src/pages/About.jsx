@@ -20,7 +20,7 @@ const About = () => {
             Here's how it works:
           </p>
           <ul className="list-disc list-inside mb-4">
-            <li>We fetch real-time weather data for Wellington from a reliable weather API.</li>
+            <li>We fetch real-time weather data for <a href="https://en.wikipedia.org/wiki/Wellington" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Wellington, New Zealand</a> from a reliable weather API.</li>
             <li>We analyze four key factors: temperature, wind speed, sunnyness, and rainfall.</li>
             <li>Based on predefined thresholds, we determine if today is a day you "can't beat Wellington."</li>
           </ul>
