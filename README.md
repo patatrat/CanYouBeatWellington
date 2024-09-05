@@ -4,6 +4,12 @@ You can't beat Wellington on a good day, but how do you know if its a good day?
 
 A simple, silly webapp to check if its a good day or not. 
 
+See it live here: https://canyoubeatwellington.radomski.co.nz/
+
+Background and write up of this here: https://www.radomski.co.nz/2024/09/04/can-you-beat-wellington/
+
+Built with GPT Engineer. Remix / improve it here: https://run.gptengineer.app/projects/5d5d7303-7939-4d2e-b2a5-331cceca2ec0/improve
+
 ## What technologies are used for this project?
 
 This project is built with:
@@ -12,8 +18,3 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
-**URL**: https://run.gptengineer.app/projects/5d5d7303-7939-4d2e-b2a5-331cceca2ec0/improve
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify or GitHub pages. Visit our docs for more details: [Custom domains](https://docs.gptengineer.app/tips-tricks/custom-domain/)
