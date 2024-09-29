@@ -59,12 +59,12 @@ const Index = () => {
 
   const isGoodDay = () => {
     if (!weather || !rules) return false;
-    return (
-      weather.temperature >= rules.minTemp &&
-      weather.windSpeed < rules.maxWind &&
-      weather.sunniness >= rules.minSunniness &&
-      weather.rain <= rules.maxRain
-    );
+    let criteriaMetCount = 0;
+    if (weather.temperature >= rules.minTemp) criteriaMetCount++;
+    if (weather.windSpeed < rules.maxWind) criteriaMetCount++;
+    if (weather.sunniness >= rules.minSunniness) criteriaMetCount++;
+    if (weather.rain <= rules.maxRain) criteriaMetCount++;
+    return criteriaMetCount;
   };
 
   if (weatherLoading || rulesLoading) {
@@ -85,20 +85,22 @@ const Index = () => {
     return <div className="flex justify-center items-center h-screen">No weather data available. Please try again later.</div>;
   }
 
-  const goodDay = isGoodDay();
+  const criteriaMetCount = isGoodDay();
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-center">
-            <h1 className="text-6xl font-bold mb-4">{goodDay ? "NO" : 'YES'}</h1>
+            <h1 className="text-6xl font-bold mb-4">{criteriaMetCount === 4 ? "NO" : 'YES'}</h1>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-2xl text-center mb-8">
-            {goodDay
+            {criteriaMetCount === 4
               ? "You can't beat Wellington today"
+              : criteriaMetCount === 3
+              ? "Three out of four ain't bad. It is so close to being a good day, but not quite there yet. You can still beat Wellington today."
               : "You can beat Wellington today... it's not a good day"}
           </p>
           <div className="grid grid-cols-2 gap-4 mb-6">
