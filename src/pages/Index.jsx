@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { ExternalLink, Check, X, Thermometer, ThermometerSun, ThermometerSnowflake, Wind, Sun, Cloud, CloudSun, CloudRain } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
+import { supabase } from '../utils/supabase';
 
 const fetchWeather = async () => {
   try {
@@ -54,6 +55,25 @@ const Index = () => {
     queryFn: loadRules
   });
 
+  const storeDailyRecord = async (record) => {
+    const { data, error } = await supabase
+      .from('daily_weather_records')
+      .insert([record]);
+    
+    if (error) throw error;
+    return data;
+  };
+
+  const mutation = useMutation({
+    mutationFn: storeDailyRecord,
+    onSuccess: () => {
+      console.log('Daily record stored successfully');
+    },
+    onError: (error) => {
+      console.error('Error storing daily record:', error);
+    }
+  });
+
   console.log('Weather data:', weather);
   console.log('Rules data:', rules);
 
@@ -66,6 +86,21 @@ const Index = () => {
     if (weather.rain <= rules.maxRain) criteriaMetCount++;
     return criteriaMetCount;
   };
+
+  React.useEffect(() => {
+    if (weather && rules) {
+      const criteriaMetCount = isGoodDay();
+      const record = {
+        date: weather.timestamp,
+        is_good_day: criteriaMetCount === 4,
+        temperature: weather.temperature,
+        wind_speed: weather.windSpeed,
+        sunniness: weather.sunniness,
+        rain: weather.rain
+      };
+      mutation.mutate(record);
+    }
+  }, [weather, rules]);
 
   if (weatherLoading || rulesLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;

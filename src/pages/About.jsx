@@ -1,10 +1,29 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from 'lucide-react';
+import { supabase } from '../utils/supabase';
+import { format, parseISO } from 'date-fns';
+
+const fetchHistory = async () => {
+  const { data, error } = await supabase
+    .from('daily_weather_records')
+    .select('*')
+    .order('date', { ascending: false })
+    .limit(7);
+  
+  if (error) throw error;
+  return data;
+};
 
 const About = () => {
+  const { data: history, isLoading, error } = useQuery({
+    queryKey: ['history'],
+    queryFn: fetchHistory
+  });
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
       <Card className="w-full max-w-2xl mb-8">
@@ -43,6 +62,30 @@ const About = () => {
           <p className="mb-4">
             Contact me on <a href="https://mastodon.nz/@Pat" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Mastodon <ExternalLink className="inline-block w-4 h-4 ml-1" /></a>.
           </p>
+        </CardContent>
+      </Card>
+      
+      <Card className="w-full max-w-2xl mb-8">
+        <CardHeader>
+          <CardTitle className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Recent History</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading && <p>Loading history...</p>}
+          {error && <p>Error loading history: {error.message}</p>}
+          {history && (
+            <ul className="space-y-2">
+              {history.map((record) => (
+                <li key={record.id} className="flex justify-between items-center">
+                  <span>{format(parseISO(record.date), 'PPP')}</span>
+                  <span className={record.is_good_day ? "text-green-500" : "text-red-500"}>
+                    {record.is_good_day ? "Good Day" : "Not a Good Day"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
       
