@@ -56,18 +56,41 @@ const Index = () => {
   });
 
   const storeDailyRecord = async (record) => {
-    const { data, error } = await supabase
+    // Check if a record for today already exists
+    const { data: existingRecord, error: fetchError } = await supabase
       .from('daily_weather_records')
-      .insert([record]);
-    
-    if (error) throw error;
-    return data;
+      .select('*')
+      .eq('date', record.date)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      throw fetchError;
+    }
+
+    if (existingRecord) {
+      // Update existing record
+      const { data, error } = await supabase
+        .from('daily_weather_records')
+        .update(record)
+        .eq('date', record.date);
+      
+      if (error) throw error;
+      return data;
+    } else {
+      // Insert new record
+      const { data, error } = await supabase
+        .from('daily_weather_records')
+        .insert([record]);
+      
+      if (error) throw error;
+      return data;
+    }
   };
 
   const mutation = useMutation({
     mutationFn: storeDailyRecord,
     onSuccess: () => {
-      console.log('Daily record stored successfully');
+      console.log('Daily record stored or updated successfully');
     },
     onError: (error) => {
       console.error('Error storing daily record:', error);
