@@ -56,7 +56,6 @@ const Index = () => {
   });
 
   const storeDailyRecord = async (record) => {
-    // Check if a record for today already exists
     const { data: existingRecord, error: fetchError } = await supabase
       .from('daily_weather_records')
       .select('*')
@@ -64,33 +63,42 @@ const Index = () => {
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('Error checking for existing record:', fetchError);
       throw fetchError;
     }
 
     if (existingRecord) {
-      // Update existing record
+      console.log('Updating existing record for', record.date);
       const { data, error } = await supabase
         .from('daily_weather_records')
         .update(record)
         .eq('date', record.date);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating record:', error);
+        throw error;
+      }
+      console.log('Record updated successfully:', data);
       return data;
     } else {
-      // Insert new record
+      console.log('Inserting new record for', record.date);
       const { data, error } = await supabase
         .from('daily_weather_records')
         .insert([record]);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error inserting record:', error);
+        throw error;
+      }
+      console.log('New record inserted successfully:', data);
       return data;
     }
   };
 
   const mutation = useMutation({
     mutationFn: storeDailyRecord,
-    onSuccess: () => {
-      console.log('Daily record stored or updated successfully');
+    onSuccess: (data) => {
+      console.log('Daily record stored or updated successfully:', data);
     },
     onError: (error) => {
       console.error('Error storing daily record:', error);
