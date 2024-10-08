@@ -62,7 +62,7 @@ const Index = () => {
     return [
       weather.temperature >= rules.minTemp,
       weather.windSpeed < rules.maxWind,
-      weather.sunniness >= rules.minSunniness,
+      weather.sunniness <= rules.maxSunniness,
       weather.rain <= rules.maxRain
     ].filter(Boolean).length;
   };
@@ -126,7 +126,7 @@ const Index = () => {
             <WeatherStat 
               label="Sunniness" 
               value={`${weather.sunniness}%`} 
-              meets={weather.sunniness >= rules.minSunniness}
+              meets={weather.sunniness <= rules.maxSunniness}
             />
             <WeatherStat 
               label="Daytime Rain" 
