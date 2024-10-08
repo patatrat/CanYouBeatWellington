@@ -1,19 +1,17 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+const WEATHER_STORAGE_KEY = 'WeatherApp:latestWeather';
 
-const WEATHER_STORAGE_KEY = '@WeatherApp:latestWeather';
-
-export const saveWeatherData = async (weatherData) => {
+export const saveWeatherData = (weatherData) => {
   try {
     const jsonValue = JSON.stringify(weatherData);
-    await AsyncStorage.setItem(WEATHER_STORAGE_KEY, jsonValue);
+    localStorage.setItem(WEATHER_STORAGE_KEY, jsonValue);
   } catch (e) {
     console.error('Error saving weather data', e);
   }
 };
 
-export const getStoredWeatherData = async () => {
+export const getStoredWeatherData = () => {
   try {
-    const jsonValue = await AsyncStorage.getItem(WEATHER_STORAGE_KEY);
+    const jsonValue = localStorage.getItem(WEATHER_STORAGE_KEY);
     return jsonValue != null ? JSON.parse(jsonValue) : null;
   } catch (e) {
     console.error('Error reading weather data', e);
@@ -38,7 +36,7 @@ export const fetchAndStoreWeather = async () => {
       source: 'https://open-meteo.com/'
     };
     
-    await saveWeatherData(today);
+    saveWeatherData(today);
     return today;
   } catch (error) {
     console.error('Error fetching weather data:', error);
