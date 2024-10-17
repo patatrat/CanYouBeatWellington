@@ -1,7 +1,7 @@
 const defaultRules = {
   minTemp: 18,
   maxWind: 10,
-  maxSunniness: 30,  // Changed from minSunniness to maxSunniness
+  minSunniness: 90,
   maxRain: 0
 };
 
