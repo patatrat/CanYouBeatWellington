@@ -61,7 +61,7 @@ const Index = () => {
     if (!weather || !rules) return 0;
     return [
       weather.temperature >= rules.minTemp,
-      weather.windSpeed < rules.maxWind,
+      weather.windSpeed >= rules.minWind, // Changed from < to >=
       weather.sunniness >= rules.minSunniness,
       weather.rain <= rules.maxRain
     ].filter(Boolean).length;
@@ -121,7 +121,7 @@ const Index = () => {
             <WeatherStat 
               label="Wind Speed" 
               value={`${weather.windSpeed.toFixed(1)} km/h`} 
-              meets={weather.windSpeed < rules.maxWind}
+              meets={weather.windSpeed >= rules.minWind} // Changed from < to >=
             />
             <WeatherStat 
               label="Sunniness" 
