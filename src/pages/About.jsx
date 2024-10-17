@@ -48,8 +48,8 @@ const About = () => {
             The thresholds are:
           </p>
           <ul className="list-disc list-inside mb-4">
-            <li>Minimum Temperature: 18°C</li>
-            <li>Maximum Wind Speed: 10 km/h</li>
+            <li>Minimum Temperature (Feels Like): 18°C</li>
+            <li>Maximum Wind Speed: 20 km/h</li>
             <li>Minimum Sunniness: 90%</li>
             <li>Maximum Rainfall: 0 mm</li>
           </ul>
