@@ -28,7 +28,7 @@ export const fetchAndStoreWeather = async () => {
     const data = await response.json();
     
     const today = {
-      temperature: (data.daily.apparent_temperature_max[0] + data.daily.apparent_temperature_min[0]) / 2, // Changed to use apparent temperature
+      temperature: data.daily.apparent_temperature_max[0], // Changed to use maximum apparent temperature
       windSpeed: data.daily.wind_speed_10m_max[0],
       sunniness: calculateSunniness(data.daily.weather_code[0]),
       rain: calculateDaytimeRain(data.hourly.precipitation),
