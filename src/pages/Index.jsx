@@ -5,7 +5,7 @@ import { ExternalLink, Check, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
-import { supabase } from '../utils/supabase';
+import { supabase } from '../integrations/supabase/client';
 import { fetchAndStoreWeather } from '../utils/weatherStorage';
 import WeatherStat from '../components/WeatherStat';
 
@@ -33,18 +33,38 @@ const Index = () => {
       throw fetchError;
     }
 
-    const operation = existingRecord ? 'update' : 'insert';
-    const { data, error } = await supabase
-      .from('daily_weather_records')
-      [operation](record)
-      .eq('date', record.date);
-    
-    if (error) {
-      console.error(`Error ${operation}ing record:`, error);
-      throw error;
+    if (existingRecord) {
+      const { data, error } = await supabase
+        .from('daily_weather_records')
+        .update({
+          temperature: record.temperature,
+          wind_speed: record.wind_speed,
+          sunniness: record.sunniness,
+          rain: record.rain,
+          is_good_day: record.is_good_day
+        })
+        .eq('date', record.date)
+        .select();
+      
+      if (error) {
+        console.error('Error updating record:', error);
+        throw error;
+      }
+      console.log('Record updated successfully:', data);
+      return data;
+    } else {
+      const { data, error } = await supabase
+        .from('daily_weather_records')
+        .insert(record)
+        .select();
+      
+      if (error) {
+        console.error('Error inserting record:', error);
+        throw error;
+      }
+      console.log('Record inserted successfully:', data);
+      return data;
     }
-    console.log(`Record ${operation}d successfully:`, data);
-    return data;
   };
 
   const mutation = useMutation({
@@ -61,7 +81,7 @@ const Index = () => {
     if (!weather || !rules) return 0;
     return [
       weather.temperature >= rules.minTemp,
-      weather.windSpeed < rules.maxWind, // Changed from >= to <
+      weather.windSpeed < rules.maxWind,
       weather.sunniness >= rules.minSunniness,
       weather.rain <= rules.maxRain
     ].filter(Boolean).length;
@@ -121,7 +141,7 @@ const Index = () => {
             <WeatherStat 
               label="Wind Speed" 
               value={`${weather.windSpeed.toFixed(1)} km/h`} 
-              meets={weather.windSpeed < rules.maxWind} // Changed from >= to <
+              meets={weather.windSpeed < rules.maxWind}
             />
             <WeatherStat 
               label="Sunniness" 

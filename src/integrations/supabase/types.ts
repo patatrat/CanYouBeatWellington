@@ -9,7 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      daily_weather_records: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          is_good_day: boolean
+          rain: number
+          sunniness: number
+          temperature: number
+          updated_at: string
+          wind_speed: number
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          is_good_day?: boolean
+          rain: number
+          sunniness: number
+          temperature: number
+          updated_at?: string
+          wind_speed: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          is_good_day?: boolean
+          rain?: number
+          sunniness?: number
+          temperature?: number
+          updated_at?: string
+          wind_speed?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
