@@ -49,6 +49,7 @@
     "framer-motion": "^11.3.9",
     "html-to-image": "^1.11.11",
     "input-otp": "^1.2.4",
+    "lovable-tagger": "^1.1.8",
     "lucide-react": "^0.417.0",
     "next-themes": "^0.3.0",
     "react": "^18.2.0",
