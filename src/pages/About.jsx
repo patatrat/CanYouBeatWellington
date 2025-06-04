@@ -1,18 +1,19 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from 'lucide-react';
-import { supabase } from '../utils/supabase';
+import { supabase } from '../integrations/supabase/client';
 import { format, parseISO } from 'date-fns';
+import CalendarHistory from '../components/CalendarHistory';
 
 const fetchHistory = async () => {
   const { data, error } = await supabase
     .from('daily_weather_records')
     .select('*')
-    .order('date', { ascending: false })
-    .limit(7);
+    .order('date', { ascending: false });
   
   if (error) throw error;
   return data;
@@ -65,27 +66,16 @@ const About = () => {
         </CardContent>
       </Card>
       
-      <Card className="w-full max-w-2xl mb-8">
+      <Card className="w-full max-w-4xl mb-8">
         <CardHeader>
           <CardTitle className="text-center">
-            <h2 className="text-2xl font-bold mb-4">Recent History</h2>
+            <h2 className="text-2xl font-bold mb-4">Weather History Calendar</h2>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading && <p>Loading history...</p>}
-          {error && <p>Error loading history: {error.message}</p>}
-          {history && (
-            <ul className="space-y-2">
-              {history.map((record) => (
-                <li key={record.id} className="flex justify-between items-center">
-                  <span>{format(parseISO(record.date), 'PPP')}</span>
-                  <span className={record.is_good_day ? "text-green-500" : "text-red-500"}>
-                    {record.is_good_day ? "Good Day" : "Not a Good Day"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          {isLoading && <p className="text-center">Loading history...</p>}
+          {error && <p className="text-center text-red-500">Error loading history: {error.message}</p>}
+          {history && <CalendarHistory history={history} />}
         </CardContent>
       </Card>
       
