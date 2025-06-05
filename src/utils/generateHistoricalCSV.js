@@ -30,6 +30,14 @@ const isGoodDay = (temperature, windSpeed, sunniness, rain) => {
          rain <= maxRain;
 };
 
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 const downloadCSV = (csvContent, filename) => {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
@@ -70,22 +78,34 @@ export const generateAndDownloadCSV = async () => {
     const data = await response.json();
     console.log(`📊 Received data for ${data.daily.time.length} days`);
     
-    // Create CSV header
-    const csvHeader = 'date,temperature,wind_speed,sunniness,rain,is_good_day\n';
+    // Create CSV header matching Supabase table schema
+    const csvHeader = 'id,date,temperature,wind_speed,sunniness,rain,is_good_day,created_at,updated_at\n';
     
     // Process each day's data and create CSV rows
     console.log('⚙️ Processing weather data...');
     const csvRows = [];
+    const now = new Date().toISOString();
+    
     for (let i = 0; i < data.daily.time.length; i++) {
       const date = data.daily.time[i];
       const temperature = data.daily.temperature_2m_max[i];
       const windSpeed = data.daily.wind_speed_10m_max[i];
-      const sunniness = calculateSunniness(data.daily.weather_code[i]);
+      const weatherCode = data.daily.weather_code[i];
+      
+      // Skip rows with null values
+      if (temperature === null || windSpeed === null || weatherCode === null || 
+          data.hourly.precipitation === null || !date) {
+        console.log(`⚠️ Skipping day ${date} due to null values`);
+        continue;
+      }
+      
+      const sunniness = calculateSunniness(weatherCode);
       const rain = calculateDaytimeRain(data.hourly.precipitation, i);
       const goodDay = isGoodDay(temperature, windSpeed, sunniness, rain);
+      const id = generateUUID();
       
-      // Create CSV row
-      const csvRow = `${date},${temperature},${windSpeed},${sunniness},${rain},${goodDay}`;
+      // Create CSV row with all required fields
+      const csvRow = `${id},${date},${temperature},${windSpeed},${sunniness},${rain},${goodDay},${now},${now}`;
       csvRows.push(csvRow);
     }
     
