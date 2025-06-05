@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -8,6 +7,7 @@ import { ExternalLink } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
 import { format, parseISO } from 'date-fns';
 import CalendarHistory from '../components/CalendarHistory';
+import CSVGenerator from '../components/CSVGenerator';
 
 const fetchHistory = async () => {
   const { data, error } = await supabase
@@ -96,6 +96,17 @@ const About = () => {
               allowFullScreen
             ></iframe>
           </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="w-full max-w-2xl mb-8">
+        <CardHeader>
+          <CardTitle className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Generate Historical Data CSV</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CSVGenerator />
         </CardContent>
       </Card>
       
