@@ -87,15 +87,15 @@ export const generateAndDownloadCSV = async () => {
     const now = new Date().toISOString();
     
     for (let i = 0; i < data.daily.time.length; i++) {
-      const date = data.daily.time[i];
+      const dateString = data.daily.time[i]; // This is already in YYYY-MM-DD format from the API
       const temperature = data.daily.temperature_2m_max[i];
       const windSpeed = data.daily.wind_speed_10m_max[i];
       const weatherCode = data.daily.weather_code[i];
       
       // Skip rows with null values
       if (temperature === null || windSpeed === null || weatherCode === null || 
-          data.hourly.precipitation === null || !date) {
-        console.log(`⚠️ Skipping day ${date} due to null values`);
+          data.hourly.precipitation === null || !dateString) {
+        console.log(`⚠️ Skipping day ${dateString} due to null values`);
         continue;
       }
       
@@ -104,8 +104,8 @@ export const generateAndDownloadCSV = async () => {
       const goodDay = isGoodDay(temperature, windSpeed, sunniness, rain);
       const id = generateUUID();
       
-      // Create CSV row with all required fields
-      const csvRow = `${id},${date},${temperature},${windSpeed},${sunniness},${rain},${goodDay},${now},${now}`;
+      // Create CSV row with all required fields - date is already in YYYY-MM-DD format
+      const csvRow = `${id},${dateString},${temperature},${windSpeed},${sunniness},${rain},${goodDay},${now},${now}`;
       csvRows.push(csvRow);
     }
     
