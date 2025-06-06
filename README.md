@@ -8,7 +8,7 @@ See it live here: https://canyoubeatwellington.radomski.co.nz/
 
 Background and write up of this here: https://www.radomski.co.nz/2024/09/04/can-you-beat-wellington/
 
-Built with GPT Engineer. Remix / improve it here: https://run.gptengineer.app/projects/5d5d7303-7939-4d2e-b2a5-331cceca2ec0/improve
+Built with Loveable (formerly GPT Engineer). Remix / improve it here: https://run.gptengineer.app/projects/5d5d7303-7939-4d2e-b2a5-331cceca2ec0/improve
 
 ## What technologies are used for this project?
 
@@ -18,3 +18,6 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+
+Updates:
+June 2025 - added supabase database that stores daily weather information and added graphs and calendars on about page to view history
