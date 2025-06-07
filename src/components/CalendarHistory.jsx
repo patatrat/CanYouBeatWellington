@@ -12,7 +12,10 @@ const CalendarHistory = ({ history }) => {
     const map = new Map();
     if (history) {
       history.forEach(record => {
-        map.set(record.date, record.is_good_day);
+        // Ensure we're working with the exact date string from the database
+        // without any timezone conversion issues
+        const dateString = record.date; // This should already be in YYYY-MM-DD format
+        map.set(dateString, record.is_good_day);
       });
     }
     return map;
@@ -20,7 +23,13 @@ const CalendarHistory = ({ history }) => {
 
   // Custom day renderer to show tick/cross for each day
   const dayRenderer = (day) => {
-    const dateString = day.toISOString().split('T')[0];
+    // Format the date to match the database format (YYYY-MM-DD)
+    // Use the local date without timezone conversion
+    const year = day.getFullYear();
+    const month = String(day.getMonth() + 1).padStart(2, '0');
+    const dayOfMonth = String(day.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${dayOfMonth}`;
+    
     const hasData = historyMap.has(dateString);
     const isGoodDay = historyMap.get(dateString);
 
