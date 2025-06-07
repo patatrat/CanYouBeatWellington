@@ -34,6 +34,29 @@ const CSVGenerator = () => {
     return date.toISOString().split('T')[0];
   };
 
+  const fetchDataChunk = async (startDate, endDate, API_KEY) => {
+    const startDateStr = formatDate(startDate);
+    const endDateStr = formatDate(endDate);
+    
+    const response = await fetch(
+      `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/Wellington,NZ/${startDateStr}/${endDateStr}?key=${API_KEY}&include=days&elements=datetime,tempmax,windspeed,precip,conditions,icon&unitGroup=metric`
+    );
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        const errorText = await response.text();
+        if (errorText.includes('exceeds the maximum query cost')) {
+          throw new Error('Query too large for free tier. Try reducing the date range.');
+        }
+        throw new Error('Invalid API key. Please check your Visual Crossing Weather API key.');
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.days || [];
+  };
+
   const generateCSV = async () => {
     setIsGenerating(true);
     setProgress('Starting data generation...');
@@ -43,30 +66,48 @@ const CSVGenerator = () => {
       const endDate = new Date('2025-03-15');
       const startDate = new Date('2020-03-15'); // 5 years back
       
-      const startDateStr = formatDate(startDate);
-      const endDateStr = formatDate(endDate);
-      
-      setProgress(`Fetching data from ${startDateStr} to ${endDateStr}...`);
-
-      // Using Visual Crossing Weather API with your API key
       const API_KEY = 'J24W9XFX9EY24DRFP6VCYNSWW';
       
-      const response = await fetch(
-        `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/Wellington,NZ/${startDateStr}/${endDateStr}?key=${API_KEY}&include=days&elements=datetime,tempmax,windspeed,precip,conditions,icon&unitGroup=metric`
-      );
+      setProgress('Fetching data in chunks to stay within API limits...');
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Invalid API key. Please check your Visual Crossing Weather API key.');
+      let allDays = [];
+      let currentStart = new Date(startDate);
+      let chunkNumber = 1;
+      
+      while (currentStart < endDate) {
+        // Create 6-month chunks to stay within API limits
+        let currentEnd = new Date(currentStart);
+        currentEnd.setMonth(currentEnd.getMonth() + 6);
+        
+        // Don't go beyond our end date
+        if (currentEnd > endDate) {
+          currentEnd = new Date(endDate);
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        
+        setProgress(`Fetching chunk ${chunkNumber}: ${formatDate(currentStart)} to ${formatDate(currentEnd)}...`);
+        
+        try {
+          const chunkDays = await fetchDataChunk(currentStart, currentEnd, API_KEY);
+          allDays = allDays.concat(chunkDays);
+          
+          // Add a small delay between requests to be respectful to the API
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+        } catch (chunkError) {
+          console.error(`Error fetching chunk ${chunkNumber}:`, chunkError);
+          setProgress(`⚠️ Warning: Failed to fetch data for ${formatDate(currentStart)} to ${formatDate(currentEnd)}. Continuing with remaining data...`);
+        }
+        
+        // Move to next chunk
+        currentStart = new Date(currentEnd);
+        currentStart.setDate(currentStart.getDate() + 1);
+        chunkNumber++;
       }
 
-      const data = await response.json();
-      setProgress(`Processing ${data.days.length} days of weather data...`);
+      setProgress(`Processing ${allDays.length} days of weather data...`);
 
       // Process the data to match our Supabase structure
-      const records = data.days.map(day => {
+      const records = allDays.map(day => {
         const temperature = day.tempmax || 0;
         const windSpeed = day.windspeed || 0;
         const sunniness = calculateSunniness(day.icon);
@@ -123,7 +164,7 @@ const CSVGenerator = () => {
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', `wellington_weather_history_${startDateStr}_to_${endDateStr}.csv`);
+      link.setAttribute('download', `wellington_weather_history_2020_to_2025-03-15.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -160,6 +201,9 @@ const CSVGenerator = () => {
         <div className="text-center">
           <p className="mb-4 text-gray-600">
             Generate a CSV file with historical weather data for Wellington from March 2020 to March 15, 2025.
+          </p>
+          <p className="mb-4 text-sm text-blue-600">
+            Data will be fetched in chunks to work within API limits. This may take a few minutes.
           </p>
           
           <Button 
