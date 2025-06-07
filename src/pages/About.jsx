@@ -4,11 +4,13 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, RefreshCw } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
 import { format, parseISO } from 'date-fns';
 import CalendarHistory from '../components/CalendarHistory';
 import MonthlyGoodDaysChart from '../components/MonthlyGoodDaysChart';
+import { recheckAllHistoricalData } from '../utils/recheckHistoricalData';
+import { useToast } from "@/components/ui/use-toast";
 
 const fetchHistory = async () => {
   const { data, error } = await supabase
@@ -21,10 +23,44 @@ const fetchHistory = async () => {
 };
 
 const About = () => {
-  const { data: history, isLoading, error } = useQuery({
+  const { data: history, isLoading, error, refetch } = useQuery({
     queryKey: ['history'],
     queryFn: fetchHistory
   });
+
+  const { toast } = useToast();
+  const [isRechecking, setIsRechecking] = React.useState(false);
+
+  const handleRecheckData = async () => {
+    setIsRechecking(true);
+    
+    try {
+      const result = await recheckAllHistoricalData();
+      
+      if (result.success) {
+        toast({
+          title: "✅ Data recheck completed!",
+          description: `Updated ${result.updated} records, ${result.correct} were already correct. Total: ${result.total}`,
+        });
+        // Refresh the data to show updates
+        refetch();
+      } else {
+        toast({
+          title: "❌ Recheck failed",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsRechecking(false);
+    }
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -58,6 +94,31 @@ const About = () => {
           <p className="mb-4">
             If all these conditions are met, it's considered a day when "you can't beat Wellington." Otherwise...
           </p>
+          
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h3 className="font-semibold mb-2">Data Quality Check</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Click the button below to recheck all historical weather data against the current criteria and update any incorrect records.
+            </p>
+            <Button 
+              onClick={handleRecheckData}
+              disabled={isRechecking}
+              className="w-full"
+            >
+              {isRechecking ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Rechecking Data...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Recheck Historical Data
+                </>
+              )}
+            </Button>
+          </div>
+          
           <p className="mt-6 mb-4">
             Built by <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Patrick Radomski <ExternalLink className="inline-block w-4 h-4 ml-1" /></a>, with <a href="https://gptengineer.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">some AI help <ExternalLink className="inline-block w-4 h-4 ml-1" /></a>.
           </p>
