@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -8,7 +9,6 @@ import { supabase } from '../integrations/supabase/client';
 import { format, parseISO } from 'date-fns';
 import CalendarHistory from '../components/CalendarHistory';
 import MonthlyGoodDaysChart from '../components/MonthlyGoodDaysChart';
-import CSVGenerator from '../components/CSVGenerator';
 
 const fetchHistory = async () => {
   const { data, error } = await supabase
@@ -112,8 +112,6 @@ const About = () => {
           </div>
         </CardContent>
       </Card>
-      
-      <CSVGenerator />
       
       <div className="mt-4">
         <Link to="/">
