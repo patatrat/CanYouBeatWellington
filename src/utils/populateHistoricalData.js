@@ -20,7 +20,7 @@ const calculateDaytimeRain = (hourlyPrecipitation, dayIndex) => {
 const isGoodDay = (temperature, windSpeed, sunniness, rain) => {
   const minTemp = 18;
   const maxWind = 20;
-  const minSunniness = 90;
+  const minSunniness = 70; // Updated from 90 to 70
   const maxRain = 0;
   
   return temperature >= minTemp && 
