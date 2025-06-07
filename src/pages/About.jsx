@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -7,6 +8,7 @@ import { ExternalLink } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
 import CalendarHistory from '../components/CalendarHistory';
 import MonthlyGoodDaysChart from '../components/MonthlyGoodDaysChart';
+import FunFacts from '../components/FunFacts';
 
 const fetchHistory = async () => {
   const { data, error } = await supabase
@@ -65,6 +67,8 @@ const About = () => {
           </p>
         </CardContent>
       </Card>
+      
+      {!isLoading && !error && history && <FunFacts history={history} />}
       
       <Card className="w-full max-w-4xl mb-8">
         <CardHeader>
