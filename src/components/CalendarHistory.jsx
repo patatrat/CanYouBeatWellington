@@ -69,11 +69,11 @@ const CalendarHistory = ({ history }) => {
 
     // Weather tooltip content
     const weatherTooltip = record ? (
-      <div className="text-sm">
-        <div>🌡️ {record.temperature}°C</div>
-        <div>💨 {record.wind_speed} km/h</div>
-        <div>☀️ {record.sunniness}% sunny</div>
-        <div>🌧️ {record.rain}mm rain</div>
+      <div className="text-sm text-left">
+        <div className="flex items-center gap-1">🌡️ {record.temperature}°C</div>
+        <div className="flex items-center gap-1">💨 {record.wind_speed} km/h</div>
+        <div className="flex items-center gap-1">☀️ {record.sunniness}% sunny</div>
+        <div className="flex items-center gap-1">🌧️ {record.rain}mm rain</div>
       </div>
     ) : null;
 
