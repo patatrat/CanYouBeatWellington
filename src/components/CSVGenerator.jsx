@@ -48,9 +48,8 @@ const CSVGenerator = () => {
       
       setProgress(`Fetching data from ${startDateStr} to ${endDateStr}...`);
 
-      // Using Visual Crossing Weather API (free tier)
-      // You'll need to sign up at https://www.visualcrossing.com/weather-api for an API key
-      const API_KEY = 'YOUR_VISUAL_CROSSING_API_KEY'; // User will need to replace this
+      // Using Visual Crossing Weather API with your API key
+      const API_KEY = 'J24W9XFX9EY24DRFP6VCYNSWW';
       
       const response = await fetch(
         `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/Wellington,NZ/${startDateStr}/${endDateStr}?key=${API_KEY}&include=days&elements=datetime,tempmax,windspeed,precip,conditions,icon&unitGroup=metric`
@@ -58,7 +57,7 @@ const CSVGenerator = () => {
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error('Invalid API key. Please sign up at https://www.visualcrossing.com/weather-api and replace YOUR_VISUAL_CROSSING_API_KEY in the code.');
+          throw new Error('Invalid API key. Please check your Visual Crossing Weather API key.');
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -161,11 +160,6 @@ const CSVGenerator = () => {
         <div className="text-center">
           <p className="mb-4 text-gray-600">
             Generate a CSV file with historical weather data for Wellington from March 2020 to March 15, 2025.
-          </p>
-          <p className="mb-4 text-sm text-orange-600">
-            Note: You'll need a free API key from Visual Crossing Weather. 
-            Sign up at <a href="https://www.visualcrossing.com/weather-api" target="_blank" rel="noopener noreferrer" className="underline">visualcrossing.com</a> 
-            and replace YOUR_VISUAL_CROSSING_API_KEY in the code.
           </p>
           
           <Button 
