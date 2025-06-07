@@ -1,6 +1,8 @@
+
 import { HomeIcon, InfoIcon } from "lucide-react";
 import Index from "./pages/Index.jsx";
 import About from "./pages/About.jsx";
+import NotFound from "./pages/NotFound.jsx";
 
 export const navItems = [
   {
@@ -14,5 +16,10 @@ export const navItems = [
     to: "/about",
     icon: <InfoIcon className="h-4 w-4" />,
     page: <About />,
+  },
+  {
+    title: "Not Found",
+    to: "*",
+    page: <NotFound />,
   },
 ];
