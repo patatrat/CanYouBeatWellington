@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../integrations/supabase/client';
@@ -8,6 +8,15 @@ import { Button } from "@/components/ui/button";
 const VotingButtons = ({ weatherRecord }) => {
   const [hasVoted, setHasVoted] = useState(false);
   const queryClient = useQueryClient();
+
+  // Check if user has already voted today by storing vote status in localStorage with date
+  useEffect(() => {
+    if (weatherRecord?.date) {
+      const voteKey = `voted_${weatherRecord.date}`;
+      const hasVotedToday = localStorage.getItem(voteKey) === 'true';
+      setHasVoted(hasVotedToday);
+    }
+  }, [weatherRecord?.date]);
 
   const updateVoteMutation = useMutation({
     mutationFn: async ({ voteType }) => {
@@ -24,7 +33,11 @@ const VotingButtons = ({ weatherRecord }) => {
       return data;
     },
     onSuccess: () => {
+      // Mark as voted for today in localStorage
+      const voteKey = `voted_${weatherRecord.date}`;
+      localStorage.setItem(voteKey, 'true');
       setHasVoted(true);
+      
       // Refetch the weather data to update the counts
       queryClient.invalidateQueries(['weather']);
     },
