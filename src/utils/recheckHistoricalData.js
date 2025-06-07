@@ -31,6 +31,9 @@ export const recheckAllHistoricalData = async () => {
     
     let updatedCount = 0;
     let correctCount = 0;
+    let changedFromGoodToBad = 0;
+    let changedFromBadToGood = 0;
+    const changes = [];
     
     // Process records in batches to avoid overwhelming the database
     const batchSize = 50;
@@ -57,6 +60,23 @@ export const recheckAllHistoricalData = async () => {
             console.error(`Error updating record ${record.date}:`, updateError);
           } else {
             updatedCount++;
+            
+            if (record.is_good_day && !shouldBeGoodDay) {
+              changedFromGoodToBad++;
+            } else if (!record.is_good_day && shouldBeGoodDay) {
+              changedFromBadToGood++;
+            }
+            
+            changes.push({
+              date: record.date,
+              from: record.is_good_day,
+              to: shouldBeGoodDay,
+              temperature: record.temperature,
+              windSpeed: record.wind_speed,
+              sunniness: record.sunniness,
+              rain: record.rain
+            });
+            
             console.log(`Updated ${record.date}: ${record.is_good_day} -> ${shouldBeGoodDay}`);
           }
         } else {
@@ -71,12 +91,17 @@ export const recheckAllHistoricalData = async () => {
     console.log(`Records updated: ${updatedCount}`);
     console.log(`Records already correct: ${correctCount}`);
     console.log(`Total processed: ${updatedCount + correctCount}`);
+    console.log(`Changed from good to bad: ${changedFromGoodToBad}`);
+    console.log(`Changed from bad to good: ${changedFromBadToGood}`);
     
     return {
       success: true,
       updated: updatedCount,
       correct: correctCount,
-      total: updatedCount + correctCount
+      total: updatedCount + correctCount,
+      changedFromGoodToBad,
+      changedFromBadToGood,
+      changes: changes.slice(0, 10) // Only return first 10 changes for display
     };
     
   } catch (error) {
