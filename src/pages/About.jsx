@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
-import { useToast } from "@/components/ui/use-toast";
-import { recheckAllHistoricalData } from '../utils/recheckHistoricalData';
-import { checkSunshineUpdate } from '../utils/sunshineUpdateCheck';
 import CalendarHistory from '../components/CalendarHistory';
 import MonthlyGoodDaysChart from '../components/MonthlyGoodDaysChart';
 import FunFacts from '../components/FunFacts';
@@ -23,67 +21,10 @@ const fetchHistory = async () => {
 };
 
 const About = () => {
-  const [isRunningScript, setIsRunningScript] = useState(false);
-  const { toast } = useToast();
-  
   const { data: history, isLoading, error } = useQuery({
     queryKey: ['history'],
     queryFn: fetchHistory
   });
-
-  const runHistoricalDataUpdate = async () => {
-    setIsRunningScript(true);
-    
-    try {
-      toast({
-        title: "Starting Analysis",
-        description: "Checking sunshine requirement impact...",
-      });
-
-      // First check the impact
-      const analysisResult = await checkSunshineUpdate();
-      
-      if (analysisResult.success) {
-        toast({
-          title: "Analysis Complete",
-          description: `Found ${analysisResult.addedGoodDays} new good days with 70% sunshine requirement. Now updating historical data...`,
-        });
-        
-        // Then update the historical data
-        const updateResult = await recheckAllHistoricalData();
-        
-        if (updateResult.success) {
-          toast({
-            title: "Update Complete!",
-            description: `Successfully updated ${updateResult.updated} records. ${updateResult.changedFromBadToGood} changed from bad to good days.`,
-          });
-          
-          // Refetch the history data to update the page
-          window.location.reload();
-        } else {
-          toast({
-            title: "Update Failed",
-            description: updateResult.error,
-            variant: "destructive",
-          });
-        }
-      } else {
-        toast({
-          title: "Analysis Failed",
-          description: analysisResult.error,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Script Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsRunningScript(false);
-    }
-  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -111,7 +52,7 @@ const About = () => {
           <ul className="list-disc list-inside mb-4">
             <li>Minimum Temperature (Daily Maximum): 18°C</li>
             <li>Maximum Wind Speed: 20 km/h</li>
-            <li>Minimum Sunniness: 90%</li>
+            <li>Minimum Sunniness: 70%</li>
             <li>Maximum Rainfall: 0 mm</li>
           </ul>
           <p className="mb-4">
@@ -172,27 +113,6 @@ const About = () => {
               allowFullScreen
             ></iframe>
           </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="w-full max-w-2xl mb-8">
-        <CardHeader>
-          <CardTitle className="text-center">
-            <h2 className="text-2xl font-bold mb-4">Update Historical Data</h2>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center">
-          <p className="mb-4">
-            Run the historical data recheck script to update all past weather records with the current sunshine requirements (70% instead of 90%).
-          </p>
-          <Button 
-            onClick={runHistoricalDataUpdate}
-            disabled={isRunningScript}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRunningScript ? 'animate-spin' : ''}`} />
-            {isRunningScript ? 'Running Update...' : 'Update Historical Data'}
-          </Button>
         </CardContent>
       </Card>
       
