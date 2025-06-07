@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -8,6 +9,7 @@ import { loadRules } from '../utils/rulesStorage';
 import { supabase } from '../integrations/supabase/client';
 import { fetchAndStoreWeather } from '../utils/weatherStorage';
 import WeatherStat from '../components/WeatherStat';
+import VotingButtons from '../components/VotingButtons';
 
 const Index = () => {
   const { data: weather, isLoading: weatherLoading, error: weatherError } = useQuery({
@@ -19,6 +21,28 @@ const Index = () => {
   const { data: rules, isLoading: rulesLoading, error: rulesError } = useQuery({
     queryKey: ['rules'],
     queryFn: loadRules
+  });
+
+  // Fetch today's weather record for voting
+  const { data: todaysRecord } = useQuery({
+    queryKey: ['todaysRecord', weather?.timestamp],
+    queryFn: async () => {
+      if (!weather) return null;
+      
+      const { data, error } = await supabase
+        .from('daily_weather_records')
+        .select('*')
+        .eq('date', weather.timestamp)
+        .maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching today\'s record:', error);
+        throw error;
+      }
+      
+      return data;
+    },
+    enabled: !!weather
   });
 
   const storeDailyRecord = async (record) => {
@@ -154,7 +178,12 @@ const Index = () => {
               meets={weather.rain <= rules.maxRain}
             />
           </div>
-          <p className="text-sm text-center mb-2">
+
+          {todaysRecord && (
+            <VotingButtons weatherRecord={todaysRecord} />
+          )}
+
+          <p className="text-sm text-center mb-2 mt-6">
             Weather updated {format(parseISO(weather.timestamp), 'PPP')}
           </p>
           <div className="flex justify-center mb-6">

@@ -1,0 +1,81 @@
+
+import React, { useState } from 'react';
+import { ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../integrations/supabase/client';
+import { Button } from "@/components/ui/button";
+
+const VotingButtons = ({ weatherRecord }) => {
+  const [hasVoted, setHasVoted] = useState(false);
+  const queryClient = useQueryClient();
+
+  const updateVoteMutation = useMutation({
+    mutationFn: async ({ voteType }) => {
+      const column = voteType === 'agree' ? 'agree_count' : 'disagree_count';
+      const currentCount = weatherRecord[column] || 0;
+      
+      const { data, error } = await supabase
+        .from('daily_weather_records')
+        .update({ [column]: currentCount + 1 })
+        .eq('date', weatherRecord.date)
+        .select();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      setHasVoted(true);
+      // Refetch the weather data to update the counts
+      queryClient.invalidateQueries(['weather']);
+    },
+    onError: (error) => {
+      console.error('Error updating vote:', error);
+    }
+  });
+
+  const handleVote = (voteType) => {
+    if (!hasVoted) {
+      updateVoteMutation.mutate({ voteType });
+    }
+  };
+
+  return (
+    <div className="flex justify-center space-x-8 mt-6">
+      <div className="flex flex-col items-center">
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => handleVote('agree')}
+          disabled={hasVoted || updateVoteMutation.isPending}
+          className="mb-2 hover:bg-green-50 hover:border-green-300"
+          title="I agree with this assessment"
+        >
+          <ThumbsUp className="h-6 w-6 text-green-600" />
+        </Button>
+        <span className="text-sm font-medium text-green-600">
+          {weatherRecord.agree_count || 0}
+        </span>
+        <span className="text-xs text-gray-500">Agree</span>
+      </div>
+      
+      <div className="flex flex-col items-center">
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => handleVote('disagree')}
+          disabled={hasVoted || updateVoteMutation.isPending}
+          className="mb-2 hover:bg-red-50 hover:border-red-300"
+          title="I disagree with this assessment"
+        >
+          <ThumbsDown className="h-6 w-6 text-red-600" />
+        </Button>
+        <span className="text-sm font-medium text-red-600">
+          {weatherRecord.disagree_count || 0}
+        </span>
+        <span className="text-xs text-gray-500">Disagree</span>
+      </div>
+    </div>
+  );
+};
+
+export default VotingButtons;

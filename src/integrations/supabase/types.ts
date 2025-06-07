@@ -11,8 +11,10 @@ export type Database = {
     Tables: {
       daily_weather_records: {
         Row: {
+          agree_count: number
           created_at: string
           date: string
+          disagree_count: number
           id: string
           is_good_day: boolean
           rain: number
@@ -22,8 +24,10 @@ export type Database = {
           wind_speed: number
         }
         Insert: {
+          agree_count?: number
           created_at?: string
           date: string
+          disagree_count?: number
           id?: string
           is_good_day?: boolean
           rain: number
@@ -33,8 +37,10 @@ export type Database = {
           wind_speed: number
         }
         Update: {
+          agree_count?: number
           created_at?: string
           date?: string
+          disagree_count?: number
           id?: string
           is_good_day?: boolean
           rain?: number
