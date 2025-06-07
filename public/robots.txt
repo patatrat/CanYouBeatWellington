@@ -1,0 +1,17 @@
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://canyoubeatwellington.radomski.co.nz/sitemap.xml
+
+# Block crawling of admin or API endpoints if any exist
+Disallow: /api/
+Disallow: /.gpt_engineer/
+
+# Allow social media crawlers
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
