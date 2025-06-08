@@ -17,16 +17,15 @@ const calculateDaytimeRain = (hourlyPrecipitation, dayIndex) => {
   return daytimeRain;
 };
 
-const isGoodDay = (temperature, windSpeed, sunniness, rain) => {
+const isGoodDay = (temperature, windSpeed, rain) => {
   const minTemp = 18;
   const maxWind = 20;
-  const minSunniness = 70; // Updated from 90 to 70
   const maxRain = 0;
   
   return temperature >= minTemp && 
          windSpeed < maxWind && 
-         sunniness >= minSunniness && 
          rain <= maxRain;
+  // Removed sunniness requirement entirely
 };
 
 export const populateHistoricalWeatherData = async () => {
@@ -71,7 +70,7 @@ export const populateHistoricalWeatherData = async () => {
         wind_speed: windSpeed,
         sunniness,
         rain,
-        is_good_day: isGoodDay(temperature, windSpeed, sunniness, rain)
+        is_good_day: isGoodDay(temperature, windSpeed, rain)
       };
       
       records.push(record);

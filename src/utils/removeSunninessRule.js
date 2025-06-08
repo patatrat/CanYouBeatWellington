@@ -12,8 +12,8 @@ const isGoodDay = (temperature, windSpeed, rain) => {
   // Removed sunniness requirement entirely
 };
 
-export const recheckAllHistoricalData = async () => {
-  console.log('Starting historical data recheck...');
+export const removeSunninessRuleAndUpdate = async () => {
+  console.log('Starting sunniness rule removal and historical data update...');
   
   try {
     // Fetch all historical records
@@ -85,7 +85,7 @@ export const recheckAllHistoricalData = async () => {
       console.log(`Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(records.length / batchSize)}`);
     }
     
-    console.log(`Recheck complete!`);
+    console.log(`Sunniness rule removal complete!`);
     console.log(`Records updated: ${updatedCount}`);
     console.log(`Records already correct: ${correctCount}`);
     console.log(`Total processed: ${updatedCount + correctCount}`);
@@ -103,7 +103,7 @@ export const recheckAllHistoricalData = async () => {
     };
     
   } catch (error) {
-    console.error('Error rechecking historical data:', error);
+    console.error('Error removing sunniness rule and updating historical data:', error);
     return {
       success: false,
       error: error.message

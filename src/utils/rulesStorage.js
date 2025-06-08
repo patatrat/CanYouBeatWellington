@@ -1,9 +1,9 @@
 
 const defaultRules = {
   minTemp: 18,
-  maxWind: 20, // Updated from minWind to maxWind and set to 20
-  minSunniness: 70, // Updated from 90 to 70
+  maxWind: 20,
   maxRain: 0
+  // Removed minSunniness rule entirely
 };
 
 export const saveRules = (rules) => {
