@@ -1,13 +1,10 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
-import { useToast } from "@/components/ui/use-toast";
-import { removeSunninessRuleAndUpdate } from '../utils/removeSunninessRule';
 import CalendarHistory from '../components/CalendarHistory';
 import MonthlyGoodDaysChart from '../components/MonthlyGoodDaysChart';
 import FunFacts from '../components/FunFacts';
@@ -23,50 +20,10 @@ const fetchHistory = async () => {
 };
 
 const About = () => {
-  const [isRunningScript, setIsRunningScript] = useState(false);
-  const { toast } = useToast();
-  
   const { data: history, isLoading, error } = useQuery({
     queryKey: ['history'],
     queryFn: fetchHistory
   });
-
-  const runSunninessRuleRemoval = async () => {
-    setIsRunningScript(true);
-    
-    try {
-      toast({
-        title: "Starting Update",
-        description: "Removing sunniness rule and updating historical data...",
-      });
-
-      const result = await removeSunninessRuleAndUpdate();
-      
-      if (result.success) {
-        toast({
-          title: "Update Complete!",
-          description: `Successfully updated ${result.updated} records. ${result.changedFromBadToGood} additional days are now considered good days!`,
-        });
-        
-        // Refetch the history data to update the page
-        window.location.reload();
-      } else {
-        toast({
-          title: "Update Failed",
-          description: result.error,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Script Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsRunningScript(false);
-    }
-  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -134,30 +91,6 @@ const About = () => {
           {isLoading && <p className="text-center">Loading data...</p>}
           {error && <p className="text-center text-red-500">Error loading data: {error.message}</p>}
           {history && <MonthlyGoodDaysChart history={history} />}
-        </CardContent>
-      </Card>
-      
-      <Card className="w-full max-w-2xl mb-8">
-        <CardHeader>
-          <CardTitle className="text-center">
-            <h2 className="text-2xl font-bold mb-4">Remove Sunniness Rule</h2>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center">
-          <p className="mb-4">
-            Click the button below to remove the sunniness requirement entirely from the good day criteria. This will update all historical weather records to use only temperature, wind speed, and rainfall as factors.
-          </p>
-          <p className="mb-4 text-sm text-gray-600">
-            <strong>Expected Impact:</strong> This will likely significantly increase the number of good days since many cloudy but otherwise pleasant days will now qualify.
-          </p>
-          <Button 
-            onClick={runSunninessRuleRemoval}
-            disabled={isRunningScript}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRunningScript ? 'animate-spin' : ''}`} />
-            {isRunningScript ? 'Removing Rule & Updating Data...' : 'Remove Sunniness Rule'}
-          </Button>
         </CardContent>
       </Card>
       
