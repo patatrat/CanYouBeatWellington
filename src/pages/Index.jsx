@@ -106,7 +106,6 @@ const Index = () => {
     return [
       weather.temperature >= rules.minTemp,
       weather.windSpeed < rules.maxWind,
-      weather.sunniness >= rules.minSunniness,
       weather.rain <= rules.maxRain
     ].filter(Boolean).length;
   };
@@ -116,7 +115,7 @@ const Index = () => {
       const criteriaMetCount = isGoodDay();
       const record = {
         date: weather.timestamp,
-        is_good_day: criteriaMetCount === 4,
+        is_good_day: criteriaMetCount === 3,
         temperature: weather.temperature,
         wind_speed: weather.windSpeed,
         sunniness: weather.sunniness,
@@ -145,18 +144,18 @@ const Index = () => {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-center">
-            <h1 className="text-6xl font-bold mb-4">{criteriaMetCount === 4 ? "NO" : 'YES'}</h1>
+            <h1 className="text-6xl font-bold mb-4">{criteriaMetCount === 3 ? "NO" : 'YES'}</h1>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-2xl text-center mb-8">
-            {criteriaMetCount === 4
+            {criteriaMetCount === 3
               ? "You can't beat Wellington today"
-              : criteriaMetCount === 3
-              ? "Three out of four ain't bad. It is so close to being a good day, but not quite there yet. You can still beat Wellington today."
+              : criteriaMetCount === 2
+              ? "Two out of three ain't bad. It is so close to being a good day, but not quite there yet. You can still beat Wellington today."
               : "You can beat Wellington today... it's not a good day"}
           </p>
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-3 gap-4 mb-6">
             <WeatherStat 
               label="Temperature" 
               value={`${weather.temperature.toFixed(1)}°C`} 
@@ -166,11 +165,6 @@ const Index = () => {
               label="Wind Speed" 
               value={`${weather.windSpeed.toFixed(1)} km/h`} 
               meets={weather.windSpeed < rules.maxWind}
-            />
-            <WeatherStat 
-              label="Sunniness" 
-              value={`${weather.sunniness}%`} 
-              meets={weather.sunniness >= rules.minSunniness}
             />
             <WeatherStat 
               label="Daytime Rain" 
