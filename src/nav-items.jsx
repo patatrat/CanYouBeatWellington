@@ -1,9 +1,14 @@
 
-import { HomeIcon, InfoIcon } from "lucide-react";
+import { HomeIcon, InfoIcon, UserIcon, FileTextIcon, DownloadIcon, BarChart3Icon } from "lucide-react";
 import Index from "./pages/Index.jsx";
 import About from "./pages/About.jsx";
-import NotFound from "./pages/NotFound.jsx";
+import Admin from "./pages/Admin.jsx";
+import CSVGen from "./pages/CSVGen.jsx";
+import DataExplorer from "./pages/DataExplorer.jsx";
 
+/**
+ * Central place for defining the navigation items. Used for navigation components and routing.
+ */
 export const navItems = [
   {
     title: "Home",
@@ -18,8 +23,21 @@ export const navItems = [
     page: <About />,
   },
   {
-    title: "Not Found",
-    to: "*",
-    page: <NotFound />,
+    title: "Admin",
+    to: "/admin",
+    icon: <UserIcon className="h-4 w-4" />,
+    page: <Admin />,
+  },
+  {
+    title: "CSV Generator",
+    to: "/csv-gen",
+    icon: <DownloadIcon className="h-4 w-4" />,
+    page: <CSVGen />,
+  },
+  {
+    title: "Data Explorer",
+    to: "/data-explorer",
+    icon: <BarChart3Icon className="h-4 w-4" />,
+    page: <DataExplorer />,
   },
 ];
