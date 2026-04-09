@@ -31,6 +31,7 @@ Data source: Open-Meteo API (free, no key required).
 | Hosting | Vercel (auto-deploys on push to `main`) |
 | Database | Supabase free tier (project: `qumelyuoeutlnnouhguo`) |
 | Supabase pause prevention | GitHub Actions cron ping every 5 days |
+| Daily weather | GitHub Actions cron at 12:00 UTC daily (`daily-weather.yml`) |
 | CI | GitHub Actions — lint + build + audit on every push/PR |
 | Secrets | GitHub repo secrets + Vercel env vars (both use `VITE_` prefix) |
 | DNS | Cloudflare (DNS-only, grey cloud) → Vercel |
@@ -53,7 +54,7 @@ Data source: Open-Meteo API (free, no key required).
 - [ ] Retrieve pre-2026 weather data — DB currently has only ~92 days. `archive-api.open-meteo.com` is unreachable from Codespace; run `scripts/populate-db.js` locally (after temporarily changing the URL back to archive API) to seed from 2020
 
 ### P4 — Feature improvements
-- [ ] **Add daily weather cron job** — data only stored when someone visits the homepage. If nobody visits, that day has a gap in history. Add a Vercel Cron or GitHub Actions job to fetch + store weather at midnight NZT daily
+- [x] **Daily weather cron job** — GitHub Actions runs `scripts/populate-db.js` at 12:00 UTC (midnight NZST) daily; upserts idempotently so also backfills any missed days
 - [ ] Make voting tamper-resistant — localStorage prevents UI re-votes but RLS doesn't rate-limit API calls
 - [ ] Define and build the Admin page (`/admin` is an empty stub)
 - [x] Staging environment — `staging` branch auto-deploys to Vercel preview URL (`canyoubeatwellington-git-staging-patatrat.vercel.app`); shares production Supabase DB
@@ -97,7 +98,8 @@ Data source: Open-Meteo API (free, no key required).
 | `src/utils/rulesStorage.js` | Weather criteria — source of truth for good-day rules |
 | `src/integrations/supabase/client.ts` | Supabase client (reads from `VITE_` env vars) |
 | `src/integrations/supabase/types.ts` | DB types (manually maintained — no `is_good_day`) |
-| `scripts/populate-db.js` | Standalone Node.js script to seed weather data |
+| `scripts/populate-db.js` | Node.js script to seed/refresh weather data (run manually or via daily cron) |
 | `vercel.json` | SPA rewrites + cache headers |
 | `.github/workflows/ci.yml` | Lint + build + audit gate |
 | `.github/workflows/supabase-keepalive.yml` | Prevents Supabase free tier from pausing |
+| `.github/workflows/daily-weather.yml` | Fetches and stores Wellington weather daily at midnight NZT |
