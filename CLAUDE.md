@@ -40,12 +40,8 @@ Data source: Open-Meteo API (free, no key required).
 ## Backlog
 
 ### P2 — Security hardening
-- [ ] **Add Supabase RLS policies** — currently anyone with the anon key can INSERT/UPDATE/DELETE records directly. Suggested policies:
-  - `SELECT`: allow for all (anon role)
-  - `INSERT`: allow for anon (app inserts today's weather record)
-  - `UPDATE`: restrict to `agree_count` and `disagree_count` columns only (voting), or block direct UPDATE and use a Postgres function instead
-  - `DELETE`: block for anon
-- [ ] **Wire up Google Analytics or remove dead code** — `GA_MEASUREMENT_ID` placeholder in `index.html` and `src/utils/analytics.js`; currently does nothing
+- [x] **Add Supabase RLS policies** — SELECT/INSERT for anon; direct UPDATE blocked; votes go via `increment_vote` SECURITY DEFINER function
+- [x] **Remove dead Google Analytics code** — replaced with Vercel Analytics
 
 ### P3 — Code quality
 - [ ] Remove unused Radix UI components — many shadcn/ui components scaffolded but never used, bloating the 883 kB bundle
@@ -58,9 +54,9 @@ Data source: Open-Meteo API (free, no key required).
 
 ### P4 — Feature improvements
 - [ ] **Add daily weather cron job** — data only stored when someone visits the homepage. If nobody visits, that day has a gap in history. Add a Vercel Cron or GitHub Actions job to fetch + store weather at midnight NZT daily
-- [ ] Make voting tamper-resistant — currently localStorage only, trivially bypassed via API
+- [ ] Make voting tamper-resistant — localStorage prevents UI re-votes but RLS doesn't rate-limit API calls
 - [ ] Define and build the Admin page (`/admin` is an empty stub)
-- [ ] Set up staging branch in Vercel (create `staging` branch → Vercel dashboard → Settings → Git)
+- [x] Staging environment — `staging` branch auto-deploys to Vercel preview URL (`canyoubeatwellington-git-staging-patatrat.vercel.app`); shares production Supabase DB
 
 ### P5 — Nice to have
 - [ ] Add unit/integration tests (currently zero)
@@ -79,6 +75,9 @@ Data source: Open-Meteo API (free, no key required).
 | 2026-04-09 | Remove `is_good_day` from DB | Rules may change seasonally; compute at runtime from `rulesStorage.js` |
 | 2026-04-09 | Start DB fresh from 90 days | archive-api unreachable from Codespace; retrieve older data locally later |
 | 2026-04-09 | Keep Supabase free tier | Pause solved by cron ping; no need to migrate or upgrade yet |
+| 2026-04-09 | Staging: use Vercel auto-generated URL, not custom domain | Custom domains require a production deployment; preview URL is stable enough for a hobby project |
+| 2026-04-09 | Supabase RLS: block direct UPDATE, use increment_vote() | Prevents anon from overwriting vote counts directly; function is atomic |
+| 2026-04-09 | Replace Google Analytics with Vercel Analytics | GA was a placeholder that never worked; Vercel Analytics is zero-config |
 
 ---
 

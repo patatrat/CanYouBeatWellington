@@ -53,7 +53,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_vote: {
+        Args: { record_date: string; vote_type: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

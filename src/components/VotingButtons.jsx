@@ -20,28 +20,20 @@ const VotingButtons = ({ weatherRecord }) => {
 
   const updateVoteMutation = useMutation({
     mutationFn: async ({ voteType }) => {
-      const column = voteType === 'agree' ? 'agree_count' : 'disagree_count';
-      const currentCount = weatherRecord[column] || 0;
-      
-      const { data, error } = await supabase
-        .from('daily_weather_records')
-        .update({ [column]: currentCount + 1 })
-        .eq('date', weatherRecord.date)
-        .select();
-      
+      const { error } = await supabase.rpc('increment_vote', {
+        record_date: weatherRecord.date,
+        vote_type: voteType,
+      });
       if (error) throw error;
-      return data;
     },
-    onSuccess: (data, variables) => {
-      // Mark as voted for today in localStorage
+    onSuccess: (_, variables) => {
       const voteKey = `voted_${weatherRecord.date}`;
       localStorage.setItem(voteKey, 'true');
       setHasVoted(true);
-      
+
       track('vote', { type: variables.voteType, date: weatherRecord.date });
-      
-      // Refetch the weather data to update the counts
-      queryClient.invalidateQueries(['weather']);
+
+      queryClient.invalidateQueries(['todaysRecord']);
     },
     onError: (error) => {
       console.error('Error updating vote:', error);
