@@ -4,9 +4,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Check, X, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { loadRules } from '@/utils/rulesStorage';
 
 const CalendarHistory = ({ history }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const rules = loadRules();
+  const isGoodDay = (r) => r.temperature >= rules.minTemp && r.wind_speed < rules.maxWind && r.rain <= rules.maxRain;
 
   // Create a map of dates to weather records for quick lookup
   const historyMap = React.useMemo(() => {
@@ -33,7 +36,7 @@ const CalendarHistory = ({ history }) => {
     
     const record = historyMap.get(dateString);
     const hasData = !!record;
-    const isGoodDay = record?.is_good_day;
+    const goodDay = record ? isGoodDay(record) : false;
     const agreeCount = record?.agree_count || 0;
     const disagreeCount = record?.disagree_count || 0;
     const totalVotes = agreeCount + disagreeCount;
@@ -84,7 +87,7 @@ const CalendarHistory = ({ history }) => {
           <div className="absolute -top-1 -right-1 flex flex-col items-center space-y-0.5">
             <Tooltip>
               <TooltipTrigger asChild>
-                {isGoodDay ? (
+                {goodDay ? (
                   <Check className="w-3 h-3 text-green-500" />
                 ) : (
                   <X className="w-3 h-3 text-red-500" />

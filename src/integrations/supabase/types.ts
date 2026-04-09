@@ -16,7 +16,6 @@ export type Database = {
           date: string
           disagree_count: number
           id: string
-          is_good_day: boolean
           rain: number
           sunniness: number
           temperature: number
@@ -29,7 +28,6 @@ export type Database = {
           date: string
           disagree_count?: number
           id?: string
-          is_good_day?: boolean
           rain: number
           sunniness: number
           temperature: number
@@ -42,7 +40,6 @@ export type Database = {
           date?: string
           disagree_count?: number
           id?: string
-          is_good_day?: boolean
           rain?: number
           sunniness?: number
           temperature?: number

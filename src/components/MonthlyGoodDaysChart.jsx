@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { loadRules } from '@/utils/rulesStorage';
 
 const MonthlyGoodDaysChart = ({ history }) => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -21,6 +22,9 @@ const MonthlyGoodDaysChart = ({ history }) => {
 
   const monthlyData = useMemo(() => {
     if (!history) return [];
+
+    const rules = loadRules();
+    const isGoodDay = (r) => r.temperature >= rules.minTemp && r.wind_speed < rules.maxWind && r.rain <= rules.maxRain;
 
     // Group data by month for the selected year and count good days
     const monthCounts = {};
@@ -43,7 +47,7 @@ const MonthlyGoodDaysChart = ({ history }) => {
       
       if (year === selectedYear && monthCounts[month]) {
         monthCounts[month].totalDays++;
-        if (record.is_good_day) {
+        if (isGoodDay(record)) {
           monthCounts[month].goodDays++;
         }
       }

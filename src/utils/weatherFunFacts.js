@@ -1,6 +1,8 @@
 
 // Utility functions to calculate fun facts from historical weather data
 
+import { loadRules } from './rulesStorage';
+
 export const calculateFunFacts = (history) => {
   if (!history || history.length === 0) {
     return [];
@@ -60,8 +62,10 @@ export const calculateFunFacts = (history) => {
     }
   }
 
-  // Good day statistics
-  const goodDays = history.filter(record => record.is_good_day);
+  // Good day statistics — computed from current rules, not stored DB value
+  const rules = loadRules();
+  const isGoodDay = (r) => r.temperature >= rules.minTemp && r.wind_speed < rules.maxWind && r.rain <= rules.maxRain;
+  const goodDays = history.filter(isGoodDay);
   const goodDayPercentage = (goodDays.length / history.length) * 100;
   facts.push(`Only ${goodDayPercentage.toFixed(1)}% of days in Wellington are considered "can't beat Wellington" days`);
 

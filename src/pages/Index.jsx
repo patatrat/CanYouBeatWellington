@@ -65,7 +65,6 @@ const Index = () => {
           wind_speed: record.wind_speed,
           sunniness: record.sunniness,
           rain: record.rain,
-          is_good_day: record.is_good_day
         })
         .eq('date', record.date)
         .select();
@@ -115,11 +114,10 @@ const Index = () => {
       const criteriaMetCount = isGoodDay();
       const record = {
         date: weather.timestamp,
-        is_good_day: criteriaMetCount === 3,
         temperature: weather.temperature,
         wind_speed: weather.windSpeed,
         sunniness: weather.sunniness,
-        rain: weather.rain
+        rain: weather.rain,
       };
       mutation.mutate(record);
     }
