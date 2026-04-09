@@ -3,7 +3,7 @@ import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../integrations/supabase/client';
 import { Button } from "@/components/ui/button";
-import { trackVote } from '../utils/analytics';
+import { track } from '@vercel/analytics';
 
 const VotingButtons = ({ weatherRecord }) => {
   const [hasVoted, setHasVoted] = useState(false);
@@ -38,8 +38,7 @@ const VotingButtons = ({ weatherRecord }) => {
       localStorage.setItem(voteKey, 'true');
       setHasVoted(true);
       
-      // Track the vote in Google Analytics
-      trackVote(variables.voteType, weatherRecord.date);
+      track('vote', { type: variables.voteType, date: weatherRecord.date });
       
       // Refetch the weather data to update the counts
       queryClient.invalidateQueries(['weather']);
