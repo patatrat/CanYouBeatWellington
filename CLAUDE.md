@@ -45,10 +45,10 @@ Data source: Open-Meteo API (free, no key required).
 - [x] **Remove dead Google Analytics code** — replaced with Vercel Analytics
 
 ### P3 — Code quality
-- [ ] Remove unused Radix UI components — many shadcn/ui components scaffolded but never used, bloating the 883 kB bundle
+- [x] Remove unused Radix UI/shadcn components — deleted 43 unused ui files; removed 25 Radix packages + other dead deps; CSS bundle 45 kB → 19 kB
+- [x] Move `esbuild` to `devDependencies`
+- [x] Add `engines: { node: ">=24" }` to `package.json`
 - [ ] Upgrade Vite to v8 — fixes 2 remaining moderate dev-server vulns (breaking change, test carefully)
-- [ ] Move `esbuild` from `dependencies` to `devDependencies`
-- [ ] Add `engines` field to `package.json` to pin Node version (currently using 24)
 
 ### P3.5 — Historical data
 - [ ] Retrieve pre-2026 weather data — DB currently has only ~92 days. `archive-api.open-meteo.com` is unreachable from Codespace; run `scripts/populate-db.js` locally (after temporarily changing the URL back to archive API) to seed from 2020
