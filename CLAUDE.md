@@ -129,10 +129,10 @@ feature/*    → preview     (auto-generated preview URL per PR)
 - [x] Created `.github/workflows/supabase-keepalive.yml` — pings DB every 5 days (2026-04-09)
 - [x] Moved Supabase credentials to env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) (2026-04-09)
 - [x] Created `.env.example` (2026-04-09)
-- [ ] **ACTION REQUIRED (manual)**: Import repo into Vercel dashboard
-- [ ] **ACTION REQUIRED (manual)**: Add GitHub repo secrets (see below)
-- [ ] **ACTION REQUIRED (manual)**: Add Vercel environment variables (see below)
-- [ ] **ACTION REQUIRED (manual)**: Create `staging` branch + configure in Vercel dashboard
+- [x] Imported repo into Vercel, site is live (2026-04-09)
+- [x] Added 4 GitHub repo secrets (2026-04-09)
+- [x] Added Vercel environment variables (2026-04-09)
+- [ ] Create `staging` branch + configure in Vercel dashboard (optional)
 
 ### P2 — Security hardening
 - [ ] Add Supabase RLS policies to `daily_weather_records`
