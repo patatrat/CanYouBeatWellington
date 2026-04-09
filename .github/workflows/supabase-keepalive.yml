@@ -9,12 +9,27 @@ jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Ping Supabase database
         env:
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
-          curl --fail-with-body -X GET \
-            "${SUPABASE_URL}/rest/v1/daily_weather_records?select=id&limit=1" \
-            -H "apikey: ${SUPABASE_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_KEY}"
+          node --input-type=module <<'EOF'
+          const url = `${process.env.SUPABASE_URL}/rest/v1/daily_weather_records?select=id&limit=1`;
+          const res = await fetch(url, {
+            headers: {
+              apikey: process.env.SUPABASE_KEY,
+              Authorization: `Bearer ${process.env.SUPABASE_KEY}`,
+            },
+          });
+          console.log('HTTP status:', res.status);
+          if (!res.ok) {
+            console.error(await res.text());
+            process.exit(1);
+          }
+          console.log('Supabase is alive');
+          EOF
