@@ -25,6 +25,13 @@ const About = () => {
     queryFn: fetchHistory
   });
 
+  React.useEffect(() => {
+    document.title = "You Can't Beat Wellington on a Good Day — About | Can You Beat Wellington?";
+    return () => {
+      document.title = "You Can't Beat Wellington on a Good Day — Can You Beat Wellington?";
+    };
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
       <Card className="w-full max-w-2xl mb-8">
@@ -35,8 +42,8 @@ const About = () => {
         </CardHeader>
         <CardContent>
           <p className="mb-4">
-            We've all heard the saying 'You can't beat Wellington on a good day', but how do you know when its a good day? 
-            </p>
+            "You can't beat Wellington on a good day" — Wellington's most famous weather saying. But how often is it actually true?
+          </p>
           <p className="mb-4">
             Here's how it works:
           </p>

@@ -1,23 +1,46 @@
-# Can you beat Wellington?
-## Project info
-You can't beat Wellington on a good day, but how do you know if its a good day?
+# Can You Beat Wellington?
 
-A simple, silly webapp to check if its a good day or not. 
+"You can't beat Wellington on a good day" — but is today that day?
 
-See it live here: https://canyoubeatwellington.radomski.co.nz/
+A simple webapp that checks Wellington's weather in real time and answers the question. See it live: **https://canyoubeatwellington.radomski.co.nz/**
 
-Background and write up of this here: https://www.radomski.co.nz/2024/09/04/can-you-beat-wellington/
+Background and write-up: https://www.radomski.co.nz/2024/09/04/can-you-beat-wellington/
 
-Built with Loveable (formerly GPT Engineer). Remix / improve it here: https://run.gptengineer.app/projects/5d5d7303-7939-4d2e-b2a5-331cceca2ec0/improve
+Originally built with [Lovable](https://lovable.dev) (formerly GPT Engineer).
 
-## What technologies are used for this project?
+## How it works
 
-This project is built with:
+Three criteria must all be met for it to be a good day:
 
-- Vite
-- React
-- shadcn-ui
-- Tailwind CSS
+- Max temperature ≥ 18°C
+- Max wind speed < 20 km/h
+- Daytime rain = 0 mm
 
-Updates:
-June 2025 - added supabase database that stores daily weather information and added graphs and calendars on about page to view history
+Weather data is fetched from [Open-Meteo](https://open-meteo.com/) (free, no API key). Today's result and vote counts are stored in Supabase; historical data is visualised on the About page.
+
+## Stack
+
+- **Frontend**: React 18 + Vite 5 + Tailwind CSS + shadcn/ui
+- **Database**: Supabase (PostgreSQL) with RLS policies
+- **Hosting**: Vercel (auto-deploys from `main`; `staging` branch deploys to preview URL)
+- **Analytics**: Vercel Analytics
+- **CI**: GitHub Actions — lint + build + audit on every push/PR
+- **Daily weather cron**: GitHub Actions at 12:00 UTC, upserts today's record via `scripts/populate-db.js`
+- **Supabase keep-alive**: GitHub Actions ping every 5 days to prevent free-tier pausing
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+Requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` env vars (copy `.env.example` if present, or set them manually).
+
+## Changelog
+
+- **April 2026** — SEO improvements: target phrases in title/meta/structured data, H1 restructure, sitemap freshness
+- **April 2026** — Removed unused shadcn/ui components and dead Radix UI dependencies; CSS bundle reduced from 45 kB to 19 kB
+- **April 2026** — Added Supabase RLS policies; votes go via `increment_vote()` SECURITY DEFINER function; staging environment on Vercel
+- **April 2026** — Replaced Google Analytics placeholder with Vercel Analytics; added daily weather cron job
+- **June 2025** — Added Supabase database for daily weather history; graphs and calendar on About page
