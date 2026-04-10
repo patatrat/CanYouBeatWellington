@@ -1,4 +1,3 @@
-import React from 'react';
 import { Check, X, Thermometer, ThermometerSun, ThermometerSnowflake, Wind, Sun, Cloud, CloudSun, CloudRain } from 'lucide-react';
 
 const WeatherStat = ({ label, value, meets }) => (

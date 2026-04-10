@@ -42,15 +42,15 @@ const About = () => {
         </CardHeader>
         <CardContent>
           <p className="mb-4">
-            "You can't beat Wellington on a good day" — Wellington's most famous weather saying. But how often is it actually true?
+            {`"You can't beat Wellington on a good day" — Wellington's most famous weather saying. But how often is it actually true?`}
           </p>
           <p className="mb-4">
-            Here's how it works:
+            {"Here's how it works:"}
           </p>
           <ul className="list-disc list-inside mb-4">
             <li>We fetch real-time weather data for <a href="https://en.wikipedia.org/wiki/Wellington" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Wellington, New Zealand <ExternalLink className="inline-block w-4 h-4 ml-1" /></a> from a reliable weather API.</li>
             <li>We analyze three key factors: temperature, wind speed, and rainfall.</li>
-            <li>Based on predefined thresholds, we determine if today is a day you "can't beat Wellington."</li>
+            <li>{`Based on predefined thresholds, we determine if today is a day you "can't beat Wellington."`}</li>
           </ul>
           <p className="mb-4">
             The thresholds are:
@@ -61,7 +61,7 @@ const About = () => {
             <li>Maximum Rainfall: 0 mm</li>
           </ul>
           <p className="mb-4">
-            If all these conditions are met, it's considered a day when "you can't beat Wellington." Otherwise...
+            {`If all these conditions are met, it's considered a day when "you can't beat Wellington." Otherwise...`}
           </p>
           
           <p className="mt-6 mb-4">
@@ -104,7 +104,7 @@ const About = () => {
       <Card className="w-full max-w-2xl mb-8">
         <CardHeader>
           <CardTitle className="text-center">
-            <h2 className="text-2xl font-bold mb-4">You can't beat Wellington on a good day - The Datsun Violets</h2>
+            <h2 className="text-2xl font-bold mb-4">{`You can't beat Wellington on a good day - The Datsun Violets`}</h2>
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -1,9 +1,8 @@
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb } from 'lucide-react';
 import { calculateFunFacts, getRandomFunFact } from '../utils/weatherFunFacts';
-import { loadRules } from '@/utils/rulesStorage';
 
 const FunFacts = ({ history }) => {
   const randomFact = useMemo(() => {
@@ -26,7 +25,7 @@ const FunFacts = ({ history }) => {
       </CardHeader>
       <CardContent>
         <p className="text-lg text-center font-medium text-gray-700 italic">
-          "{randomFact}"
+          {'"'}{randomFact}{'"'}
         </p>
         <p className="text-sm text-center text-gray-500 mt-2">
           Refresh the page to see another fun fact!

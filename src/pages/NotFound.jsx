@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ const NotFound = () => {
         </CardHeader>
         <CardContent className="text-center">
           <p className="text-lg text-gray-600 mb-8">
-            Oops! The page you're looking for doesn't exist. Maybe it got blown away by Wellington's wind?
+            {"Oops! The page you're looking for doesn't exist. Maybe it got blown away by Wellington's wind?"}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/">

@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { ExternalLink, Check, X } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadRules } from '../utils/rulesStorage';
@@ -111,7 +111,6 @@ const Index = () => {
 
   React.useEffect(() => {
     if (weather && rules) {
-      const criteriaMetCount = isGoodDay();
       const record = {
         date: weather.timestamp,
         temperature: weather.temperature,
@@ -121,7 +120,7 @@ const Index = () => {
       };
       mutation.mutate(record);
     }
-  }, [weather, rules]);
+  }, [weather, rules, mutation]);
 
   if (weatherLoading || rulesLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -177,7 +176,7 @@ const Index = () => {
           )}
 
           <p className="text-xs text-gray-400 text-center mt-2 mb-4">
-            Wellington's famous saying "you can't beat Wellington on a good day" — tracked daily since 2024.
+            {`Wellington's famous saying "you can't beat Wellington on a good day" — tracked daily since 2024.`}
           </p>
           <p className="text-sm text-center mb-2 mt-6">
             Weather updated {format(parseISO(weather.timestamp), 'PPP')}
