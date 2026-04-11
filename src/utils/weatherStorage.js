@@ -44,7 +44,7 @@ export const fetchAndStoreWeather = async () => {
   }
 };
 
-const calculateSunniness = (weatherCode) => {
+export const calculateSunniness = (weatherCode) => {
   if (weatherCode <= 3) return 100;
   if (weatherCode <= 48) return 70;
   if (weatherCode <= 67) return 50;
@@ -52,8 +52,7 @@ const calculateSunniness = (weatherCode) => {
   return 10;
 };
 
-const calculateDaytimeRain = (hourlyPrecipitation) => {
-  // Assuming daytime is from 6 AM to 6 PM (indices 6 to 17 in the hourly data)
-  const daytimeRain = hourlyPrecipitation.slice(6, 18).reduce((sum, rain) => sum + rain, 0);
-  return daytimeRain;
+// Sums precipitation for daytime hours only (6 AM–6 PM, indices 6–17).
+export const calculateDaytimeRain = (hourlyPrecipitation) => {
+  return hourlyPrecipitation.slice(6, 18).reduce((sum, rain) => sum + (rain || 0), 0);
 };

@@ -5,7 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { loadRules } from '../utils/rulesStorage';
+import { loadRules, countCriteriaMet } from '../utils/rulesStorage';
 import { supabase } from '../integrations/supabase/client';
 import { fetchAndStoreWeather } from '../utils/weatherStorage';
 import WeatherStat from '../components/WeatherStat';
@@ -100,15 +100,6 @@ const Index = () => {
     }
   });
 
-  const isGoodDay = () => {
-    if (!weather || !rules) return 0;
-    return [
-      weather.temperature >= rules.minTemp,
-      weather.windSpeed < rules.maxWind,
-      weather.rain <= rules.maxRain
-    ].filter(Boolean).length;
-  };
-
   React.useEffect(() => {
     if (weather && rules) {
       const record = {
@@ -134,7 +125,7 @@ const Index = () => {
     return <div className="flex justify-center items-center h-screen">No weather data available. Please try again later.</div>;
   }
 
-  const criteriaMetCount = isGoodDay();
+  const criteriaMetCount = (weather && rules) ? countCriteriaMet(weather, rules) : 0;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">

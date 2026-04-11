@@ -64,7 +64,7 @@ Data source: Open-Meteo API (free, no key required).
 - [x] Staging environment — `staging` branch auto-deploys to Vercel preview URL (`canyoubeatwellington-git-staging-patatrat.vercel.app`); shares production Supabase DB
 
 ### P5 — Nice to have
-- [ ] Add unit/integration tests (currently zero)
+- [x] Add unit/integration tests — Vitest + jsdom; 32 tests across `rulesStorage` (good-day logic + boundaries) and `weatherStorage` (sunniness, daytime rain, localStorage round-trip); wired into CI
 - [x] Set up Dependabot for automated dependency updates — weekly on Mondays, groups dev deps and Radix UI packages
 - [x] Update React Router to 7.x — cleared XSS vuln; API unchanged for our usage (`BrowserRouter`, `Routes`, `Route`, `Link`)
 
