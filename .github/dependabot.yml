@@ -2,13 +2,23 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    target-branch: staging
     schedule:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # ESLint 9 requires a flat config migration — hold at v8 until ready
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint-plugin-*"
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: development
+        exclude-patterns:
+          - "eslint"
+          - "eslint-plugin-*"
       radix-ui:
         patterns:
           - "@radix-ui/*"
