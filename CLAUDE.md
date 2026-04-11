@@ -8,10 +8,10 @@ A hobby webapp that checks if today's weather in Wellington, NZ is good enough t
 
 - **Live**: https://canyoubeatwellington.radomski.co.nz/
 - **Repo**: https://github.com/patatrat/CanYouBeatWellington
-- **Stack**: React 18 + Vite 8 + Tailwind CSS + shadcn/ui + Supabase
+- **Stack**: React 18 + Vite 8 + React Router 7 + Tailwind CSS + shadcn/ui + Supabase
 - **Analytics**: Vercel Analytics
 - **Hosting**: Vercel (custom domain via Cloudflare DNS, grey-cloud/DNS-only)
-- **Originally built with**: Lovable (formerly GPT Engineer)
+- **Originally built with**: Lovable (formerly GPT Engineer) — legacy files removed
 
 ## Weather Assessment Rules
 
@@ -44,6 +44,8 @@ Data source: Open-Meteo API (free, no key required).
 ### P2 — Security hardening
 - [x] **Add Supabase RLS policies** — SELECT/INSERT for anon; direct UPDATE blocked; votes go via `increment_vote` SECURITY DEFINER function
 - [x] **Remove dead Google Analytics code** — replaced with Vercel Analytics
+- [x] **Security headers** — CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy added to `vercel.json`
+- [x] **Remove Lovable/GPT Engineer legacy files** — deleted `gpt-engineer.toml` and `.gpt_engineer/` directory; revoked GitHub access
 
 ### P3 — Code quality
 - [x] Remove unused Radix UI/shadcn components — deleted 43 unused ui files; removed 25 Radix packages + other dead deps; CSS bundle 45 kB → 19 kB
@@ -65,6 +67,7 @@ Data source: Open-Meteo API (free, no key required).
 
 ### P5 — Nice to have
 - [x] Add unit/integration tests — Vitest + jsdom; 32 tests across `rulesStorage` (good-day logic + boundaries) and `weatherStorage` (sunniness, daytime rain, localStorage round-trip); wired into CI
+- [x] Set up Dependabot — weekly Monday updates targeting `staging`; ESLint major bumps ignored (v9 requires flat config migration)
 - [x] Set up Dependabot for automated dependency updates — weekly on Mondays, groups dev deps and Radix UI packages
 - [x] Update React Router to 7.x — cleared XSS vuln; API unchanged for our usage (`BrowserRouter`, `Routes`, `Route`, `Link`)
 
@@ -87,6 +90,8 @@ Data source: Open-Meteo API (free, no key required).
 | 2026-04-11 | Upgrade Vite 5 → 8, plugin-react 4 → 6 | Cleared 2 moderate audit vulns; 0 vulnerabilities remaining |
 | 2026-04-11 | Backfill historical weather via GitHub Actions | archive-api reachable from GH runners; seeded 2020-01-01 → 2025-12-31 |
 | 2026-04-11 | Tamper-resistant voting via vote_tokens table | DB-level dedup without a backend; acceptable for hobby project; requires SQL migration in Supabase dashboard |
+| 2026-04-11 | Security headers in vercel.json | CSP allowlists only known external endpoints; style-src unsafe-inline needed for recharts |
+| 2026-04-11 | Remove Lovable legacy files | gpt-engineer.toml and .gpt_engineer/ deleted; Lovable and Netlify GitHub app access revoked |
 
 ---
 

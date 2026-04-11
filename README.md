@@ -20,7 +20,7 @@ Weather data is fetched from [Open-Meteo](https://open-meteo.com/) (free, no API
 
 ## Stack
 
-- **Frontend**: React 18 + Vite 5 + Tailwind CSS + shadcn/ui
+- **Frontend**: React 18 + Vite 8 + Tailwind CSS + shadcn/ui
 - **Database**: Supabase (PostgreSQL) with RLS policies
 - **Hosting**: Vercel (auto-deploys from `main`; `staging` branch deploys to preview URL)
 - **Analytics**: Vercel Analytics
@@ -39,6 +39,8 @@ Requires `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` env vars (copy `.env.e
 
 ## Changelog
 
+- **April 2026** — Security headers (CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy); tamper-resistant voting via server-side `vote_tokens` table; unit tests with Vitest
+- **April 2026** — Upgraded Vite 5 → 8, React Router 6 → 7; Dependabot for automated dependency updates; historical weather backfill via GitHub Actions
 - **April 2026** — SEO improvements: target phrases in title/meta/structured data, H1 restructure, sitemap freshness
 - **April 2026** — Removed unused shadcn/ui components and dead Radix UI dependencies; CSS bundle reduced from 45 kB to 19 kB
 - **April 2026** — Added Supabase RLS policies; votes go via `increment_vote()` SECURITY DEFINER function; staging environment on Vercel
