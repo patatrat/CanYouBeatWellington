@@ -8,7 +8,7 @@ A hobby webapp that checks if today's weather in Wellington, NZ is good enough t
 
 - **Live**: https://canyoubeatwellington.radomski.co.nz/
 - **Repo**: https://github.com/patatrat/CanYouBeatWellington
-- **Stack**: React 18 + Vite 5 + Tailwind CSS + shadcn/ui + Supabase
+- **Stack**: React 18 + Vite 8 + Tailwind CSS + shadcn/ui + Supabase
 - **Analytics**: Vercel Analytics
 - **Hosting**: Vercel (custom domain via Cloudflare DNS, grey-cloud/DNS-only)
 - **Originally built with**: Lovable (formerly GPT Engineer)
@@ -51,11 +51,11 @@ Data source: Open-Meteo API (free, no key required).
 - [x] Add `engines: { node: ">=24" }` to `package.json`
 - [x] Fix all ESLint errors blocking CI
 - [x] SEO improvements — target phrases in title/meta/structured data, H1 restructure, sitemap
-- [ ] Upgrade Vite to v8 — fixes 2 remaining moderate dev-server vulns (breaking change, test carefully)
+- [x] Upgrade Vite to v8 + plugin-react to v6 — cleared 2 moderate esbuild dev-server vulns; fixed port type (string → number)
 - [x] Delete dead one-off migration scripts from `src/utils/` — `populateHistoricalData.js`, `recheckHistoricalData.js`, `sunshineUpdateCheck.js`, `removeSunninessRule.js` were all unreferenced leftovers from earlier DB schema work
 
 ### P3.5 — Historical data
-- [ ] Retrieve pre-2026 weather data — `scripts/backfill-historical.js` + `backfill-historical.yml` workflow ready; trigger via GitHub Actions → "Backfill Historical Weather" → Run workflow (default: 2020-01-01 → 2025-12-31). Uses daily `precipitation_sum` (full day, not daytime-only — slightly more conservative but archive API doesn't reliably expose hourly this far back).
+- [x] Retrieve pre-2026 weather data — `scripts/backfill-historical.js` uses archive API; triggered via GitHub Actions "Backfill Historical Weather" workflow (2020-01-01 → 2025-12-31). Uses daily `precipitation_sum` (full day, slightly more conservative than daytime-only).
 
 ### P4 — Feature improvements
 - [x] **Daily weather cron job** — GitHub Actions runs `scripts/populate-db.js` at 12:00 UTC (midnight NZST) daily; upserts idempotently so also backfills any missed days
@@ -65,8 +65,8 @@ Data source: Open-Meteo API (free, no key required).
 
 ### P5 — Nice to have
 - [ ] Add unit/integration tests (currently zero)
-- [ ] Set up Dependabot for automated dependency updates
-- [ ] Update React Router to 7.x (clears XSS vuln, breaking change)
+- [x] Set up Dependabot for automated dependency updates — weekly on Mondays, groups dev deps and Radix UI packages
+- [x] Update React Router to 7.x — cleared XSS vuln; API unchanged for our usage (`BrowserRouter`, `Routes`, `Route`, `Link`)
 
 ---
 
@@ -84,6 +84,8 @@ Data source: Open-Meteo API (free, no key required).
 | 2026-04-09 | Supabase RLS: block direct UPDATE, use increment_vote() | Prevents anon from overwriting vote counts directly; function is atomic |
 | 2026-04-09 | Replace Google Analytics with Vercel Analytics | GA was a placeholder that never worked; Vercel Analytics is zero-config |
 | 2026-04-11 | Fix ESLint errors + SEO pass | Unblocked CI; improved discoverability via structured data, H1, and sitemap freshness |
+| 2026-04-11 | Upgrade Vite 5 → 8, plugin-react 4 → 6 | Cleared 2 moderate audit vulns; 0 vulnerabilities remaining |
+| 2026-04-11 | Backfill historical weather via GitHub Actions | archive-api reachable from GH runners; seeded 2020-01-01 → 2025-12-31 |
 
 ---
 
