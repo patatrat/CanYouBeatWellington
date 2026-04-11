@@ -5,11 +5,21 @@ import { supabase } from '../integrations/supabase/client';
 import { Button } from "@/components/ui/button";
 import { track } from '@vercel/analytics';
 
+// Returns a persistent UUID for this browser, creating one if needed.
+// Used server-side to enforce one vote per browser identity per day.
+const getVoterToken = () => {
+  let token = localStorage.getItem('voter_token');
+  if (!token) {
+    token = crypto.randomUUID();
+    localStorage.setItem('voter_token', token);
+  }
+  return token;
+};
+
 const VotingButtons = ({ weatherRecord }) => {
   const [hasVoted, setHasVoted] = useState(false);
   const queryClient = useQueryClient();
 
-  // Check if user has already voted today by storing vote status in localStorage with date
   useEffect(() => {
     if (weatherRecord?.date) {
       const voteKey = `voted_${weatherRecord.date}`;
@@ -23,17 +33,26 @@ const VotingButtons = ({ weatherRecord }) => {
       const { error } = await supabase.rpc('increment_vote', {
         record_date: weatherRecord.date,
         vote_type: voteType,
+        voter_token: getVoterToken(),
       });
-      if (error) throw error;
+      if (error) {
+        // 23505 = unique_violation: this token already voted today
+        if (error.code === '23505') {
+          return { alreadyVoted: true };
+        }
+        throw error;
+      }
+      return { alreadyVoted: false };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
       const voteKey = `voted_${weatherRecord.date}`;
       localStorage.setItem(voteKey, 'true');
       setHasVoted(true);
 
-      track('vote', { type: variables.voteType, date: weatherRecord.date });
-
-      queryClient.invalidateQueries(['todaysRecord']);
+      if (!result.alreadyVoted) {
+        track('vote', { type: variables.voteType, date: weatherRecord.date });
+        queryClient.invalidateQueries(['todaysRecord']);
+      }
     },
     onError: (error) => {
       console.error('Error updating vote:', error);
@@ -64,7 +83,7 @@ const VotingButtons = ({ weatherRecord }) => {
         </span>
         <span className="text-xs text-gray-500">Agree</span>
       </div>
-      
+
       <div className="flex flex-col items-center">
         <Button
           variant="outline"

@@ -54,7 +54,7 @@ export type Database = {
     }
     Functions: {
       increment_vote: {
-        Args: { record_date: string; vote_type: string }
+        Args: { record_date: string; vote_type: string; voter_token: string }
         Returns: undefined
       }
     }

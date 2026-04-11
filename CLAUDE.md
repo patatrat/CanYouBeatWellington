@@ -59,8 +59,8 @@ Data source: Open-Meteo API (free, no key required).
 
 ### P4 — Feature improvements
 - [x] **Daily weather cron job** — GitHub Actions runs `scripts/populate-db.js` at 12:00 UTC (midnight NZST) daily; upserts idempotently so also backfills any missed days
-- [ ] Make voting tamper-resistant — localStorage prevents UI re-votes but RLS doesn't rate-limit API calls
-- [ ] Define and build the Admin page (`/admin` is an empty stub — 1 line)
+- [x] Make voting tamper-resistant — `vote_tokens (token, date)` table enforces one vote per browser identity per day at DB level; `increment_vote()` updated to accept `voter_token` arg; unique constraint violation (23505) rejects duplicate votes server-side. Run `scripts/vote-tokens-migration.sql` in Supabase dashboard to activate.
+- [ ] Adjust good-day rules to account for seasons — e.g. lower temp threshold in winter; update `rulesStorage.js` when ready
 - [x] Staging environment — `staging` branch auto-deploys to Vercel preview URL (`canyoubeatwellington-git-staging-patatrat.vercel.app`); shares production Supabase DB
 
 ### P5 — Nice to have
@@ -86,6 +86,7 @@ Data source: Open-Meteo API (free, no key required).
 | 2026-04-11 | Fix ESLint errors + SEO pass | Unblocked CI; improved discoverability via structured data, H1, and sitemap freshness |
 | 2026-04-11 | Upgrade Vite 5 → 8, plugin-react 4 → 6 | Cleared 2 moderate audit vulns; 0 vulnerabilities remaining |
 | 2026-04-11 | Backfill historical weather via GitHub Actions | archive-api reachable from GH runners; seeded 2020-01-01 → 2025-12-31 |
+| 2026-04-11 | Tamper-resistant voting via vote_tokens table | DB-level dedup without a backend; acceptable for hobby project; requires SQL migration in Supabase dashboard |
 
 ---
 
