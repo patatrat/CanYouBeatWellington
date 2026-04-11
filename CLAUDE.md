@@ -9,6 +9,7 @@ A hobby webapp that checks if today's weather in Wellington, NZ is good enough t
 - **Live**: https://canyoubeatwellington.radomski.co.nz/
 - **Repo**: https://github.com/patatrat/CanYouBeatWellington
 - **Stack**: React 18 + Vite 5 + Tailwind CSS + shadcn/ui + Supabase
+- **Analytics**: Vercel Analytics
 - **Hosting**: Vercel (custom domain via Cloudflare DNS, grey-cloud/DNS-only)
 - **Originally built with**: Lovable (formerly GPT Engineer)
 
@@ -48,15 +49,18 @@ Data source: Open-Meteo API (free, no key required).
 - [x] Remove unused Radix UI/shadcn components — deleted 43 unused ui files; removed 25 Radix packages + other dead deps; CSS bundle 45 kB → 19 kB
 - [x] Move `esbuild` to `devDependencies`
 - [x] Add `engines: { node: ">=24" }` to `package.json`
+- [x] Fix all ESLint errors blocking CI
+- [x] SEO improvements — target phrases in title/meta/structured data, H1 restructure, sitemap
 - [ ] Upgrade Vite to v8 — fixes 2 remaining moderate dev-server vulns (breaking change, test carefully)
+- [x] Delete dead one-off migration scripts from `src/utils/` — `populateHistoricalData.js`, `recheckHistoricalData.js`, `sunshineUpdateCheck.js`, `removeSunninessRule.js` were all unreferenced leftovers from earlier DB schema work
 
 ### P3.5 — Historical data
-- [ ] Retrieve pre-2026 weather data — DB currently has only ~92 days. `archive-api.open-meteo.com` is unreachable from Codespace; run `scripts/populate-db.js` locally (after temporarily changing the URL back to archive API) to seed from 2020
+- [ ] Retrieve pre-2026 weather data — `scripts/backfill-historical.js` + `backfill-historical.yml` workflow ready; trigger via GitHub Actions → "Backfill Historical Weather" → Run workflow (default: 2020-01-01 → 2025-12-31). Uses daily `precipitation_sum` (full day, not daytime-only — slightly more conservative but archive API doesn't reliably expose hourly this far back).
 
 ### P4 — Feature improvements
 - [x] **Daily weather cron job** — GitHub Actions runs `scripts/populate-db.js` at 12:00 UTC (midnight NZST) daily; upserts idempotently so also backfills any missed days
 - [ ] Make voting tamper-resistant — localStorage prevents UI re-votes but RLS doesn't rate-limit API calls
-- [ ] Define and build the Admin page (`/admin` is an empty stub)
+- [ ] Define and build the Admin page (`/admin` is an empty stub — 1 line)
 - [x] Staging environment — `staging` branch auto-deploys to Vercel preview URL (`canyoubeatwellington-git-staging-patatrat.vercel.app`); shares production Supabase DB
 
 ### P5 — Nice to have
@@ -79,6 +83,7 @@ Data source: Open-Meteo API (free, no key required).
 | 2026-04-09 | Staging: use Vercel auto-generated URL, not custom domain | Custom domains require a production deployment; preview URL is stable enough for a hobby project |
 | 2026-04-09 | Supabase RLS: block direct UPDATE, use increment_vote() | Prevents anon from overwriting vote counts directly; function is atomic |
 | 2026-04-09 | Replace Google Analytics with Vercel Analytics | GA was a placeholder that never worked; Vercel Analytics is zero-config |
+| 2026-04-11 | Fix ESLint errors + SEO pass | Unblocked CI; improved discoverability via structured data, H1, and sitemap freshness |
 
 ---
 
