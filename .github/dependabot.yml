@@ -8,10 +8,18 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     ignore:
-      # ESLint 9 requires a flat config migration — hold at v8 until ready
+      # ESLint 9+ requires flat config migration — hold at v8 until ready
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
       - dependency-name: "eslint-plugin-*"
+        update-types: ["version-update:semver-major"]
+      # eslint-plugin-react-refresh 0.5.x requires ESLint 9+ — hold at 0.4.x
+      - dependency-name: "eslint-plugin-react-refresh"
+        update-types: ["version-update:semver-minor"]
+      # Tailwind CSS v4 requires @tailwindcss/postcss migration — hold at v3
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "tailwindcss-animate"
         update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
@@ -19,6 +27,8 @@ updates:
         exclude-patterns:
           - "eslint"
           - "eslint-plugin-*"
+          - "tailwindcss"
+          - "tailwindcss-animate"
       radix-ui:
         patterns:
           - "@radix-ui/*"
