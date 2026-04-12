@@ -21,6 +21,18 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "tailwindcss-animate"
         update-types: ["version-update:semver-major"]
+      # React 19 is a major upgrade — hold at v18 until ready
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
+      # date-fns v4 has breaking API changes — hold at v3 until ready
+      - dependency-name: "date-fns"
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: development
