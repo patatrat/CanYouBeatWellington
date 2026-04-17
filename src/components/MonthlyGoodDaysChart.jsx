@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { loadRules } from '@/utils/rulesStorage';
+import { getThresholds } from '@/utils/rulesStorage';
 
 const W = 560;
 const H = 260;
@@ -21,8 +21,10 @@ const MonthlyGoodDaysChart = ({ history }) => {
 
   const monthlyData = useMemo(() => {
     if (!history) return [];
-    const rules = loadRules();
-    const isGoodDay = (r) => r.temperature >= rules.minTemp && r.wind_speed < rules.maxWind && r.rain <= rules.maxRain;
+    const isGoodDay = (r) => {
+      const { minTemp, maxWind, maxRain } = getThresholds(r.date);
+      return r.temperature >= minTemp && r.wind_speed < maxWind && r.rain <= maxRain;
+    };
 
     const counts = Array.from({ length: 12 }, (_, i) => ({
       month: new Date(selectedYear, i, 1).toLocaleString('default', { month: 'short' }),

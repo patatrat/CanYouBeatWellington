@@ -1,24 +1,35 @@
-const defaultRules = {
-  minTemp: 18,
-  maxWind: 20,
-  maxRain: 0,
+// Seasons use JS month numbers (0 = Jan, 11 = Dec)
+const SEASONS = [
+  { label: 'Summer',     months: [0, 1, 2],  minTemp: 19, maxWind: 30, maxRain: 0 },
+  { label: 'Autumn',     months: [3, 4, 5],  minTemp: 16, maxWind: 30, maxRain: 0 },
+  { label: 'Winter',     months: [6, 7],     minTemp: 13, maxWind: 30, maxRain: 0 },
+  { label: 'Spring 1',   months: [8],        minTemp: 14, maxWind: 30, maxRain: 0 },
+  { label: 'Shitsville', months: [9, 10],    minTemp: 16, maxWind: 30, maxRain: 0 },
+  { label: 'Spring 2',   months: [11],       minTemp: 18, maxWind: 30, maxRain: 0 },
+];
+
+const toDate = (date) => (date instanceof Date ? date : new Date(date));
+
+const getSeason = (date) => {
+  const month = toDate(date).getMonth();
+  return SEASONS.find(s => s.months.includes(month));
 };
 
-export const saveRules = (rules) => {
-  localStorage.setItem('wellingtonRules', JSON.stringify(rules));
-};
+export const getSeasonLabel = (date) => getSeason(date).label;
 
-export const loadRules = () => {
-  const savedRules = localStorage.getItem('wellingtonRules');
-  return savedRules ? JSON.parse(savedRules) : defaultRules;
+export const getThresholds = (date) => {
+  const { minTemp, maxWind, maxRain } = getSeason(date);
+  return { minTemp, maxWind, maxRain };
 };
 
 // Returns the number of good-day criteria met (0–3).
 // 3 = good day ("you can't beat Wellington"); fewer = bad day.
-export const countCriteriaMet = (weather, rules) => {
+// date defaults to today when omitted.
+export const countCriteriaMet = (weather, date = new Date()) => {
+  const { minTemp, maxWind, maxRain } = getThresholds(date);
   return [
-    weather.temperature >= rules.minTemp,
-    weather.windSpeed < rules.maxWind,
-    weather.rain <= rules.maxRain,
+    weather.temperature >= minTemp,
+    weather.windSpeed < maxWind,
+    weather.rain <= maxRain,
   ].filter(Boolean).length;
 };

@@ -5,7 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { loadRules, countCriteriaMet } from '../utils/rulesStorage';
+import { getThresholds, getSeasonLabel, countCriteriaMet } from '../utils/rulesStorage';
 import { supabase } from '../integrations/supabase/client';
 import { fetchAndStoreWeather } from '../utils/weatherStorage';
 import WeatherStat from '../components/WeatherStat';
@@ -16,11 +16,6 @@ const Index = () => {
     queryKey: ['weather'],
     queryFn: fetchAndStoreWeather,
     refetchInterval: 3600000 // Refetch every hour
-  });
-
-  const { data: rules, isLoading: rulesLoading, error: rulesError } = useQuery({
-    queryKey: ['rules'],
-    queryFn: loadRules
   });
 
   // Fetch today's weather record for voting
@@ -44,6 +39,10 @@ const Index = () => {
     },
     enabled: !!weather
   });
+
+  const weatherDate = weather?.timestamp ? new Date(weather.timestamp) : new Date();
+  const rules = weather ? getThresholds(weatherDate) : null;
+  const seasonLabel = getSeasonLabel(weatherDate);
 
   const storeDailyRecord = async (record) => {
     const { data: existingRecord, error: fetchError } = await supabase
@@ -101,7 +100,7 @@ const Index = () => {
   });
 
   React.useEffect(() => {
-    if (weather && rules) {
+    if (weather) {
       const record = {
         date: weather.timestamp,
         temperature: weather.temperature,
@@ -111,13 +110,13 @@ const Index = () => {
       };
       mutation.mutate(record);
     }
-  }, [weather, rules, mutation]);
+  }, [weather, mutation]);
 
-  if (weatherLoading || rulesLoading) {
+  if (weatherLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
-  if (weatherError || rulesError) {
+  if (weatherError) {
     return <div className="flex justify-center items-center h-screen">Error loading data. Please try again later.</div>;
   }
 
@@ -125,7 +124,7 @@ const Index = () => {
     return <div className="flex justify-center items-center h-screen">No weather data available. Please try again later.</div>;
   }
 
-  const criteriaMetCount = (weather && rules) ? countCriteriaMet(weather, rules) : 0;
+  const criteriaMetCount = weather ? countCriteriaMet(weather, weatherDate) : 0;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -166,7 +165,10 @@ const Index = () => {
             <VotingButtons weatherRecord={todaysRecord} />
           )}
 
-          <p className="text-xs text-gray-400 text-center mt-2 mb-4">
+          <p className="text-sm text-gray-500 text-center mt-2 mb-2">
+            {`It's currently `}<span className="font-medium">{seasonLabel}</span>{` season.`}
+          </p>
+          <p className="text-xs text-gray-400 text-center mb-4">
             {`Wellington's famous saying "you can't beat Wellington on a good day" — tracked daily since 2024.`}
           </p>
           <p className="text-sm text-center mb-2 mt-6">
