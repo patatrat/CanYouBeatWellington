@@ -89,7 +89,7 @@ const Index = () => {
     }
   };
 
-  const mutation = useMutation({
+  const { mutate: storeMutate } = useMutation({
     mutationFn: storeDailyRecord,
     onSuccess: (data) => {
       console.log('Daily record stored or updated successfully:', data);
@@ -108,9 +108,9 @@ const Index = () => {
         sunniness: weather.sunniness,
         rain: weather.rain,
       };
-      mutation.mutate(record);
+      storeMutate(record);
     }
-  }, [weather, mutation]);
+  }, [weather, storeMutate]);
 
   if (weatherLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;

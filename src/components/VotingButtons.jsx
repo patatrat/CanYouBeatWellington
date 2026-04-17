@@ -51,7 +51,7 @@ const VotingButtons = ({ weatherRecord }) => {
 
       if (!result.alreadyVoted) {
         track('vote', { type: variables.voteType, date: weatherRecord.date });
-        queryClient.invalidateQueries(['todaysRecord']);
+        queryClient.invalidateQueries({ queryKey: ['todaysRecord'] });
       }
     },
     onError: (error) => {

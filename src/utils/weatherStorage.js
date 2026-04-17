@@ -26,7 +26,17 @@ export const fetchAndStoreWeather = async () => {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
-    
+
+    if (
+      !data.daily?.time?.[0] ||
+      data.daily?.temperature_2m_max?.[0] === undefined ||
+      data.daily?.wind_speed_10m_max?.[0] === undefined ||
+      data.daily?.weather_code?.[0] === undefined ||
+      !Array.isArray(data.hourly?.precipitation)
+    ) {
+      throw new Error('Open-Meteo API returned incomplete data');
+    }
+
     const today = {
       temperature: data.daily.temperature_2m_max[0], // Changed to use actual maximum temperature
       windSpeed: data.daily.wind_speed_10m_max[0],
