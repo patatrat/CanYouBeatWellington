@@ -13,6 +13,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { calculateSunniness } from './utils.js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -26,13 +27,6 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const calculateSunniness = (weatherCode) => {
-  if (weatherCode <= 3) return 100;
-  if (weatherCode <= 48) return 70;
-  if (weatherCode <= 67) return 50;
-  if (weatherCode <= 77) return 30;
-  return 10;
-};
 
 const main = async () => {
   console.log(`Backfilling daily_weather_records: ${START_DATE} → ${END_DATE}`);
