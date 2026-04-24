@@ -45,47 +45,16 @@ const Index = () => {
   const seasonLabel = getSeasonLabel(weatherDate);
 
   const storeDailyRecord = async (record) => {
-    const { data: existingRecord, error: fetchError } = await supabase
+    // Direct UPDATE is blocked by RLS for anon users, so we INSERT and ignore
+    // duplicate-key conflicts (23505). The cron job (service role) handles
+    // refreshing stale readings; the client just needs to ensure the row exists.
+    const { error } = await supabase
       .from('daily_weather_records')
-      .select('*')
-      .eq('date', record.date)
-      .single();
+      .insert(record);
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Error checking for existing record:', fetchError);
-      throw fetchError;
-    }
-
-    if (existingRecord) {
-      const { data, error } = await supabase
-        .from('daily_weather_records')
-        .update({
-          temperature: record.temperature,
-          wind_speed: record.wind_speed,
-          sunniness: record.sunniness,
-          rain: record.rain,
-        })
-        .eq('date', record.date)
-        .select();
-      
-      if (error) {
-        console.error('Error updating record:', error);
-        throw error;
-      }
-      console.log('Record updated successfully:', data);
-      return data;
-    } else {
-      const { data, error } = await supabase
-        .from('daily_weather_records')
-        .insert(record)
-        .select();
-      
-      if (error) {
-        console.error('Error inserting record:', error);
-        throw error;
-      }
-      console.log('Record inserted successfully:', data);
-      return data;
+    if (error && error.code !== '23505') {
+      console.error('Error inserting daily record:', error);
+      throw error;
     }
   };
 
