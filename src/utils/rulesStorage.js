@@ -1,4 +1,7 @@
-// Seasons use JS month numbers (0 = Jan, 11 = Dec)
+// Seasons use UTC month numbers (0 = Jan, 11 = Dec).
+// Date strings from the DB and Open-Meteo are YYYY-MM-DD (parsed as UTC midnight),
+// so getUTCMonth() gives the correct Wellington calendar month regardless of
+// the visitor's browser timezone.
 const SEASONS = [
   { label: 'Summer',     months: [0, 1, 2],  minTemp: 19, maxWind: 30, maxRain: 0 },
   { label: 'Autumn',     months: [3, 4, 5],  minTemp: 16, maxWind: 30, maxRain: 0 },
@@ -11,7 +14,7 @@ const SEASONS = [
 const toDate = (date) => (date instanceof Date ? date : new Date(date));
 
 const getSeason = (date) => {
-  const month = toDate(date).getMonth();
+  const month = toDate(date).getUTCMonth();
   return SEASONS.find(s => s.months.includes(month));
 };
 
