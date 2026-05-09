@@ -5,7 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { loadRules, countCriteriaMet } from '../utils/rulesStorage';
+import { getThresholds, getSeasonLabel, countCriteriaMet } from '../utils/rulesStorage';
 import { supabase } from '../integrations/supabase/client';
 import { fetchAndStoreWeather } from '../utils/weatherStorage';
 import WeatherStat from '../components/WeatherStat';
@@ -16,11 +16,6 @@ const Index = () => {
     queryKey: ['weather'],
     queryFn: fetchAndStoreWeather,
     refetchInterval: 3600000 // Refetch every hour
-  });
-
-  const { data: rules, isLoading: rulesLoading, error: rulesError } = useQuery({
-    queryKey: ['rules'],
-    queryFn: loadRules
   });
 
   // Fetch today's weather record for voting
@@ -45,52 +40,25 @@ const Index = () => {
     enabled: !!weather
   });
 
+  const weatherDate = weather?.timestamp ? new Date(weather.timestamp) : new Date();
+  const rules = weather ? getThresholds(weatherDate) : null;
+  const seasonLabel = getSeasonLabel(weatherDate);
+
   const storeDailyRecord = async (record) => {
-    const { data: existingRecord, error: fetchError } = await supabase
+    // Direct UPDATE is blocked by RLS for anon users, so we INSERT and ignore
+    // duplicate-key conflicts (23505). The cron job (service role) handles
+    // refreshing stale readings; the client just needs to ensure the row exists.
+    const { error } = await supabase
       .from('daily_weather_records')
-      .select('*')
-      .eq('date', record.date)
-      .single();
+      .insert(record);
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Error checking for existing record:', fetchError);
-      throw fetchError;
-    }
-
-    if (existingRecord) {
-      const { data, error } = await supabase
-        .from('daily_weather_records')
-        .update({
-          temperature: record.temperature,
-          wind_speed: record.wind_speed,
-          sunniness: record.sunniness,
-          rain: record.rain,
-        })
-        .eq('date', record.date)
-        .select();
-      
-      if (error) {
-        console.error('Error updating record:', error);
-        throw error;
-      }
-      console.log('Record updated successfully:', data);
-      return data;
-    } else {
-      const { data, error } = await supabase
-        .from('daily_weather_records')
-        .insert(record)
-        .select();
-      
-      if (error) {
-        console.error('Error inserting record:', error);
-        throw error;
-      }
-      console.log('Record inserted successfully:', data);
-      return data;
+    if (error && error.code !== '23505') {
+      console.error('Error inserting daily record:', error);
+      throw error;
     }
   };
 
-  const mutation = useMutation({
+  const { mutate: storeMutate } = useMutation({
     mutationFn: storeDailyRecord,
     onSuccess: (data) => {
       console.log('Daily record stored or updated successfully:', data);
@@ -101,7 +69,7 @@ const Index = () => {
   });
 
   React.useEffect(() => {
-    if (weather && rules) {
+    if (weather) {
       const record = {
         date: weather.timestamp,
         temperature: weather.temperature,
@@ -109,15 +77,15 @@ const Index = () => {
         sunniness: weather.sunniness,
         rain: weather.rain,
       };
-      mutation.mutate(record);
+      storeMutate(record);
     }
-  }, [weather, rules, mutation]);
+  }, [weather, storeMutate]);
 
-  if (weatherLoading || rulesLoading) {
+  if (weatherLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
-  if (weatherError || rulesError) {
+  if (weatherError) {
     return <div className="flex justify-center items-center h-screen">Error loading data. Please try again later.</div>;
   }
 
@@ -125,7 +93,7 @@ const Index = () => {
     return <div className="flex justify-center items-center h-screen">No weather data available. Please try again later.</div>;
   }
 
-  const criteriaMetCount = (weather && rules) ? countCriteriaMet(weather, rules) : 0;
+  const criteriaMetCount = weather ? countCriteriaMet(weather, weatherDate) : 0;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -166,7 +134,10 @@ const Index = () => {
             <VotingButtons weatherRecord={todaysRecord} />
           )}
 
-          <p className="text-xs text-gray-400 text-center mt-2 mb-4">
+          <p className="text-sm text-gray-500 text-center mt-2 mb-2">
+            {`It's currently `}<span className="font-medium">{seasonLabel}</span>{` season.`}
+          </p>
+          <p className="text-xs text-gray-400 text-center mb-4">
             {`Wellington's famous saying "you can't beat Wellington on a good day" — tracked daily since 2024.`}
           </p>
           <p className="text-sm text-center mb-2 mt-6">

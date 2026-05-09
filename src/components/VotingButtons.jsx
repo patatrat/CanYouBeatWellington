@@ -18,6 +18,7 @@ const getVoterToken = () => {
 
 const VotingButtons = ({ weatherRecord }) => {
   const [hasVoted, setHasVoted] = useState(false);
+  const [voteError, setVoteError] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -45,22 +46,25 @@ const VotingButtons = ({ weatherRecord }) => {
       return { alreadyVoted: false };
     },
     onSuccess: (result, variables) => {
+      setVoteError(false);
       const voteKey = `voted_${weatherRecord.date}`;
       localStorage.setItem(voteKey, 'true');
       setHasVoted(true);
 
       if (!result.alreadyVoted) {
         track('vote', { type: variables.voteType, date: weatherRecord.date });
-        queryClient.invalidateQueries(['todaysRecord']);
+        queryClient.invalidateQueries({ queryKey: ['todaysRecord'] });
       }
     },
     onError: (error) => {
       console.error('Error updating vote:', error);
+      setVoteError(true);
     }
   });
 
   const handleVote = (voteType) => {
     if (!hasVoted) {
+      setVoteError(false);
       updateVoteMutation.mutate({ voteType });
     }
   };
@@ -100,6 +104,12 @@ const VotingButtons = ({ weatherRecord }) => {
         </span>
         <span className="text-xs text-gray-500">Disagree</span>
       </div>
+
+      {voteError && (
+        <p className="text-xs text-red-500 text-center mt-3">
+          Couldn&apos;t record your vote — please try again.
+        </p>
+      )}
     </div>
   );
 };

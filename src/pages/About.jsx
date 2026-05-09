@@ -45,27 +45,59 @@ const About = () => {
             {`"You can't beat Wellington on a good day" — Wellington's most famous weather saying. But how often is it actually true?`}
           </p>
           <p className="mb-4">
-            {"Here's how it works:"}
+            Every day we fetch real weather data for Wellington from a weather API, check it against three conditions, and if all three pass, it&apos;s a good day.
           </p>
-          <ul className="list-disc list-inside mb-4">
-            <li>We fetch real-time weather data for <a href="https://en.wikipedia.org/wiki/Wellington" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Wellington, New Zealand <ExternalLink className="inline-block w-4 h-4 ml-1" /></a> from a reliable weather API.</li>
-            <li>We analyze three key factors: temperature, wind speed, and rainfall.</li>
-            <li>{`Based on predefined thresholds, we determine if today is a day you "can't beat Wellington."`}</li>
-          </ul>
+
+          <h2 className="text-xl font-semibold mb-3">The rules</h2>
           <p className="mb-4">
-            The thresholds are:
+            Wellington has six seasons, not four — at least according to the locals. The app uses seasonal temperature thresholds based on{' '}
+            <a href="https://adam.nz/realistic-calendar" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">
+              Adam Shand&apos;s Shitsville calendar <ExternalLink className="inline-block w-4 h-4 ml-1" />
+            </a>
+            , calibrated against six years of actual Wellington weather data.
           </p>
-          <ul className="list-disc list-inside mb-4">
-            <li>Minimum Temperature (Daily Maximum): 18°C</li>
-            <li>Maximum Wind Speed: 20 km/h</li>
-            <li>Maximum Rainfall: 0 mm</li>
-          </ul>
+
+          <div className="overflow-x-auto mb-4">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 pr-4 font-semibold">Season</th>
+                  <th className="text-left py-2 pr-4 font-semibold">Months</th>
+                  <th className="text-left py-2 pr-4 font-semibold">Min temp</th>
+                  <th className="text-left py-2 pr-4 font-semibold">Max wind</th>
+                  <th className="text-left py-2 font-semibold">Max rain</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { season: 'Summer',     months: 'Jan, Feb, Mar', temp: '19°C', wind: '30 km/h', rain: '0 mm' },
+                  { season: 'Autumn',     months: 'Apr, May, Jun', temp: '16°C', wind: '30 km/h', rain: '0 mm' },
+                  { season: 'Winter',     months: 'Jul, Aug',      temp: '13°C', wind: '30 km/h', rain: '0 mm' },
+                  { season: 'Spring 1',   months: 'Sep',           temp: '14°C', wind: '30 km/h', rain: '0 mm' },
+                  { season: 'Shitsville', months: 'Oct, Nov',      temp: '16°C', wind: '30 km/h', rain: '0 mm' },
+                  { season: 'Spring 2',   months: 'Dec',           temp: '18°C', wind: '30 km/h', rain: '0 mm' },
+                ].map(({ season, months, temp, wind, rain }) => (
+                  <tr key={season} className="border-b border-gray-100">
+                    <td className="py-2 pr-4 font-medium">{season}</td>
+                    <td className="py-2 pr-4 text-gray-600">{months}</td>
+                    <td className="py-2 pr-4">{temp}</td>
+                    <td className="py-2 pr-4">{wind}</td>
+                    <td className="py-2">{rain}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           <p className="mb-4">
-            {`If all these conditions are met, it's considered a day when "you can't beat Wellington." Otherwise...`}
+            The wind and rain thresholds are the same year-round. Rain is rain. And 30 km/h is genuinely light wind for Wellington — the old 20 km/h threshold applied to only 12% of all days across six years of data.
           </p>
-          
+          <p className="mb-4">
+            Some months naturally produce very few good days under these rules, and the rules don&apos;t try to paper over that. June averages zero. Shitsville (October and November) produces good days about 6% of the time. That&apos;s not the app being harsh — that&apos;s Wellington being Wellington.
+          </p>
+
           <p className="mt-6 mb-4">
-            Built by <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Patrick Radomski <ExternalLink className="inline-block w-4 h-4 ml-1" /></a>, with <a href="https://gptengineer.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">some AI help <ExternalLink className="inline-block w-4 h-4 ml-1" /></a>.
+            Built by <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Patrick Radomski <ExternalLink className="inline-block w-4 h-4 ml-1" /></a>, with some AI help.
           </p>
           <p className="mb-4">
             Contact me on <a href="https://mastodon.nz/@Pat" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">Mastodon <ExternalLink className="inline-block w-4 h-4 ml-1" /></a>.

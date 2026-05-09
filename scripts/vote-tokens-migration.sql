@@ -26,8 +26,13 @@ CREATE POLICY "anon can insert vote token"
 -- Step 2: replace increment_vote() to accept voter_token
 -- The INSERT into vote_tokens will raise a unique_violation (23505) if the
 -- token has already voted today, which rolls back the whole function.
+-- Note: record_date is TEXT to match the daily_weather_records.date column
+-- type; cast to DATE only when inserting into vote_tokens.date.
+--
+-- If an old 2-argument version of this function exists, drop it first:
+--   DROP FUNCTION IF EXISTS increment_vote(TEXT, TEXT);
 CREATE OR REPLACE FUNCTION increment_vote(
-  record_date DATE,
+  record_date TEXT,
   vote_type   TEXT,
   voter_token TEXT
 ) RETURNS void
@@ -37,7 +42,7 @@ AS $$
 BEGIN
   -- Enforce one vote per token per day (raises 23505 on duplicate)
   INSERT INTO vote_tokens (token, date, vote_type)
-  VALUES (voter_token, record_date, vote_type);
+  VALUES (voter_token, record_date::DATE, vote_type);
 
   -- Increment the counter
   IF vote_type = 'agree' THEN

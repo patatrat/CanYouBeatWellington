@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   calculateSunniness,
   calculateDaytimeRain,
   saveWeatherData,
   getStoredWeatherData,
+  fetchAndStoreWeather,
 } from '../weatherStorage';
 
 beforeEach(() => {
@@ -87,6 +88,54 @@ describe('calculateDaytimeRain', () => {
   it('treats null/undefined precipitation values as 0', () => {
     const hourly = Array(24).fill(null);
     expect(calculateDaytimeRain(hourly)).toBe(0);
+  });
+});
+
+describe('fetchAndStoreWeather — error paths', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('throws when the API returns a non-OK status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, text: async () => 'Service Unavailable' }));
+    await expect(fetchAndStoreWeather()).rejects.toThrow('503');
+  });
+
+  it('throws when the API response is missing required daily fields', async () => {
+    const incomplete = {
+      daily: { time: ['2026-04-18'], temperature_2m_max: [undefined], wind_speed_10m_max: [15], weather_code: [0] },
+      hourly: { precipitation: Array(24).fill(0) },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => incomplete }));
+    await expect(fetchAndStoreWeather()).rejects.toThrow('incomplete');
+  });
+
+  it('throws when the hourly precipitation array is missing', async () => {
+    const incomplete = {
+      daily: { time: ['2026-04-18'], temperature_2m_max: [20], wind_speed_10m_max: [15], weather_code: [0] },
+      hourly: {},
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => incomplete }));
+    await expect(fetchAndStoreWeather()).rejects.toThrow('incomplete');
+  });
+
+  it('throws when fetch itself rejects (network failure)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
+    await expect(fetchAndStoreWeather()).rejects.toThrow('Network error');
+  });
+
+  it('returns and caches weather data on a valid response', async () => {
+    const valid = {
+      daily: { time: ['2026-04-18'], temperature_2m_max: [21], wind_speed_10m_max: [14], weather_code: [1] },
+      hourly: { precipitation: Array(24).fill(0) },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => valid }));
+    const result = await fetchAndStoreWeather();
+    expect(result.temperature).toBe(21);
+    expect(result.windSpeed).toBe(14);
+    expect(result.rain).toBe(0);
+    expect(getStoredWeatherData()).toEqual(result);
   });
 });
 

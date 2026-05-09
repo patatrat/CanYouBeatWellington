@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Check, X, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { loadRules } from '@/utils/rulesStorage';
+import { getThresholds } from '@/utils/rulesStorage';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -16,8 +16,10 @@ const CalendarHistory = ({ history }) => {
     return { year: d.getFullYear(), month: d.getMonth() };
   });
 
-  const rules = loadRules();
-  const isGoodDay = (r) => r.temperature >= rules.minTemp && r.wind_speed < rules.maxWind && r.rain <= rules.maxRain;
+  const isGoodDay = (r) => {
+    const { minTemp, maxWind, maxRain } = getThresholds(r.date);
+    return r.temperature >= minTemp && r.wind_speed < maxWind && r.rain <= maxRain;
+  };
 
   const historyMap = useMemo(() => {
     const map = new Map();
