@@ -4,35 +4,21 @@ updates:
     directory: /
     target-branch: staging
     schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 2
     ignore:
-      # Tailwind CSS v4 requires @tailwindcss/postcss migration — hold at v3
+      # These require non-trivial migration work — update manually when ready
       - dependency-name: "tailwindcss"
         update-types: ["version-update:semver-major"]
       - dependency-name: "tailwindcss-animate"
         update-types: ["version-update:semver-major"]
-      # React 19 is a major upgrade — hold at v18 until ready
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "@types/react"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@types/react-dom"
-        update-types: ["version-update:semver-major"]
-      # date-fns v4 has breaking API changes — hold at v3 until ready
       - dependency-name: "date-fns"
         update-types: ["version-update:semver-major"]
     groups:
-      dev-dependencies:
-        dependency-type: development
-        exclude-patterns:
-          - "eslint"
-          - "eslint-plugin-*"
-          - "tailwindcss"
-          - "tailwindcss-animate"
-      radix-ui:
+      all-dependencies:
         patterns:
-          - "@radix-ui/*"
+          - "*"

@@ -7,8 +7,9 @@ import { Analytics } from "@vercel/analytics/react";
 import Index from "./pages/Index.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
-// About is lazy-loaded — recharts and react-day-picker only load when navigating to /about
+// About and History are lazy-loaded — heavy deps (recharts, react-day-picker) only load when needed
 const About = lazy(() => import("./pages/About.jsx"));
+const History = lazy(() => import("./pages/History.jsx"));
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
+            <Route path="/history" element={<History />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
