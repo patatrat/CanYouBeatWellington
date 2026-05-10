@@ -85,7 +85,6 @@ const VotingButtons = ({ weatherRecord }) => {
         <span className="text-sm font-medium text-green-600">
           {weatherRecord.agree_count || 0}
         </span>
-        <span className="text-xs text-gray-500">Agree</span>
       </div>
 
       <div className="flex flex-col items-center">
@@ -102,7 +101,6 @@ const VotingButtons = ({ weatherRecord }) => {
         <span className="text-sm font-medium text-red-600">
           {weatherRecord.disagree_count || 0}
         </span>
-        <span className="text-xs text-gray-500">Disagree</span>
       </div>
 
       {voteError && (

@@ -1,118 +1,130 @@
-import { useMemo, useState } from 'react';
-import { Button } from "@/components/ui/button";
+import { useState, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getThresholds } from '@/utils/rulesStorage';
 
-const W = 560;
-const H = 260;
-const PAD = { top: 20, right: 20, bottom: 36, left: 40 };
-const CW = W - PAD.left - PAD.right;
-const CH = H - PAD.top - PAD.bottom;
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const isGoodDay = (r) => {
+  const { minTemp, maxWind, maxRain } = getThresholds(r.date);
+  return r.temperature >= minTemp && r.wind_speed < maxWind && r.rain <= maxRain;
+};
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  if (!d.hasData) return null;
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm">
+      <p className="font-semibold text-gray-800">{label}</p>
+      <p className="text-green-600">{d.goodDays} good {d.goodDays === 1 ? 'day' : 'days'}</p>
+      <p className="text-gray-400">{d.totalDays} days recorded</p>
+    </div>
+  );
+};
 
 const MonthlyGoodDaysChart = ({ history }) => {
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [tooltip, setTooltip] = useState(null);
+  const today = new Date();
+  const [windowEnd, setWindowEnd] = useState({ year: today.getFullYear(), month: today.getMonth() });
 
-  const availableYears = useMemo(() => {
-    if (!history) return [];
-    const years = new Set(history.map(r => new Date(r.date).getFullYear()));
-    return Array.from(years).sort((a, b) => a - b);
+  const earliestYM = useMemo(() => {
+    if (!history?.length) return null;
+    const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+    const d = new Date(sorted[0].date);
+    return { year: d.getFullYear(), month: d.getMonth() };
   }, [history]);
 
-  const monthlyData = useMemo(() => {
-    if (!history) return [];
-    const isGoodDay = (r) => {
-      const { minTemp, maxWind, maxRain } = getThresholds(r.date);
-      return r.temperature >= minTemp && r.wind_speed < maxWind && r.rain <= maxRain;
-    };
+  const startYM = useMemo(() => {
+    let m = windowEnd.month - 11;
+    let y = windowEnd.year;
+    if (m < 0) { m += 12; y--; }
+    return { year: y, month: m };
+  }, [windowEnd]);
 
-    const counts = Array.from({ length: 12 }, (_, i) => ({
-      month: new Date(selectedYear, i, 1).toLocaleString('default', { month: 'short' }),
-      goodDays: 0,
-      totalDays: 0,
-    }));
+  const canGoPrev = earliestYM && (
+    startYM.year > earliestYM.year ||
+    (startYM.year === earliestYM.year && startYM.month > earliestYM.month)
+  );
+  const canGoNext =
+    windowEnd.year < today.getFullYear() ||
+    (windowEnd.year === today.getFullYear() && windowEnd.month < today.getMonth());
 
-    history.forEach(r => {
-      const d = new Date(r.date);
-      if (d.getFullYear() === selectedYear) {
-        const m = d.getMonth();
-        counts[m].totalDays++;
-        if (isGoodDay(r)) counts[m].goodDays++;
-      }
+  const shiftWindow = (delta) => {
+    setWindowEnd(prev => {
+      let m = prev.month + delta;
+      let y = prev.year;
+      while (m < 0) { m += 12; y--; }
+      while (m > 11) { m -= 12; y++; }
+      return { year: y, month: m };
     });
+  };
 
-    return counts;
-  }, [history, selectedYear]);
+  const data = useMemo(() => {
+    if (!history) return [];
+    const histMap = new Map();
+    history.forEach(r => histMap.set(r.date, r));
 
-  const canGoPrev = availableYears.indexOf(selectedYear) > 0;
-  const canGoNext = availableYears.indexOf(selectedYear) < availableYears.length - 1;
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+      let m = windowEnd.month - i;
+      let y = windowEnd.year;
+      if (m < 0) { m += 12; y--; }
 
-  const yMax = Math.max(Math.ceil(Math.max(...monthlyData.map(d => d.goodDays)) / 5) * 5, 5);
-  const yTicks = [0, Math.round(yMax / 2), yMax];
+      const mm = String(m + 1).padStart(2, '0');
+      const daysInMonth = new Date(y, m + 1, 0).getDate();
+      let goodDays = 0, totalDays = 0;
 
-  const getX = (i) => PAD.left + (i / 11) * CW;
-  const getY = (v) => PAD.top + CH - (v / yMax) * CH;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${y}-${mm}-${String(d).padStart(2, '0')}`;
+        const r = histMap.get(dateStr);
+        if (r) { totalDays++; if (isGoodDay(r)) goodDays++; }
+      }
 
-  const pathD = monthlyData
-    .map((d, i) => `${i === 0 ? 'M' : 'L'}${getX(i).toFixed(1)},${getY(d.goodDays).toFixed(1)}`)
-    .join(' ');
+      months.push({
+        label: `${MONTH_SHORT[m]} '${String(y).slice(2)}`,
+        goodDays,
+        totalDays,
+        hasData: totalDays > 0,
+      });
+    }
+    return months;
+  }, [history, windowEnd]);
+
+  const windowLabel = `${MONTH_SHORT[startYM.month]} ${startYM.year} – ${MONTH_SHORT[windowEnd.month]} ${windowEnd.year}`;
 
   return (
-    <div className="w-full">
+    <div>
       <div className="flex items-center justify-between mb-4">
-        <Button variant="outline" size="sm" onClick={() => setSelectedYear(availableYears[availableYears.indexOf(selectedYear) - 1])} disabled={!canGoPrev}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <h3 className="text-lg font-semibold">{selectedYear}</h3>
-        <Button variant="outline" size="sm" onClick={() => setSelectedYear(availableYears[availableYears.indexOf(selectedYear) + 1])} disabled={!canGoNext}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+        <button
+          onClick={() => shiftWindow(-12)}
+          disabled={!canGoPrev}
+          className="p-1.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <span className="text-sm text-gray-500">{windowLabel}</span>
+        <button
+          onClick={() => shiftWindow(12)}
+          disabled={!canGoNext}
+          className="p-1.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
 
-      <div className="relative w-full">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-          {/* Grid lines + Y-axis labels */}
-          {yTicks.map(tick => (
-            <g key={tick}>
-              <line x1={PAD.left} x2={W - PAD.right} y1={getY(tick)} y2={getY(tick)} stroke="#e5e7eb" strokeDasharray="3 3" />
-              <text x={PAD.left - 6} y={getY(tick) + 4} textAnchor="end" fontSize="11" fill="#9ca3af">{tick}</text>
-            </g>
-          ))}
-
-          {/* Y-axis label */}
-          <text x={12} y={H / 2} textAnchor="middle" fontSize="11" fill="#9ca3af" transform={`rotate(-90,12,${H / 2})`}>Good Days</text>
-
-          {/* Line */}
-          <path d={pathD} fill="none" stroke="#22c55e" strokeWidth="2" />
-
-          {/* Dots + X-axis labels */}
-          {monthlyData.map((d, i) => (
-            <g key={i}>
-              <text x={getX(i)} y={H - 8} textAnchor="middle" fontSize="11" fill="#9ca3af">{d.month}</text>
-              <circle
-                cx={getX(i)} cy={getY(d.goodDays)} r="5" fill="#22c55e"
-                className="cursor-pointer"
-                onMouseEnter={() => setTooltip({ i, data: d })}
-                onMouseLeave={() => setTooltip(null)}
-              />
-              {/* Larger invisible hit area */}
-              <circle cx={getX(i)} cy={getY(d.goodDays)} r="12" fill="transparent"
-                onMouseEnter={() => setTooltip({ i, data: d })}
-                onMouseLeave={() => setTooltip(null)}
-              />
-              {/* SVG tooltip */}
-              {tooltip?.i === i && (
-                <g transform={`translate(${getX(i)},${getY(d.goodDays) - 14})`}>
-                  <rect x="-52" y="-46" width="104" height="44" fill="white" stroke="#e5e7eb" strokeWidth="1" rx="4" />
-                  <text x="0" y="-29" textAnchor="middle" fontSize="12" fontWeight="600" fill="#111827">{d.month} {selectedYear}</text>
-                  <text x="0" y="-14" textAnchor="middle" fontSize="11" fill="#2563eb">Good Days: {d.goodDays}</text>
-                  <text x="0" y="-2" textAnchor="middle" fontSize="11" fill="#6b7280">Total Days: {d.totalDays}</text>
-                </g>
-              )}
-            </g>
-          ))}
-        </svg>
-      </div>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f9fafb' }} />
+          <Bar dataKey="goodDays" radius={[4, 4, 0, 0]}>
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.hasData ? '#22c55e' : '#e5e7eb'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 };

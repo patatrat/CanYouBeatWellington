@@ -15,20 +15,12 @@ A hobby webapp that checks if today's weather in Wellington, NZ is good enough t
 
 ## Weather Assessment Rules
 
-Wellington has six seasons. A "good day" requires ALL of:
-- Max temperature ≥ seasonal threshold (see table below)
-- Max wind speed < 30 km/h
-- Daytime rain = 0 mm
+A "good day" requires ALL of (thresholds vary by season — see `rulesStorage.js`):
+- Max temperature ≥ seasonal minimum (13°C winter → 19°C summer)
+- Max wind speed < 30 km/h (year-round)
+- Daytime rain = 0 mm (year-round)
 
-| Season | Months | Min temp |
-|--------|--------|----------|
-| Summer | Jan, Feb, Mar | 19°C |
-| Autumn | Apr, May, Jun | 16°C |
-| Winter | Jul, Aug | 13°C |
-| Spring 1 | Sep | 14°C |
-| Shitsville | Oct, Nov | 16°C |
-| Spring 2 | Dec | 18°C |
-
+Six seasons: Summer (Jan–Mar), Autumn (Apr–Jun), Winter (Jul–Aug), Spring 1 (Sep), Shitsville (Oct–Nov), Spring 2 (Dec).
 Computed at runtime from `rulesStorage.js` — not stored in DB, so rules can change freely.
 Data source: Open-Meteo API (free, no key required).
 
@@ -91,24 +83,18 @@ Data source: Open-Meteo API (free, no key required).
 
 ### P4 — Feature improvements
 - [x] **Daily weather cron job** — GitHub Actions runs `scripts/populate-db.js` at 12:00 UTC (midnight NZST) daily; upserts idempotently so also backfills any missed days
-- [x] **Make voting tamper-resistant** — `vote_tokens (token, date)` table enforces one vote per browser identity per day at DB level; `increment_vote()` updated to accept `voter_token` arg; unique constraint violation (23505) rejects duplicate votes server-side. Run `scripts/vote-tokens-migration.sql` in Supabase dashboard to activate.
-- [x] **Seasonal weather rules (Shitsville calendar)** — replaced fixed 18°C/20 km/h thresholds with six Wellington seasons (Summer/Autumn/Winter/Spring 1/Shitsville/Spring 2) with seasonal temp thresholds and a raised 30 km/h wind limit. `rulesStorage.js` exports `getSeasonLabel()`, `getThresholds()`, `countCriteriaMet()`. Season label displayed on home page. About page updated with new copy and attribution to Adam Shand's Shitsville calendar. 68 unit tests across all seasons and boundary conditions.
-- [x] **Staging environment** — `staging` branch auto-deploys to Vercel preview URL (`canyoubeatwellington-git-staging-patatrat.vercel.app`); shares production Supabase DB
-
-### P4 — UI/UX review and refresh
-- [ ] **UI/UX audit and redesign** — the current UI is functional but visually minimal (plain grey card, no weather imagery, no personality). Options:
-  - **Option A — Iterative Tailwind polish** (low effort, low risk): tighten spacing, add a weather-appropriate colour scheme (sky blue / storm grey), improve typography hierarchy, add a subtle animated background or gradient based on good/bad day verdict. Can be done in-session with Claude Code.
-  - **Option B — v0.dev component generation** (medium effort): describe the desired UI to Vercel's v0.dev, copy generated shadcn components into the project, then wire up existing data. Good for getting a fresh visual direction quickly without a full redesign.
-  - **Option C — Lovable / full AI redesign** (higher effort): hand the project back to an AI UI builder for a ground-up visual refresh. Risk: may re-introduce deps or patterns that were deliberately cleaned up.
-  - **Recommended starting point**: Option A for the home page (verdict card + season label + weather stats), then Option B for the About page charts if more visual polish is needed. Specific improvements to consider:
-    - Verdict card: larger, bolder YES/NO with colour (green/red), weather icon
-    - Season badge: pill/tag styling for "Shitsville season" rather than plain text
-    - Weather stats grid: icon + value + pass/fail more visually distinct
-    - About page: section dividers, better table styling, responsive layout on mobile
-    - Dark mode (stretch goal)
+- [x] Make voting tamper-resistant — `vote_tokens (token, date)` table enforces one vote per browser identity per day at DB level; `increment_vote()` updated to accept `voter_token` arg; unique constraint violation (23505) rejects duplicate votes server-side. Run `scripts/vote-tokens-migration.sql` in Supabase dashboard to activate.
+- [x] Adjust good-day rules to account for seasons — six-season Shitsville calendar with seasonal temp thresholds; `rulesStorage.js` is source of truth
+- [x] Staging environment — `staging` branch auto-deploys to Vercel preview URL (`canyoubeatwellington-git-staging-patatrat.vercel.app`); shares production Supabase DB
+- [x] **Scenario-based verdict quips** — `src/utils/quips.js`; 8 failure-scenario arrays (GOOD / WIND_ONLY / RAIN_ONLY / TEMP_ONLY / WIND_RAIN / WIND_TEMP / RAIN_TEMP / ALL_BAD) replacing the previous 3-bucket system; quips need fleshing out with more NZ flavour
+- [x] **7-day good day forecast** — Open-Meteo already returns 7 days; `weatherStorage.js` now exposes `forecast[]` (days 1–6); `ForecastStrip` component on home page shows each day's verdict (✓/✗) + temp + forecast summary quip; `calculateDaytimeRain` accepts a `dayIndex` for multi-day rain calculation
+- [ ] **NZ-specific vocabulary** — build a word bank ("munted", "choice", "sweet as", "mean as", "stoked", "gutted", "staunch") to weave into quips in `quips.js`
+- [ ] **Special date messages** — Wellington Anniversary Day (4th Monday Jan), Waitangi Day (Feb 6), ANZAC Day (Apr 25), Matariki, Wellington Sevens etc.; overlay a date-specific quip on the normal verdict
+- [ ] **Auto-post to social media on good days** — extend existing GitHub Actions daily cron; Mastodon REST API (simple); Bluesky atproto (slightly more involved); secrets in GitHub repo secrets; only post when `isGood === true`
+- [ ] **User sharing** — pre-composed share links (Bluesky intent URL, Mastodon share URL); no API keys needed; low-effort "Share" button that opens a pre-filled compose window
 
 ### P5 — Nice to have
-- [x] Add unit/integration tests — Vitest + jsdom; 68 tests across `rulesStorage` (all six seasons, boundaries, month transitions) and `weatherStorage` (sunniness, daytime rain, localStorage round-trip); wired into CI
+- [x] Add unit/integration tests — Vitest + jsdom; 68 tests across `rulesStorage` (good-day logic + boundaries) and `weatherStorage` (sunniness, daytime rain, localStorage round-trip); wired into CI
 - [x] Set up Dependabot — weekly Monday updates targeting `staging`; ESLint major bumps ignored (v9 requires flat config migration)
 - [x] Update React Router to 7.x — cleared XSS vuln; API unchanged for our usage (`BrowserRouter`, `Routes`, `Route`, `Link`)
 - [ ] **Timezone-aware date handling** — dates are stored as `YYYY-MM-DD` strings and parsed with `new Date(dateString)`, which treats them as UTC midnight and can shift ±1 day in NZ timezone (UTC+12/+13). Use `date-fns/parseISO` everywhere dates are parsed from strings, and validate the calendar display in CalendarHistory against the actual NZ date.
