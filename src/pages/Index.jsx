@@ -91,15 +91,15 @@ const Index = () => {
   }
 
   return (
-    <div className={`relative min-h-screen transition-colors duration-700 ${isGood ? 'bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100' : 'bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200'}`}>
+    <div className={`min-h-screen flex flex-col transition-colors duration-700 ${isGood ? 'bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100' : 'bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200'}`}>
 
       {/* Top-right nav */}
-      <nav className="absolute top-4 right-5 flex gap-5 text-sm font-medium text-gray-500">
+      <nav className="flex justify-end px-5 pt-4 gap-5 text-sm font-medium text-gray-500">
         <Link to="/about" className="hover:text-gray-800 transition-colors">Why though?</Link>
         <Link to="/history" className="hover:text-gray-800 transition-colors">The record</Link>
       </nav>
 
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 py-6">
+      <div className="flex flex-col items-center justify-center flex-1 px-6 py-6">
 
         {/* Season badge */}
         <span className={`text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-6 ${isShitsville ? 'bg-slate-700 text-slate-100' : 'bg-amber-200 text-amber-800'}`}>
@@ -122,7 +122,7 @@ const Index = () => {
         </p>
 
         {/* Weather stats */}
-        <div className="grid grid-cols-3 gap-6 sm:gap-10 mb-6">
+        <div className="grid grid-cols-3 gap-3 sm:gap-10 mb-6">
           <WeatherStat
             label="Temperature"
             value={`${weather.temperature.toFixed(1)}°C`}
