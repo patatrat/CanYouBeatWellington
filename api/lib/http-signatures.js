@@ -12,11 +12,13 @@ function normalizePem(raw) {
 
   const lines = pem.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-  // Sanity-check: first line must be a PEM header
-  if (!lines[0]?.startsWith('-----BEGIN ')) {
-    throw new Error(
-      `AP_PRIVATE_KEY does not look like a PEM key — starts with: "${lines[0]?.slice(0, 40)}"`
-    );
+  // Sanity-check: must be a private key PEM, not a public key or something else
+  const header = lines[0] ?? '';
+  if (!header.startsWith('-----BEGIN ')) {
+    throw new Error(`Key does not look like PEM — starts with: "${header.slice(0, 40)}"`);
+  }
+  if (header.includes('PUBLIC KEY')) {
+    throw new Error(`Got a PUBLIC key where a PRIVATE key is required (${header})`);
   }
 
   return lines.join('\n') + '\n';
