@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       message:
-        description: 'Message to post (plain text; double newlines = paragraph breaks)'
+        description: 'Message to post. Use \n for a line break, \n\n for a paragraph break.'
         required: true
         type: string
 

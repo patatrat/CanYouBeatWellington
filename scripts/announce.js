@@ -18,7 +18,9 @@ const ACTOR_ID = `${BASE}/actor`;
 const KEY_ID = `${ACTOR_ID}#main-key`;
 
 const AP_PRIVATE_KEY = process.env.AP_PRIVATE_KEY?.replace(/\\n/g, '\n');
-const NOTE_CONTENT = process.env.NOTE_CONTENT;
+// GitHub Actions workflow_dispatch inputs are single-line, so the user types
+// \n where they want line breaks. Convert those to actual newlines here.
+const NOTE_CONTENT = process.env.NOTE_CONTENT?.replace(/\\n/g, '\n');
 
 if (!AP_PRIVATE_KEY) {
   console.error('❌ Missing AP_PRIVATE_KEY');
