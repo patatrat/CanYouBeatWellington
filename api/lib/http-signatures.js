@@ -1,5 +1,27 @@
 import crypto from 'node:crypto';
 
+/**
+ * Normalise a PEM string coming from an environment variable.
+ * Handles: literal \n escapes, CRLF line endings, stray whitespace per line.
+ */
+function normalizePem(raw) {
+  const pem = raw
+    .replace(/\\n/g, '\n')   // literal \n escape sequences → newline
+    .replace(/\r\n/g, '\n')  // CRLF → LF
+    .replace(/\r/g, '\n');   // bare CR → LF
+
+  const lines = pem.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  // Sanity-check: first line must be a PEM header
+  if (!lines[0]?.startsWith('-----BEGIN ')) {
+    throw new Error(
+      `AP_PRIVATE_KEY does not look like a PEM key — starts with: "${lines[0]?.slice(0, 40)}"`
+    );
+  }
+
+  return lines.join('\n') + '\n';
+}
+
 function parseSignatureHeader(header) {
   const result = {};
   for (const part of header.split(',')) {
@@ -77,7 +99,7 @@ export async function signAndDeliver(inboxUrl, activity, keyId, privateKeyPem) {
     `digest: ${digest}`,
   ].join('\n');
 
-  const privateKey = crypto.createPrivateKey(privateKeyPem);
+  const privateKey = crypto.createPrivateKey(normalizePem(privateKeyPem));
   const sig = crypto.sign('sha256', Buffer.from(signingString, 'utf8'), {
     key: privateKey,
     padding: crypto.constants.RSA_PKCS1_PADDING,
