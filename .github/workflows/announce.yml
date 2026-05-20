@@ -1,0 +1,33 @@
+name: Announce to fediverse followers
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Message to post (plain text; double newlines = paragraph breaks)'
+        required: true
+        type: string
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deliver announcement to all followers
+        env:
+          AP_PRIVATE_KEY: ${{ secrets.AP_PRIVATE_KEY }}
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+          NOTE_CONTENT: ${{ inputs.message }}
+        run: node scripts/announce.js

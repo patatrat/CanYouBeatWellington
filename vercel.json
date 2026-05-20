@@ -1,5 +1,12 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "rewrites": [
+    { "source": "/.well-known/webfinger", "destination": "/api/well-known/webfinger" },
+    { "source": "/actor/inbox",     "destination": "/api/actor/inbox" },
+    { "source": "/actor/outbox",    "destination": "/api/actor/outbox" },
+    { "source": "/actor/followers", "destination": "/api/actor/followers" },
+    { "source": "/actor",           "destination": "/api/actor" },
+    { "source": "/(.*)",            "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
