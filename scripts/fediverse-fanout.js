@@ -118,6 +118,12 @@ const main = async () => {
     object: note,
   };
 
+  // Store before delivery so the note ID URL is resolvable when Mastodon fetches it
+  const kvId = today;
+  await kv.set(`cybw:post:${kvId}`, activity);
+  await kv.lpush('cybw:posts', kvId);
+  await kv.ltrim('cybw:posts', 0, 49); // keep last 50 posts
+
   let delivered = 0;
   let failed = 0;
 

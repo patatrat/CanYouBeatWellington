@@ -62,7 +62,8 @@ const main = async () => {
   console.log(`\n${NOTE_CONTENT}\n`);
 
   const now = new Date().toISOString();
-  const noteId = `${BASE}/notes/announce-${Date.now()}`;
+  const kvId = `announce-${Date.now()}`;
+  const noteId = `${BASE}/notes/${kvId}`;
 
   const note = {
     '@context': 'https://www.w3.org/ns/activitystreams',
@@ -86,6 +87,11 @@ const main = async () => {
     cc: note.cc,
     object: note,
   };
+
+  // Store before delivery so the note ID URL is resolvable when Mastodon fetches it
+  await kv.set(`cybw:post:${kvId}`, activity);
+  await kv.lpush('cybw:posts', kvId);
+  await kv.ltrim('cybw:posts', 0, 49);
 
   let delivered = 0;
   let failed = 0;
