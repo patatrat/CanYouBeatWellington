@@ -3,11 +3,11 @@ import { kv } from '@vercel/kv';
 const BASE = 'https://canyoubeatwellington.radomski.co.nz';
 
 export default async function handler(req, res) {
-  let count = 0;
+  let followers = [];
   try {
-    count = (await kv.scard('cybw:ap:followers')) ?? 0;
+    followers = (await kv.smembers('cybw:ap:followers')) ?? [];
   } catch {
-    // KV unavailable — return 0 rather than an error
+    // KV unavailable — return empty list rather than an error
   }
 
   res.setHeader('Content-Type', 'application/activity+json');
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     '@context': 'https://www.w3.org/ns/activitystreams',
     id: `${BASE}/actor/followers`,
     type: 'OrderedCollection',
-    totalItems: count,
-    orderedItems: [],
+    totalItems: followers.length,
+    orderedItems: followers,
   });
 }

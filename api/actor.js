@@ -23,6 +23,23 @@ export default function handler(req, res) {
     inbox: `${BASE}/actor/inbox`,
     outbox: `${BASE}/actor/outbox`,
     followers: `${BASE}/actor/followers`,
+    attachment: [
+      {
+        type: 'PropertyValue',
+        name: 'Website',
+        value: `<a href="${BASE}" rel="me nofollow noopener noreferrer" target="_blank">canyoubeatwellington.radomski.co.nz</a>`,
+      },
+    ],
+    icon: {
+      type: 'Image',
+      mediaType: 'image/png',
+      url: `${BASE}/canyoubeatwellington_avatar.png`,
+    },
+    image: {
+      type: 'Image',
+      mediaType: 'image/png',
+      url: `${BASE}/canyoubeatwellington_og_image.png`,
+    },
     publicKey: {
       id: `${BASE}/actor#main-key`,
       owner: `${BASE}/actor`,
