@@ -19,3 +19,12 @@ export const calculateDaytimeRain = (hourlyPrecipitation, dayIndex) => {
     .slice(startHour, endHour)
     .reduce((sum, rain) => sum + (rain || 0), 0);
 };
+
+// Average wind speed during daytime hours (6 AM–6 PM) for a given day index.
+export const calculateDaytimeWind = (hourlyWind, dayIndex) => {
+  const startHour = dayIndex * 24 + 6;
+  const endHour = dayIndex * 24 + 18;
+  const slice = hourlyWind.slice(startHour, endHour);
+  if (!slice.length) return 0;
+  return slice.reduce((sum, w) => sum + (w || 0), 0) / slice.length;
+};

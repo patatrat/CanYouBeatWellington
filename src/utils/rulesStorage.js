@@ -4,7 +4,8 @@
 // the visitor's browser timezone.
 const SEASONS = [
   { label: 'Summer',     months: [0, 1, 2],  minTemp: 19, maxWind: 30, maxRain: 0 },
-  { label: 'Autumn',     months: [3, 4, 5],  minTemp: 16, maxWind: 30, maxRain: 0 },
+  { label: 'Autumn',     months: [3],        minTemp: 16, maxWind: 30, maxRain: 0 },
+  { label: 'Late Autumn', months: [4, 5],   minTemp: 14, maxWind: 30, maxRain: 0 },
   { label: 'Winter',     months: [6, 7],     minTemp: 13, maxWind: 30, maxRain: 0 },
   { label: 'Spring 1',   months: [8],        minTemp: 14, maxWind: 30, maxRain: 0 },
   { label: 'Shitsville', months: [9, 10],    minTemp: 16, maxWind: 30, maxRain: 0 },

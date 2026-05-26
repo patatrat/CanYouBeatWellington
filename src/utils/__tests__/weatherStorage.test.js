@@ -126,9 +126,11 @@ describe('fetchAndStoreWeather — error paths', () => {
   });
 
   it('returns and caches weather data on a valid response', async () => {
+    const hourlyWind = Array(24).fill(0);
+    hourlyWind.splice(6, 12, ...Array(12).fill(14)); // daytime hours 6–17 = 14 km/h
     const valid = {
-      daily: { time: ['2026-04-18'], temperature_2m_max: [21], wind_speed_10m_max: [14], weather_code: [1] },
-      hourly: { precipitation: Array(24).fill(0) },
+      daily: { time: ['2026-04-18'], temperature_2m_max: [21], weather_code: [1] },
+      hourly: { precipitation: Array(24).fill(0), wind_speed_10m: hourlyWind },
     };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => valid }));
     const result = await fetchAndStoreWeather();

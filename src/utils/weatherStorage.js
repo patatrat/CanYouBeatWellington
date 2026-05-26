@@ -22,8 +22,8 @@ export const fetchAndStoreWeather = async () => {
   const response = await fetch(
     'https://api.open-meteo.com/v1/forecast' +
     '?latitude=-41.2866&longitude=174.7756' +
-    '&daily=weather_code,temperature_2m_max,wind_speed_10m_max,wind_gusts_10m_max' +
-    '&hourly=precipitation' +
+    '&daily=weather_code,temperature_2m_max' +
+    '&hourly=precipitation,wind_speed_10m' +
     '&timezone=Pacific%2FAuckland'
   );
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -32,16 +32,16 @@ export const fetchAndStoreWeather = async () => {
   if (
     !data.daily?.time?.[0] ||
     data.daily?.temperature_2m_max?.[0] === undefined ||
-    data.daily?.wind_speed_10m_max?.[0] === undefined ||
     data.daily?.weather_code?.[0] === undefined ||
-    !Array.isArray(data.hourly?.precipitation)
+    !Array.isArray(data.hourly?.precipitation) ||
+    !Array.isArray(data.hourly?.wind_speed_10m)
   ) {
     throw new Error('Open-Meteo API returned incomplete data');
   }
 
   const today = {
     temperature: data.daily.temperature_2m_max[0],
-    windSpeed:   data.daily.wind_speed_10m_max[0],
+    windSpeed:   calculateDaytimeWind(data.hourly.wind_speed_10m, 0),
     sunniness:   calculateSunniness(data.daily.weather_code[0]),
     rain:        calculateDaytimeRain(data.hourly.precipitation, 0),
     timestamp:   data.daily.time[0],
@@ -50,7 +50,7 @@ export const fetchAndStoreWeather = async () => {
     forecast: data.daily.time.slice(1).map((date, i) => ({
       date,
       temperature: data.daily.temperature_2m_max[i + 1],
-      windSpeed:   data.daily.wind_speed_10m_max[i + 1],
+      windSpeed:   calculateDaytimeWind(data.hourly.wind_speed_10m, i + 1),
       rain:        calculateDaytimeRain(data.hourly.precipitation, i + 1),
     })),
   };
@@ -73,4 +73,14 @@ export const calculateDaytimeRain = (hourlyPrecipitation, dayIndex = 0) => {
   const start = dayIndex * 24 + 6;
   const end   = dayIndex * 24 + 18;
   return hourlyPrecipitation.slice(start, end).reduce((sum, rain) => sum + (rain || 0), 0);
+};
+
+// Average wind speed during daytime hours only (6 AM–6 PM) for a given day index.
+// Using daytime average instead of daily max avoids penalising calm days for evening gusts.
+export const calculateDaytimeWind = (hourlyWind, dayIndex = 0) => {
+  const start = dayIndex * 24 + 6;
+  const end   = dayIndex * 24 + 18;
+  const slice = hourlyWind.slice(start, end);
+  if (!slice.length) return 0;
+  return slice.reduce((sum, w) => sum + (w || 0), 0) / slice.length;
 };

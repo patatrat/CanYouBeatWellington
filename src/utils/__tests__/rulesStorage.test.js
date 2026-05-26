@@ -11,8 +11,8 @@ describe('getSeasonLabel', () => {
   it('returns Summer for February', () => expect(getSeasonLabel(d(2))).toBe('Summer'));
   it('returns Summer for March', () => expect(getSeasonLabel(d(3))).toBe('Summer'));
   it('returns Autumn for April', () => expect(getSeasonLabel(d(4))).toBe('Autumn'));
-  it('returns Autumn for May', () => expect(getSeasonLabel(d(5))).toBe('Autumn'));
-  it('returns Autumn for June', () => expect(getSeasonLabel(d(6))).toBe('Autumn'));
+  it('returns Late Autumn for May', () => expect(getSeasonLabel(d(5))).toBe('Late Autumn'));
+  it('returns Late Autumn for June', () => expect(getSeasonLabel(d(6))).toBe('Late Autumn'));
   it('returns Winter for July', () => expect(getSeasonLabel(d(7))).toBe('Winter'));
   it('returns Winter for August', () => expect(getSeasonLabel(d(8))).toBe('Winter'));
   it('returns Spring 1 for September', () => expect(getSeasonLabel(d(9))).toBe('Spring 1'));
@@ -25,8 +25,8 @@ describe('getSeasonLabel', () => {
     expect(getSeasonLabel('2025-03-31')).toBe('Summer');
     expect(getSeasonLabel('2025-04-01')).toBe('Autumn');
   });
-  it('June is Autumn, July is Winter', () => {
-    expect(getSeasonLabel('2025-06-30')).toBe('Autumn');
+  it('June is Late Autumn, July is Winter', () => {
+    expect(getSeasonLabel('2025-06-30')).toBe('Late Autumn');
     expect(getSeasonLabel('2025-07-01')).toBe('Winter');
   });
   it('accepts a Date object', () => {
@@ -40,8 +40,11 @@ describe('getThresholds', () => {
   it('Summer: minTemp 19, maxWind 30, maxRain 0', () =>
     expect(getThresholds(d(1))).toEqual({ minTemp: 19, maxWind: 30, maxRain: 0 }));
 
-  it('Autumn: minTemp 16, maxWind 30, maxRain 0', () =>
+  it('Autumn (Apr): minTemp 16, maxWind 30, maxRain 0', () =>
     expect(getThresholds(d(4))).toEqual({ minTemp: 16, maxWind: 30, maxRain: 0 }));
+
+  it('Late Autumn (May–Jun): minTemp 14, maxWind 30, maxRain 0', () =>
+    expect(getThresholds(d(5))).toEqual({ minTemp: 14, maxWind: 30, maxRain: 0 }));
 
   it('Winter: minTemp 13, maxWind 30, maxRain 0', () =>
     expect(getThresholds(d(7))).toEqual({ minTemp: 13, maxWind: 30, maxRain: 0 }));
@@ -62,8 +65,10 @@ describe('countCriteriaMet', () => {
   // Good day in each season
   it('Summer: all criteria met → 3', () =>
     expect(countCriteriaMet({ temperature: 22, windSpeed: 15, rain: 0 }, d(1))).toBe(3));
-  it('Autumn: all criteria met → 3', () =>
+  it('Autumn (Apr): all criteria met → 3', () =>
     expect(countCriteriaMet({ temperature: 18, windSpeed: 15, rain: 0 }, d(4))).toBe(3));
+  it('Late Autumn (May): all criteria met → 3', () =>
+    expect(countCriteriaMet({ temperature: 15, windSpeed: 15, rain: 0 }, d(5))).toBe(3));
   it('Winter: all criteria met → 3', () =>
     expect(countCriteriaMet({ temperature: 14, windSpeed: 15, rain: 0 }, d(7))).toBe(3));
   it('Spring 1: all criteria met → 3', () =>
@@ -83,10 +88,15 @@ describe('countCriteriaMet', () => {
   it('Summer: fails at 18.9°C', () =>
     expect(countCriteriaMet({ temperature: 18.9, windSpeed: 15, rain: 0 }, d(2))).toBe(2));
 
-  it('Autumn: passes at exactly 16°C', () =>
-    expect(countCriteriaMet({ temperature: 16, windSpeed: 15, rain: 0 }, d(5))).toBe(3));
-  it('Autumn: fails at 15.9°C', () =>
-    expect(countCriteriaMet({ temperature: 15.9, windSpeed: 15, rain: 0 }, d(5))).toBe(2));
+  it('Autumn (Apr): passes at exactly 16°C', () =>
+    expect(countCriteriaMet({ temperature: 16, windSpeed: 15, rain: 0 }, d(4))).toBe(3));
+  it('Autumn (Apr): fails at 15.9°C', () =>
+    expect(countCriteriaMet({ temperature: 15.9, windSpeed: 15, rain: 0 }, d(4))).toBe(2));
+
+  it('Late Autumn (May): passes at exactly 14°C', () =>
+    expect(countCriteriaMet({ temperature: 14, windSpeed: 15, rain: 0 }, d(5))).toBe(3));
+  it('Late Autumn (May): fails at 13.9°C', () =>
+    expect(countCriteriaMet({ temperature: 13.9, windSpeed: 15, rain: 0 }, d(5))).toBe(2));
 
   it('Winter: passes at exactly 13°C', () =>
     expect(countCriteriaMet({ temperature: 13, windSpeed: 15, rain: 0 }, d(8))).toBe(3));
@@ -130,11 +140,16 @@ describe('countCriteriaMet', () => {
   it('returns 1 when only temperature passes', () =>
     expect(countCriteriaMet({ temperature: 22, windSpeed: 31, rain: 1 }, d(1))).toBe(1));
 
-  // Month boundary: March (Summer) vs April (Autumn) — different minTemp
+  // Month boundary: March (Summer) vs April (Autumn) vs May (Late Autumn)
   it('16°C qualifies in Autumn (April) but not in Summer (March)', () => {
     const weather = { temperature: 16, windSpeed: 15, rain: 0 };
     expect(countCriteriaMet(weather, '2025-04-15')).toBe(3); // Autumn threshold 16°C
     expect(countCriteriaMet(weather, '2025-03-15')).toBe(2); // Summer threshold 19°C
+  });
+  it('14°C qualifies in Late Autumn (May) but not in Autumn (April)', () => {
+    const weather = { temperature: 14, windSpeed: 15, rain: 0 };
+    expect(countCriteriaMet(weather, '2025-05-15')).toBe(3); // Late Autumn threshold 14°C
+    expect(countCriteriaMet(weather, '2025-04-15')).toBe(2); // Autumn threshold 16°C
   });
 
   // defaults to today when no date provided (smoke test — just check it returns a number)

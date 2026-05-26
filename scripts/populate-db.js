@@ -8,7 +8,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { calculateSunniness, calculateDaytimeRain } from './utils.js';
+import { calculateSunniness, calculateDaytimeRain, calculateDaytimeWind } from './utils.js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 // Service role key bypasses RLS (safe for server-side scripts only).
@@ -34,8 +34,8 @@ const main = async () => {
   url.searchParams.set('latitude', '-41.2866');
   url.searchParams.set('longitude', '174.7756');
   url.searchParams.set('past_days', '92');
-  url.searchParams.set('daily', 'weather_code,temperature_2m_max,wind_speed_10m_max');
-  url.searchParams.set('hourly', 'precipitation');
+  url.searchParams.set('daily', 'weather_code,temperature_2m_max');
+  url.searchParams.set('hourly', 'precipitation,wind_speed_10m');
   url.searchParams.set('timezone', 'Pacific/Auckland');
 
   const response = await fetch(url.toString());
@@ -52,7 +52,7 @@ const main = async () => {
     records.push({
       date: data.daily.time[i],
       temperature: data.daily.temperature_2m_max[i] ?? 0,
-      wind_speed: data.daily.wind_speed_10m_max[i] ?? 0,
+      wind_speed: parseFloat(calculateDaytimeWind(data.hourly.wind_speed_10m, i).toFixed(2)),
       sunniness: calculateSunniness(data.daily.weather_code[i] ?? 0),
       rain: parseFloat(calculateDaytimeRain(data.hourly.precipitation, i).toFixed(2)),
     });
