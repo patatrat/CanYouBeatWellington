@@ -151,7 +151,7 @@ const Index = () => {
         </div>
 
         {/* Voting */}
-        {todaysRecord && <VotingButtons weatherRecord={todaysRecord} />}
+        {todaysRecord && <VotingButtons key={todaysRecord.date} weatherRecord={todaysRecord} />}
 
         {/* Forecast */}
         {weather?.forecast && <ForecastStrip forecast={weather.forecast} isGoodBackground={isGood} />}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../integrations/supabase/client';
@@ -17,17 +17,11 @@ const getVoterToken = () => {
 };
 
 const VotingButtons = ({ weatherRecord }) => {
-  const [hasVoted, setHasVoted] = useState(false);
+  const [hasVoted, setHasVoted] = useState(() =>
+    weatherRecord?.date ? localStorage.getItem(`voted_${weatherRecord.date}`) === 'true' : false
+  );
   const [voteError, setVoteError] = useState(false);
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (weatherRecord?.date) {
-      const voteKey = `voted_${weatherRecord.date}`;
-      const hasVotedToday = localStorage.getItem(voteKey) === 'true';
-      setHasVoted(hasVotedToday);
-    }
-  }, [weatherRecord?.date]);
 
   const updateVoteMutation = useMutation({
     mutationFn: async ({ voteType }) => {
