@@ -18,6 +18,11 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "date-fns"
         update-types: ["version-update:semver-major"]
+      # eslint-plugin-react doesn't support ESLint v10 yet — unblock when it does
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
     groups:
       all-dependencies:
         patterns:
