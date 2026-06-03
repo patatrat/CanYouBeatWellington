@@ -34,6 +34,13 @@ const Index = () => {
     enabled: !!weather,
   });
 
+  // Prefer the cron-written Supabase record for the verdict when it exists —
+  // it captures the full daytime window with complete data, whereas the live
+  // Open-Meteo fetch may reflect a stale forecast or a partially-elapsed day.
+  const effectiveWeather = todaysRecord
+    ? { ...weather, temperature: todaysRecord.temperature, windSpeed: todaysRecord.wind_speed, rain: todaysRecord.rain }
+    : weather;
+
   const weatherDate = weather?.timestamp ? new Date(weather.timestamp + 'T12:00:00') : new Date();
   const rules = weather ? getThresholds(weatherDate) : null;
   const seasonLabel = getSeasonLabel(weatherDate);
@@ -57,9 +64,9 @@ const Index = () => {
     onError: (error) => console.error('Error storing daily record:', error),
   });
 
-  const tempMet = weather && rules ? weather.temperature >= rules.minTemp : false;
-  const windMet = weather && rules ? weather.windSpeed < rules.maxWind : false;
-  const rainMet = weather && rules ? weather.rain <= rules.maxRain : false;
+  const tempMet = effectiveWeather && rules ? effectiveWeather.temperature >= rules.minTemp : false;
+  const windMet = effectiveWeather && rules ? effectiveWeather.windSpeed < rules.maxWind : false;
+  const rainMet = effectiveWeather && rules ? effectiveWeather.rain <= rules.maxRain : false;
   const isGood = tempMet && windMet && rainMet;
 
   const verdictLine = useMemo(() => {
@@ -125,20 +132,20 @@ const Index = () => {
         <div className="grid grid-cols-3 gap-3 sm:gap-10 mb-6">
           <WeatherStat
             label="Temperature"
-            value={`${weather.temperature.toFixed(1)}°C`}
-            meets={weather.temperature >= rules.minTemp}
+            value={`${effectiveWeather.temperature.toFixed(1)}°C`}
+            meets={effectiveWeather.temperature >= rules.minTemp}
             threshold={`≥ ${rules.minTemp}°C`}
           />
           <WeatherStat
             label="Wind"
-            value={`${weather.windSpeed.toFixed(1)} km/h`}
-            meets={weather.windSpeed < rules.maxWind}
+            value={`${effectiveWeather.windSpeed.toFixed(1)} km/h`}
+            meets={effectiveWeather.windSpeed < rules.maxWind}
             threshold={`< ${rules.maxWind} km/h`}
           />
           <WeatherStat
             label="Rain"
-            value={`${weather.rain.toFixed(1)} mm`}
-            meets={weather.rain <= rules.maxRain}
+            value={`${effectiveWeather.rain.toFixed(1)} mm`}
+            meets={effectiveWeather.rain <= rules.maxRain}
             threshold="0 mm"
           />
         </div>
