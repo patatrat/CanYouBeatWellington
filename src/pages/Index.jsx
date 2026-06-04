@@ -85,7 +85,8 @@ const Index = () => {
         rain: weather.rain,
       });
     }
-  }, [weather, storeMutate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weather]);
 
   if (weatherLoading) {
     return <div className="flex justify-center items-center h-screen bg-gray-50">Loading...</div>;

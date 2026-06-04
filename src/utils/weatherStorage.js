@@ -34,7 +34,9 @@ export const fetchAndStoreWeather = async () => {
     data.daily?.temperature_2m_max?.[0] === undefined ||
     data.daily?.weather_code?.[0] === undefined ||
     !Array.isArray(data.hourly?.precipitation) ||
-    !Array.isArray(data.hourly?.wind_speed_10m)
+    !Array.isArray(data.hourly?.wind_speed_10m) ||
+    data.hourly.precipitation.length < 18 ||
+    data.hourly.wind_speed_10m.length < 18
   ) {
     throw new Error('Open-Meteo API returned incomplete data');
   }

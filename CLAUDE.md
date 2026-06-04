@@ -61,8 +61,8 @@ Data source: Open-Meteo API (free, no key required).
 - [x] SEO improvements — target phrases in title/meta/structured data, H1 restructure, sitemap
 - [x] Upgrade Vite to v8 + plugin-react to v6 — cleared 2 moderate esbuild dev-server vulns; fixed port type (string → number)
 - [x] Delete dead one-off migration scripts from `src/utils/` — `populateHistoricalData.js`, `recheckHistoricalData.js`, `sunshineUpdateCheck.js`, `removeSunninessRule.js` were all unreferenced leftovers from earlier DB schema work
-- [ ] **Deduplicate `calculateSunniness` across scripts** — the function is copy-pasted in `src/utils/weatherStorage.js`, `scripts/populate-db.js`, and `scripts/backfill-historical.js`. A change to the WMO code mapping must be made in three places. Extract to a shared `scripts/utils.js` and import it in both scripts (can't import from `src/` in Node scripts directly without a build step).
-- [ ] **Remove dead scripts** — `scripts/populate-historical-data.js` and `scripts/recheck-historical-data.js` import from `src/utils/` files that no longer exist. They can't run. Delete them.
+- [x] **Deduplicate `calculateSunniness` across scripts** — extracted to `scripts/utils.js`; both `populate-db.js` and `backfill-historical.js` import from it.
+- [x] **Remove dead scripts** — `scripts/populate-historical-data.js` and `scripts/recheck-historical-data.js` deleted.
 - [ ] **ESLint v9 flat config migration** — currently pinned to v8 to avoid breaking `.eslintrc.cjs`. Dependabot is ignoring ESLint major bumps. Should migrate to `eslint.config.js` flat config when convenient so Dependabot can keep ESLint current.
 - [ ] **Add tests for weatherStorage error paths** — no test coverage for: network failure in `fetchAndStoreWeather`, malformed API response, localStorage quota exceeded. Add to `weatherStorage.test.js`.
 
@@ -115,12 +115,12 @@ Full rebuild of the stack using the current app as the functional spec. UI and f
 
 These are small fixes on the current codebase that are cheaper to do before the migration than to carry forward as debt.
 
-- [ ] **Fix `storeMutate` in useEffect dep array (Index.jsx)** — `storeMutate` is recreated each render; the effect fires on every render. Drop it from the dep array and add an eslint-disable comment explaining why. (`src/pages/Index.jsx` useEffect at line ~71)
-- [ ] **Validate Open-Meteo response shape** — guard that throws if `temperature_2m_max[0]`, `wind_speed_10m`, or `precipitation` are missing/undefined before storing. (`src/utils/weatherStorage.js`)
-- [ ] **Delete dead scripts** — `scripts/populate-historical-data.js` and `scripts/recheck-historical-data.js` reference files that no longer exist; delete them.
-- [ ] **Deduplicate `calculateSunniness`** — extract to `scripts/utils.js`, import in `populate-db.js` and `backfill-historical.js`.
+- [x] **Fix `storeMutate` in useEffect dep array (Index.jsx)** — dropped `storeMutate` from dep array; `storeMutate` is a stable ref from `useMutation` but its identity changes each render in some versions; `weather` alone is the correct dependency.
+- [x] **Validate Open-Meteo response shape** — added guard for hourly arrays shorter than 18 entries (minimum needed for the 6am–6pm daytime window). (`src/utils/weatherStorage.js`)
+- [x] **Delete dead scripts** — already gone (`populate-historical-data.js`, `recheck-historical-data.js` were removed in a prior cleanup).
+- [x] **Deduplicate `calculateSunniness`** — already done; `scripts/utils.js` is the source of truth; both `populate-db.js` and `backfill-historical.js` import from it. The copy in `src/utils/weatherStorage.js` is intentional (client bundle can't import from `scripts/`).
 - [ ] **Supabase data snapshot** — run `pg_dump` from the Supabase dashboard (Settings → Database → Backups, or use the CLI) and save as `backups/supabase-YYYY-MM-DD.sql`. Keep locally; don't commit.
-- [ ] **KV follower snapshot** — run `node -e "import('@vercel/kv').then(({kv})=>kv.smembers('cybw:ap:followers').then(console.log))"` with production env vars and save the list. Safety net in case KV data needs to be re-seeded.
+- [ ] **KV follower snapshot** — run `node --env-file=.env.local -e "import('@vercel/kv').then(({kv})=>kv.smembers('cybw:ap:followers').then(f=>console.log(JSON.stringify(f,null,2))))"` with production env vars and save the list.
 
 ---
 
