@@ -8,7 +8,7 @@ A hobby webapp that checks if today's weather in Wellington, NZ is good enough t
 
 - **Live**: https://canyoubeatwellington.radomski.co.nz/
 - **Repo**: https://github.com/patatrat/CanYouBeatWellington
-- **Stack**: React 18 + Vite 8 + React Router 7 + Tailwind CSS + shadcn/ui + Supabase
+- **Stack**: React 18 + Vite 8 + React Router 7 + Tailwind CSS + shadcn/ui + Supabase *(migration to Next.js 15 + Neon planned — see Migration Spec)*
 - **Analytics**: Vercel Analytics
 - **Hosting**: Vercel (auto-deploys on push to `main`)
 - **Originally built with**: Lovable (formerly GPT Engineer) — legacy files removed
@@ -49,7 +49,7 @@ Data source: Open-Meteo API (free, no key required).
 - [x] **Remove Lovable/GPT Engineer legacy files** — deleted `gpt-engineer.toml` and `.gpt_engineer/` directory; revoked GitHub access
 
 ### P2 — Bug fixes (from code review, April 2026)
-- [ ] **Fix React Query invalidation in VotingButtons** — `queryClient.invalidateQueries(['todaysRecord'])` uses the v4 API; v5 requires `invalidateQueries({ queryKey: ['todaysRecord'] })`. Currently vote counts don't update in-page after voting — user has to refresh. Fix: `VotingButtons.jsx:54`.
+- [x] **Fix React Query invalidation in VotingButtons** — updated to v5 API `invalidateQueries({ queryKey: ['todaysRecord'] })`. (`VotingButtons.jsx:56`)
 - [ ] **Fix `mutation` in useEffect dependency array (Index.jsx)** — `mutation` object is recreated each render, so the effect fires repeatedly. Either wrap `storeDailyRecord` in `useCallback` or drop `mutation` from the dep array and accept the lint warning with a comment.
 - [ ] **Validate API response shape before using (weatherStorage.js)** — if Open-Meteo returns 200 with missing fields (e.g. `temperature_2m_max[0]` is undefined), the app silently stores `undefined` in Supabase. Add a guard that throws if required fields are absent.
 
@@ -101,7 +101,258 @@ Data source: Open-Meteo API (free, no key required).
 
 ---
 
-## Decisions Log
+## Migration Spec — Next.js + Neon rebuild
+
+Full rebuild of the stack using the current app as the functional spec. UI and feature parity is the goal — no new features during the migration. The rebuild happens on a long-lived `nextjs` branch in this repo; production is untouched until cutover.
+
+**Why:** Single source of truth for the daily verdict (eliminates the home/history divergence class of bug), SSR makes the page indexable by search engines, no client-side DB credentials, no Supabase auto-pause workaround, consistent with every other project in the portfolio.
+
+**New stack:** Next.js 15 App Router · TypeScript throughout · @neondatabase/serverless · Vercel Cron (replaces GH Actions daily weather) · shadcn/ui + Tailwind (unchanged) · Vercel KV (unchanged, ActivityPub) · Vitest (unchanged)
+
+---
+
+### Phase 0 — Pre-migration housekeeping (do on `main` first)
+
+These are small fixes on the current codebase that are cheaper to do before the migration than to carry forward as debt.
+
+- [ ] **Fix `storeMutate` in useEffect dep array (Index.jsx)** — `storeMutate` is recreated each render; the effect fires on every render. Drop it from the dep array and add an eslint-disable comment explaining why. (`src/pages/Index.jsx` useEffect at line ~71)
+- [ ] **Validate Open-Meteo response shape** — guard that throws if `temperature_2m_max[0]`, `wind_speed_10m`, or `precipitation` are missing/undefined before storing. (`src/utils/weatherStorage.js`)
+- [ ] **Delete dead scripts** — `scripts/populate-historical-data.js` and `scripts/recheck-historical-data.js` reference files that no longer exist; delete them.
+- [ ] **Deduplicate `calculateSunniness`** — extract to `scripts/utils.js`, import in `populate-db.js` and `backfill-historical.js`.
+- [ ] **Supabase data snapshot** — run `pg_dump` from the Supabase dashboard (Settings → Database → Backups, or use the CLI) and save as `backups/supabase-YYYY-MM-DD.sql`. Keep locally; don't commit.
+- [ ] **KV follower snapshot** — run `node -e "import('@vercel/kv').then(({kv})=>kv.smembers('cybw:ap:followers').then(console.log))"` with production env vars and save the list. Safety net in case KV data needs to be re-seeded.
+
+---
+
+### Phase 1 — Scaffold & routing
+
+Branch: `git checkout -b nextjs main`
+
+- [ ] Run `npx create-next-app@latest . --typescript --tailwind --app --src-dir --import-alias "@/*"` — accept overwrite prompts for `tailwind.config`, `tsconfig`, `package.json`
+- [ ] Remove Next.js boilerplate (`app/page.tsx` placeholder, `public/next.svg`, etc.)
+- [ ] Copy across unchanged assets: `public/` (SVGs, PNGs, favicon), `src/utils/rulesStorage.js` → `src/utils/rulesStorage.ts` (add types), `src/utils/quips.js`, `src/utils/weatherFunFacts.js`
+- [ ] Port shadcn/ui setup (`components.json`, `src/components/ui/`) — run `npx shadcn@latest init` then add back only the components in use: `button`, `tooltip`, `sonner`, `calendar`, `badge`, `popover`
+- [ ] Create stub pages: `app/page.tsx` (home), `app/about/page.tsx`, `app/history/page.tsx`, `app/not-found.tsx`
+- [ ] Verify: `npm run dev` loads, routing works, no build errors
+
+---
+
+### Phase 2 — Neon database (test instance)
+
+- [ ] Create a new Neon project: **"can-you-beat-wellington"** in `aws-ap-southeast-2` (same region as Umami, minimises latency from Vercel Sydney)
+- [ ] Create two connection strings in Neon: pooled (`DATABASE_URL`) for app queries, unpooled (`DATABASE_URL_UNPOOLED`) for migrations
+- [ ] **Schema migration** — run the following DDL against the new Neon project:
+
+```sql
+-- Weather records
+CREATE TABLE daily_weather_records (
+  date          DATE PRIMARY KEY,
+  temperature   NUMERIC(5,2) NOT NULL,
+  wind_speed    NUMERIC(5,2) NOT NULL,
+  rain          NUMERIC(5,2) NOT NULL DEFAULT 0,
+  sunniness     INTEGER,
+  agree_count   INTEGER NOT NULL DEFAULT 0,
+  disagree_count INTEGER NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Vote dedup
+CREATE TABLE vote_tokens (
+  token TEXT NOT NULL,
+  date  DATE NOT NULL,
+  PRIMARY KEY (token, date)
+);
+
+-- Atomic vote increment — same logic as current Supabase SECURITY DEFINER fn
+CREATE OR REPLACE FUNCTION increment_vote(
+  record_date DATE,
+  vote_type   TEXT,
+  voter_token TEXT
+) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  INSERT INTO vote_tokens (token, date) VALUES (voter_token, record_date);
+  IF vote_type = 'agree' THEN
+    UPDATE daily_weather_records SET agree_count = agree_count + 1 WHERE date = record_date;
+  ELSIF vote_type = 'disagree' THEN
+    UPDATE daily_weather_records SET disagree_count = disagree_count + 1 WHERE date = record_date;
+  END IF;
+END;
+$$;
+```
+
+- [ ] **Data migration** — export from Supabase and import to Neon:
+  1. Supabase dashboard → SQL editor → `COPY daily_weather_records TO STDOUT WITH CSV HEADER` — save as `backups/weather.csv`
+  2. Same for `vote_tokens` → `backups/vote_tokens.csv`
+  3. `psql $DATABASE_URL_UNPOOLED -c "\COPY daily_weather_records FROM 'backups/weather.csv' CSV HEADER"`
+  4. Same for `vote_tokens`
+  5. Verify row counts match Supabase
+- [ ] Add `DATABASE_URL` and `DATABASE_URL_UNPOOLED` to Vercel environment (preview + production), scoped to the `nextjs` branch for now
+- [ ] Install driver: `npm install @neondatabase/serverless`
+- [ ] Create `src/lib/db.ts` — exports a `neon` SQL client using `DATABASE_URL`
+
+---
+
+### Phase 3 — Server-side data layer
+
+Replace all client-side Supabase calls with server-side Neon queries. No client ever touches the database.
+
+- [ ] **`src/lib/weather.ts`** — server-only module:
+  - `getTodaysRecord(): Promise<DailyWeatherRecord | null>` — queries by today's NZT date
+  - `getHistoricalRecords(from, to): Promise<DailyWeatherRecord[]>` — for About/History pages
+  - `upsertWeatherRecord(record)` — used by the daily cron
+- [ ] **`src/lib/votes.ts`** — server-only module:
+  - `castVote(date, type, token): Promise<{alreadyVoted: boolean}>` — wraps `increment_vote()`
+- [ ] **`src/types/db.ts`** — TypeScript types for `DailyWeatherRecord`, matching DB schema
+- [ ] Delete `src/integrations/supabase/` directory entirely
+
+---
+
+### Phase 4 — Home page
+
+The home page is the critical path. It must show the correct verdict on load, without any client-side weather fetch.
+
+- [ ] **Home page as a Server Component** — `app/page.tsx`:
+  - Fetch today's NZT date server-side
+  - Call `getTodaysRecord()` — if record exists, use it; otherwise fetch live from Open-Meteo (handles the window before the daily cron runs)
+  - Compute `isGood` using `getThresholds(date)` — same `rulesStorage.ts` logic, server-side
+  - Pass verdict, weather stats, and forecast data as props to client components
+  - Revalidate every 60 minutes (`export const revalidate = 3600`) so CDN serves fresh data without a per-user Open-Meteo call
+- [ ] **VotingButtons** stays a client component (`'use client'`) — calls a Server Action:
+  ```ts
+  // app/actions/vote.ts
+  'use server'
+  export async function castVoteAction(date: string, type: 'agree' | 'disagree', token: string)
+  ```
+  Replaces the direct Supabase RPC call. No DB credentials in the browser.
+- [ ] **ForecastStrip** — port as-is, receives forecast data as props (server-fetched)
+- [ ] **Remove** `src/utils/weatherStorage.js` localStorage cache — no longer needed; weather comes from the server
+
+---
+
+### Phase 5 — About and History pages
+
+Both are already data-heavy with recharts/react-day-picker. Port as Server Components with client islands for interactive elements.
+
+- [ ] `app/about/page.tsx` — Server Component, fetches full history from Neon, passes to chart components
+- [ ] `app/history/page.tsx` — Server Component, same data source
+- [ ] `MonthlyGoodDaysChart`, `MonthlyAveragesChart`, `CalendarHistory`, `SeasonBreakdown` — mark as `'use client'` (recharts requires it); receive data as props
+- [ ] `weatherFunFacts.ts` — runs server-side, no change to logic
+
+---
+
+### Phase 6 — Daily weather cron
+
+Replace the GitHub Actions daily cron with a Vercel Cron Job. Simpler, no secrets duplication between GitHub and Vercel.
+
+- [ ] Create `app/api/cron/daily-weather/route.ts` — same logic as `scripts/populate-db.js`:
+  - Fetch Open-Meteo for the last 92 days + today
+  - Upsert into Neon `daily_weather_records`
+  - Evaluate today's verdict using `getThresholds()`
+  - If good day, fan out to ActivityPub followers (same `signAndDeliver` logic)
+  - Protected by `Authorization: Bearer $CRON_SECRET` header check
+- [ ] Add to `vercel.json`:
+  ```json
+  "crons": [{ "path": "/api/cron/daily-weather", "schedule": "0 12 * * *" }]
+  ```
+- [ ] Add `CRON_SECRET` to Vercel env vars
+- [ ] Delete `.github/workflows/daily-weather.yml` (replaced by Vercel Cron)
+- [ ] Delete `.github/workflows/supabase-keepalive.yml` (Neon doesn't pause)
+- [ ] Keep `.github/workflows/announce.yml` — still useful for one-off manual announcements; update it to call the Neon-based `scripts/announce.js`
+
+---
+
+### Phase 7 — ActivityPub
+
+Minimal changes — the logic is already correct. Route Handlers replace the `api/` directory.
+
+- [ ] Move `api/well-known/webfinger.js` → `app/api/well-known/webfinger/route.ts`
+- [ ] Move `api/actor.js` → `app/api/actor/route.ts`
+- [ ] Move `api/actor/inbox.js` → `app/api/actor/inbox/route.ts`
+- [ ] Move `api/actor/outbox.js` → `app/api/actor/outbox/route.ts`
+- [ ] Move `api/actor/followers.js` → `app/api/actor/followers/route.ts`
+- [ ] Move `api/notes/[id].js` → `app/api/notes/[id]/route.ts`
+- [ ] Move `api/lib/http-signatures.js` → `src/lib/http-signatures.ts` (add types)
+- [ ] Update `vercel.json` rewrites — most become unnecessary as Next.js handles `app/api/` routing natively; keep only the `/.well-known/webfinger` rewrite if needed
+- [ ] **AP keys and KV env vars are unchanged** — same Vercel project, same keys, zero follower disruption
+
+---
+
+### Phase 8 — TypeScript, tests, CSP
+
+- [ ] Convert all new files to TypeScript; ensure `tsc --noEmit` passes in CI
+- [ ] Port Vitest tests from `src/utils/__tests__/` — `rulesStorage.test.ts` and `weatherStorage.test.ts` (remove localStorage-specific tests, add server-side fetch tests)
+- [ ] Update `vercel.json` CSP `connect-src` — remove Supabase endpoint (`qumelyuoeutlnnouhguo.supabase.co`); Neon queries are server-side so they don't need a browser-facing CSP entry
+- [ ] Update Umami script `data-website-id` — same ID, no change needed
+- [ ] Remove `@supabase/supabase-js` from `package.json`
+
+---
+
+### Phase 9 — Testing on the `nextjs` preview URL
+
+Before touching `staging` or `main`.
+
+- [ ] **Verdict correctness** — visit the preview URL; confirm today's verdict matches production
+- [ ] **Voting** — cast an agree and disagree vote; confirm counts update; confirm a second vote is blocked (same token); check `vote_tokens` table in Neon has the row
+- [ ] **Historical data** — About and History pages load; chart data matches production (spot-check 3 months)
+- [ ] **ActivityPub** — WebFinger resolves (`/.well-known/webfinger?resource=acct:CanYouBeat@...`); actor JSON is valid; inbox accepts a Follow from a test Mastodon account on the preview URL (note: the preview URL won't match the actor ID, so this is limited to structural checks)
+- [ ] **Cron** — trigger `/api/cron/daily-weather` manually with the `CRON_SECRET` header; confirm Neon is updated and logs show correct behaviour
+- [ ] **CI** — lint, type-check, test, build all pass on the `nextjs` branch
+
+---
+
+### Phase 10 — Cutover
+
+Do this in one sitting. Estimated time: 30 minutes.
+
+**Pre-cutover (same day):**
+- [ ] Final `pg_dump` of Supabase `daily_weather_records` and `vote_tokens` — captures any votes/records since Phase 2's data migration
+- [ ] Restore the delta into Neon production: `COPY ... FROM STDIN` for any rows newer than the Phase 2 snapshot date
+- [ ] Verify Neon row count matches Supabase row count
+
+**Cutover:**
+- [ ] Merge `nextjs` → `staging`; confirm staging Vercel deployment succeeds
+- [ ] Do a final smoke test on the staging URL: verdict, voting, history, AP WebFinger
+- [ ] In Vercel, update `DATABASE_URL` / `DATABASE_URL_UNPOOLED` from test Neon project to production Neon project (or promote the same project — just ensure it has the final data)
+- [ ] Merge `staging` → `main`; Vercel deploys to production
+- [ ] Verify production: home page loads with correct verdict, vote counts visible, `/actor` returns valid JSON, `/.well-known/webfinger` resolves
+
+**Post-cutover:**
+- [ ] Send a test Follow from a real Mastodon account to confirm the new inbox works end-to-end
+- [ ] Trigger the daily cron manually once to confirm Vercel Cron + Neon write works in production
+- [ ] Delete the Supabase project (Settings → General → Delete project) — keep the pg_dump as the archive
+- [ ] Update this CLAUDE.md: stack description, infrastructure table, architecture notes, key files table
+- [ ] Remove Supabase env vars from Vercel and GitHub secrets
+
+---
+
+### Env var changes summary
+
+| Variable | Action |
+|----------|--------|
+| `VITE_SUPABASE_URL` | Remove |
+| `VITE_SUPABASE_ANON_KEY` | Remove |
+| `SUPABASE_SERVICE_ROLE_KEY` | Remove |
+| `DATABASE_URL` | Add (Neon pooled) |
+| `DATABASE_URL_UNPOOLED` | Add (Neon direct, for migrations) |
+| `CRON_SECRET` | Add (protects `/api/cron/daily-weather`) |
+| `AP_PRIVATE_KEY` | Unchanged |
+| `AP_PUBLIC_KEY` | Unchanged |
+| `KV_REST_API_URL` | Unchanged |
+| `KV_REST_API_TOKEN` | Unchanged |
+
+---
+
+### Risk register
+
+| Risk | Likelihood | Mitigation |
+|------|-----------|------------|
+| ActivityPub followers drop off during cutover | Low | Same Vercel project, same KV, same actor URL and key pair — followers see no change |
+| Vote data lost in delta between Phase 2 and cutover | Low | Final pg_dump on cutover day captures delta; restore before switching env vars |
+| Neon connectivity from Vercel Edge Runtime | Low | @neondatabase/serverless is designed for this; test in Phase 9 |
+| Recharts / react-day-picker not compatible with RSC | Medium | Mark those components `'use client'`, pass data as props — standard pattern |
+| Vercel Cron timing vs GitHub Actions timing | Low | Same schedule (`0 12 * * *`); delete GH Actions workflow only after Vercel Cron confirmed working |
+
+---
 
 | Date | Decision | Reasoning |
 |------|----------|-----------|
