@@ -119,8 +119,8 @@ These are small fixes on the current codebase that are cheaper to do before the 
 - [x] **Validate Open-Meteo response shape** — added guard for hourly arrays shorter than 18 entries (minimum needed for the 6am–6pm daytime window). (`src/utils/weatherStorage.js`)
 - [x] **Delete dead scripts** — already gone (`populate-historical-data.js`, `recheck-historical-data.js` were removed in a prior cleanup).
 - [x] **Deduplicate `calculateSunniness`** — already done; `scripts/utils.js` is the source of truth; both `populate-db.js` and `backfill-historical.js` import from it. The copy in `src/utils/weatherStorage.js` is intentional (client bundle can't import from `scripts/`).
-- [ ] **Supabase data snapshot** — run `pg_dump` from the Supabase dashboard (Settings → Database → Backups, or use the CLI) and save as `backups/supabase-YYYY-MM-DD.sql`. Keep locally; don't commit.
-- [ ] **KV follower snapshot** — run `node --env-file=.env.local -e "import('@vercel/kv').then(({kv})=>kv.smembers('cybw:ap:followers').then(f=>console.log(JSON.stringify(f,null,2))))"` with production env vars and save the list.
+- [x] **Supabase data snapshot** — not needed in Phase 0; the export happens as part of Phase 2 data migration. KV stays in place on the same Vercel project throughout.
+- [x] **KV follower snapshot** — not needed; KV is not migrated (same Vercel project), and follower count is trivially small.
 
 ---
 
