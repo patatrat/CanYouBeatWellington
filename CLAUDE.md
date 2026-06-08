@@ -140,13 +140,13 @@ Branch: `nextjs` (created from `main`, pushed to `origin/nextjs`)
 
 ---
 
-### Phase 2 — Neon database (test instance) ⬅️ NEXT UP
+### Phase 2 — Neon database (test instance) ✅ DONE
 
-- [ ] Get Neon MCP access connected to this session (added to claude.ai account but not yet visible as a tool here — may need a session restart; if it still doesn't attach, do this phase via Neon dashboard + shared SQL output instead)
+- [x] Neon MCP access connected — works fine in a fresh session (no restart needed)
 
-- [ ] Create a new Neon project: **"can-you-beat-wellington"** in `aws-ap-southeast-2` (same region as Umami, minimises latency from Vercel Sydney)
-- [ ] Create two connection strings in Neon: pooled (`DATABASE_URL`) for app queries, unpooled (`DATABASE_URL_UNPOOLED`) for migrations
-- [ ] **Schema migration** — run the following DDL against the new Neon project:
+- [x] Create a new Neon project: **"can-you-beat-wellington"** (`dawn-queen-51598624`) in `aws-ap-southeast-2` (same region as Umami, minimises latency from Vercel Sydney). **Note**: the MCP `create_project` tool has no `region_id` parameter and ignores any region hint — it landed two test projects in random US regions (`us-east-2`, `us-east-1`) before the user created the real one via the Neon dashboard, where region is selectable
+- [x] Create two connection strings in Neon: pooled (`DATABASE_URL`) for app queries, unpooled (`DATABASE_URL_UNPOOLED`, no `-pooler` in the host) for migrations — both added to the `can-you-beat-wellington-nextjs` Vercel project's environment variables by the user (no Vercel MCP tool exposes env-var management, and no Vercel CLI auth was available locally)
+- [x] **Schema migration** — ran the following DDL against the new Neon project via `mcp__claude_ai_Neon__run_sql_transaction`:
 
 ```sql
 -- Weather records
@@ -185,19 +185,14 @@ END;
 $$;
 ```
 
-- [ ] **Data migration** — export from Supabase and import to Neon:
-  1. Supabase dashboard → SQL editor → `COPY daily_weather_records TO STDOUT WITH CSV HEADER` — save as `backups/weather.csv`
-  2. Same for `vote_tokens` → `backups/vote_tokens.csv`
-  3. `psql $DATABASE_URL_UNPOOLED -c "\COPY daily_weather_records FROM 'backups/weather.csv' CSV HEADER"`
-  4. Same for `vote_tokens`
-  5. Verify row counts match Supabase
-- [ ] Add `DATABASE_URL` and `DATABASE_URL_UNPOOLED` to Vercel environment (preview + production), scoped to the `nextjs` branch for now
-- [ ] Install driver: `npm install @neondatabase/serverless`
-- [ ] Create `src/lib/db.ts` — exports a `neon` SQL client using `DATABASE_URL`
+- [x] **Data migration** — no `psql`/DB password available locally for either side, so migrated via SQL round-trips through the Supabase and Neon MCP tools instead of `pg_dump`/`COPY`: generated compact `INSERT ... ON CONFLICT DO NOTHING` statements on the Supabase side with `string_agg`/`format(%L, ...)` (batched 300 rows at a time to stay under tool output limits), then executed each batch verbatim against Neon. Verified row counts match exactly: `daily_weather_records` 2345 ↔ 2345, `vote_tokens` 23 ↔ 23. Note: Supabase's `daily_weather_records` has extra `id` (uuid) and `updated_at` columns and `vote_tokens` has extra `vote_type`/`created_at` — intentionally dropped per the new schema above
+- [x] Added `DATABASE_URL` and `DATABASE_URL_UNPOOLED` to the `can-you-beat-wellington-nextjs` Vercel project environment (user did this manually via dashboard — see note above)
+- [x] Installed driver: `npm install @neondatabase/serverless`
+- [x] Created `src/lib/db.ts` — exports a `neon` SQL client (`sql`) using `DATABASE_URL`
 
 ---
 
-### Phase 3 — Server-side data layer
+### Phase 3 — Server-side data layer ⬅️ NEXT UP
 
 Replace all client-side Supabase calls with server-side Neon queries. No client ever touches the database.
 
@@ -361,6 +356,8 @@ Do this in one sitting. Estimated time: 30 minutes.
 
 | Date | Decision | Reasoning |
 |------|----------|-----------|
+| 2026-06-08 | Migrate Supabase → Neon data via SQL round-trips through MCP, not `pg_dump`/`COPY` | No `psql` or DB password available locally for either side; generated batched `INSERT ... ON CONFLICT DO NOTHING` text on the Supabase side with `string_agg`/`format`, executed verbatim against Neon. Verified row counts match exactly (2345 weather records, 23 vote tokens) |
+| 2026-06-08 | Create the Neon project via the dashboard, not the MCP `create_project` tool | The MCP tool has no `region_id` parameter and lands projects in random US regions (got `us-east-2`, then `us-east-1`) — can't target `aws-ap-southeast-2` to match the other projects and minimise Vercel Sydney latency. Dashboard creation lets you pick the region directly |
 | 2026-04-09 | Migrate hosting to Vercel | User familiar with Vercel; enables preview deploys natively |
 | 2026-04-09 | Supabase: cron ping to prevent pausing | Free solution; no migration needed |
 | 2026-04-09 | Remove CSVGen page | One-off seeding tool with hardcoded API key |
