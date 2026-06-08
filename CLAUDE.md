@@ -52,6 +52,7 @@ Data source: Open-Meteo API (free, no key required).
 - [x] **Fix React Query invalidation in VotingButtons** — updated to v5 API `invalidateQueries({ queryKey: ['todaysRecord'] })`. (`VotingButtons.jsx:56`)
 - [ ] **Fix `mutation` in useEffect dependency array (Index.jsx)** — `mutation` object is recreated each render, so the effect fires repeatedly. Either wrap `storeDailyRecord` in `useCallback` or drop `mutation` from the dep array and accept the lint warning with a comment.
 - [ ] **Validate API response shape before using (weatherStorage.js)** — if Open-Meteo returns 200 with missing fields (e.g. `temperature_2m_max[0]` is undefined), the app silently stores `undefined` in Supabase. Add a guard that throws if required fields are absent.
+- [x] **Fix fediverse fan-out evaluating the wrong day (NZT vs UTC)** — `fediverse-fanout.js` and `populate-db.js` computed `today` via `new Date().toISOString().split('T')[0]` (UTC date), which lags Wellington's NZT date by up to a day around the 12:00 UTC cron run. On 2026-06-08 the website correctly showed a "good day" (computed in NZT via Open-Meteo's `timezone=Pacific/Auckland`), but the fanout cron checked the *previous* day's (rainy) Supabase record and correctly-but-wrongly logged "not a good day — no post". Fixed by switching both scripts to `new Date().toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' })`. Fixed on `main` (`8d27b3f`) and ported to `nextjs` (`06dc254`).
 
 ### P3 — Code quality
 - [x] Remove unused Radix UI/shadcn components — deleted 43 unused ui files; removed 25 Radix packages + other dead deps; CSS bundle 45 kB → 19 kB
@@ -124,20 +125,24 @@ These are small fixes on the current codebase that are cheaper to do before the 
 
 ---
 
-### Phase 1 — Scaffold & routing
+### Phase 1 — Scaffold & routing ✅ DONE
 
-Branch: `git checkout -b nextjs main`
+Branch: `nextjs` (created from `main`, pushed to `origin/nextjs`)
 
-- [ ] Run `npx create-next-app@latest . --typescript --tailwind --app --src-dir --import-alias "@/*"` — accept overwrite prompts for `tailwind.config`, `tsconfig`, `package.json`
-- [ ] Remove Next.js boilerplate (`app/page.tsx` placeholder, `public/next.svg`, etc.)
-- [ ] Copy across unchanged assets: `public/` (SVGs, PNGs, favicon), `src/utils/rulesStorage.js` → `src/utils/rulesStorage.ts` (add types), `src/utils/quips.js`, `src/utils/weatherFunFacts.js`
-- [ ] Port shadcn/ui setup (`components.json`, `src/components/ui/`) — run `npx shadcn@latest init` then add back only the components in use: `button`, `tooltip`, `sonner`, `calendar`, `badge`, `popover`
-- [ ] Create stub pages: `app/page.tsx` (home), `app/about/page.tsx`, `app/history/page.tsx`, `app/not-found.tsx`
-- [ ] Verify: `npm run dev` loads, routing works, no build errors
+- [x] Ran `create-next-app` — Next.js 16.2.7 App Router + TypeScript + Tailwind v4, `src/` dir
+- [x] Removed Vite-specific files (`vite.config.js`, `index.html`, `src/App.jsx`, `src/main.jsx`, `src/pages/`, `src/integrations/supabase/`) and Next.js boilerplate
+- [x] Copied across unchanged assets: `public/`, `quips.js`, `weatherFunFacts.js`; ported `rulesStorage.js` → `rulesStorage.ts` with `Season`/`Thresholds`/`Weather` types
+- [x] Ported shadcn/ui setup — `button`, `tooltip`, `sonner`, `badge`, `popover`, `calendar`
+- [x] Created stub pages: `src/app/page.tsx`, `src/app/about/page.tsx`, `src/app/history/page.tsx`, `src/app/not-found.tsx`, `src/app/layout.tsx`
+- [x] Verified `npm run build` passes (4 static routes); committed as `46ee73b`
+- [x] **Deployment verified** — created a **separate Vercel project** (`prj_0EQkWQTcejggxOEqqCEI87GhCuVE`) connected to the same repo, framework preset = Next.js, with a Deploy Hook targeting the `nextjs` branch (the original `can-you-beat-wellington` Vercel project has `framework: "vite"` locked at the project level, which broke `nextjs` builds with "No Output Directory named 'dist' found" — changing it would've broken the live `main` build, so a second project was the safe path). Triggered a build via the hook → preview deployment renders the `app/page.tsx` stub ("Home — coming soon") correctly. **This project/hook is the `nextjs` preview URL referenced in Phase 9.**
+- [x] Also ported the NZT-timezone cron fix (see backlog "Fediverse fan-out checked the wrong day" below) onto `nextjs` as `06dc254`, keeping the branch in sync with `main`
 
 ---
 
-### Phase 2 — Neon database (test instance)
+### Phase 2 — Neon database (test instance) ⬅️ NEXT UP
+
+- [ ] Get Neon MCP access connected to this session (added to claude.ai account but not yet visible as a tool here — may need a session restart; if it still doesn't attach, do this phase via Neon dashboard + shared SQL output instead)
 
 - [ ] Create a new Neon project: **"can-you-beat-wellington"** in `aws-ap-southeast-2` (same region as Umami, minimises latency from Vercel Sydney)
 - [ ] Create two connection strings in Neon: pooled (`DATABASE_URL`) for app queries, unpooled (`DATABASE_URL_UNPOOLED`) for migrations
@@ -372,6 +377,8 @@ Do this in one sitting. Estimated time: 30 minutes.
 | 2026-04-11 | Security headers in vercel.json | CSP allowlists only known external endpoints; style-src unsafe-inline needed for recharts |
 | 2026-04-11 | Remove Lovable legacy files | gpt-engineer.toml and .gpt_engineer/ deleted; Lovable and Netlify GitHub app access revoked |
 | 2026-04-17 | Seasonal weather rules (Shitsville calendar) | Fixed thresholds didn't reflect Wellington's real seasons; six-season model calibrated against six years of historical data; wind limit raised from 20 → 30 km/h (old limit applied to only 12% of days) |
+| 2026-06-08 | Create a separate Vercel project for the `nextjs` branch (rather than repointing the existing project) | Existing `can-you-beat-wellington` Vercel project has `framework: "vite"` locked at the project level; switching it to Next.js would break `main`'s production Vite build. A second project (Deploy Hook scoped to `nextjs`) gives an isolated, working preview URL for migration testing with zero prod risk — matches the "test on preview before touching staging/main" approach in Phase 9 |
+| 2026-06-08 | Fix cron "today" computation to use NZT, not UTC | `toISOString().split('T')[0]` returns the UTC date, causing the fediverse fan-out and populate-db scripts to evaluate the wrong calendar day around the 12:00 UTC run boundary (NZ is UTC+12/+13) — this caused a missed "good day" notification on 2026-06-08. Switched to `toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' })` to match the website's NZT-based date derivation |
 
 ---
 
