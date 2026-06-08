@@ -209,29 +209,27 @@ Replace all client-side Supabase calls with server-side Neon queries. No client 
 
 ---
 
-### Phase 4 — Home page ⬅️ NEXT UP
+### Phase 4 — Home page ✅ DONE
 
 The home page is the critical path. It must show the correct verdict on load, without any client-side weather fetch.
 
-- [ ] **Home page as a Server Component** — `app/page.tsx`:
-  - Fetch today's NZT date server-side
-  - Call `getTodaysRecord()` — if record exists, use it; otherwise fetch live from Open-Meteo (handles the window before the daily cron runs)
-  - Compute `isGood` using `getThresholds(date)` — same `rulesStorage.ts` logic, server-side
-  - Pass verdict, weather stats, and forecast data as props to client components
-  - Revalidate every 60 minutes (`export const revalidate = 3600`) so CDN serves fresh data without a per-user Open-Meteo call
-- [ ] **VotingButtons** stays a client component (`'use client'`) — calls a Server Action:
-  ```ts
-  // app/actions/vote.ts
-  'use server'
-  export async function castVoteAction(date: string, type: 'agree' | 'disagree', token: string)
-  ```
-  Replaces the direct Supabase RPC call. No DB credentials in the browser.
-- [ ] **ForecastStrip** — port as-is, receives forecast data as props (server-fetched)
-- [ ] **Remove** `src/utils/weatherStorage.js` localStorage cache — no longer needed; weather comes from the server
+- [x] **Home page as a Server Component** — `app/page.tsx`:
+  - Fetches today's NZT date server-side, calls `getTodaysRecord()` and `fetchLiveWeather()` in parallel
+  - If no DB record exists yet (window before the daily cron runs), upserts one from the live Open-Meteo fetch so voting has something to attach to, then re-reads it
+  - Computes `isGood`/quip using `getThresholds`/`getSeasonLabel`/`getScenario`/`pickQuip` server-side — same logic as `rulesStorage.ts`/`quips.js`
+  - Passes verdict, weather stats, and forecast data as props to `WeatherStat`, `VotingButtons`, `ForecastStrip`
+  - `export const revalidate = 3600` — confirmed in build output (`Revalidate: 1h`)
+- [x] **VotingButtons** ported as a client component (`'use client'`) calling the `castVoteAction` Server Action — `src/app/actions/vote.ts` wraps `castVote()` from `src/lib/votes.ts`. No DB credentials in the browser.
+- [x] **ForecastStrip** ported as a server-rendered component, receives `ForecastDay[]` as props (typed in `src/lib/weather.ts`)
+- [x] **`src/utils/weatherStorage.js`** — already absent (removed during Phase 1 scaffolding; never carried over)
+- [x] Added `<Analytics />` from `@vercel/analytics/react` to `app/layout.tsx` (parity with the Vite app's Vercel Analytics)
+- [x] Added `src/instrumentation.ts` — calls `dns.setDefaultResultOrder("ipv4first")` on server startup. Without it, Node's `fetch` (undici) intermittently produced `ConnectTimeoutError` connecting to `api.open-meteo.com` (IPv4-only host) in the dev sandbox; `curl` from the same shell succeeded immediately. Forcing IPv4-first DNS resolution fixed it — documented as a decision below since it's a non-obvious environment quirk that could resurface in other Node/undici deployments.
+- [x] Verified end-to-end in the dev server: correct verdict, season badge, quip, weather stats, voting buttons (no SSR localStorage error, no hydration mismatch), forecast strip — all rendering live data from Neon + Open-Meteo
+- [x] `tsc --noEmit`, `eslint`, and `next build` all pass clean
 
 ---
 
-### Phase 5 — About and History pages
+### Phase 5 — About and History pages ⬅️ NEXT UP
 
 Both are already data-heavy with recharts/react-day-picker. Port as Server Components with client islands for interactive elements.
 
@@ -378,6 +376,7 @@ Do this in one sitting. Estimated time: 30 minutes.
 | 2026-04-17 | Seasonal weather rules (Shitsville calendar) | Fixed thresholds didn't reflect Wellington's real seasons; six-season model calibrated against six years of historical data; wind limit raised from 20 → 30 km/h (old limit applied to only 12% of days) |
 | 2026-06-08 | Create a separate Vercel project for the `nextjs` branch (rather than repointing the existing project) | Existing `can-you-beat-wellington` Vercel project has `framework: "vite"` locked at the project level; switching it to Next.js would break `main`'s production Vite build. A second project (Deploy Hook scoped to `nextjs`) gives an isolated, working preview URL for migration testing with zero prod risk — matches the "test on preview before touching staging/main" approach in Phase 9 |
 | 2026-06-08 | Fix cron "today" computation to use NZT, not UTC | `toISOString().split('T')[0]` returns the UTC date, causing the fediverse fan-out and populate-db scripts to evaluate the wrong calendar day around the 12:00 UTC run boundary (NZ is UTC+12/+13) — this caused a missed "good day" notification on 2026-06-08. Switched to `toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' })` to match the website's NZT-based date derivation |
+| 2026-06-08 | Force IPv4-first DNS resolution via `src/instrumentation.ts` | Node's `fetch` (undici) intermittently threw `ConnectTimeoutError` connecting to `api.open-meteo.com` from the dev sandbox — `curl` against the same host from the same shell succeeded immediately and `dns.lookup` only returned an IPv4 address. Calling `dns.setDefaultResultOrder("ipv4first")` in the `register()` hook (runs once at server startup, before any route code executes) fixed it reliably. Worth keeping for production too — Open-Meteo is IPv4-only and this removes a class of flaky-fetch risk on any undici-based Node runtime |
 
 ---
 
