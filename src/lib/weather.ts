@@ -54,6 +54,15 @@ export async function getHistoricalRecords(from: string, to: string): Promise<Da
   return rows as DailyWeatherRecord[];
 }
 
+export async function getAllHistoricalRecords(): Promise<DailyWeatherRecord[]> {
+  const rows = await sql`
+    SELECT ${sql.unsafe(RECORD_COLUMNS)}
+    FROM daily_weather_records
+    ORDER BY date DESC
+  `;
+  return rows as DailyWeatherRecord[];
+}
+
 export interface WeatherUpsert {
   date: string;
   temperature: number;

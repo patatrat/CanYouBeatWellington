@@ -229,18 +229,21 @@ The home page is the critical path. It must show the correct verdict on load, wi
 
 ---
 
-### Phase 5 — About and History pages ⬅️ NEXT UP
+### Phase 5 — About and History pages ✅ DONE
 
-Both are already data-heavy with recharts/react-day-picker. Port as Server Components with client islands for interactive elements.
+Both are already data-heavy with recharts/react-day-picker. Ported as Server Components with client islands for interactive elements.
 
-- [ ] `app/about/page.tsx` — Server Component, fetches full history from Neon, passes to chart components
-- [ ] `app/history/page.tsx` — Server Component, same data source
-- [ ] `MonthlyGoodDaysChart`, `MonthlyAveragesChart`, `CalendarHistory`, `SeasonBreakdown` — mark as `'use client'` (recharts requires it); receive data as props
-- [ ] `weatherFunFacts.ts` — runs server-side, no change to logic
+- [x] `app/about/page.tsx` — Server Component; purely static content (rules table, attribution) — turns out the Vite `About.jsx` never queried Supabase, so no data layer needed here. Replaced the `useEffect`-based `document.title` swap with the App Router `metadata` export.
+- [x] `app/history/page.tsx` — Server Component, calls new `getAllHistoricalRecords()` (added to `src/lib/weather.ts` — `getHistoricalRecords(from, to)` needed bounds, History wants the full table like the old `select('*').order('date', desc)`); `export const revalidate = 3600`; same `metadata`-based title swap
+- [x] `MonthlyGoodDaysChart`, `MonthlyAveragesChart`, `CalendarHistory`, `SeasonBreakdown` — ported to `.tsx` as `'use client'` (recharts/Radix tooltip require it); receive `DailyWeatherRecord[]` as props; `ResponsiveContainer` renders an empty wrapper in the initial server HTML and fills in the chart SVG client-side once it can measure pixel dimensions — expected recharts SSR behaviour, confirmed no console errors
+- [x] `weatherFunFacts.ts` — renamed from `.js`, added `DailyWeatherRecord[]`/`string[]` types; `FunFacts` ported as a **Server Component** (not client) — picking the `Math.random()` fact at request time avoids a hydration mismatch that a client-side `useMemo` would cause when the server and client compute different random facts
+- [x] Installed `recharts` (was missing from `package.json` — Phase 1 scaffolding never carried it over)
+- [x] Verified end-to-end in the dev server: both pages return 200, About renders the rules table/attribution, History renders the fun fact, all three chart containers, and the calendar (showing the correct current month) with live Neon data — no console errors
+- [x] `tsc --noEmit`, `eslint`, and `next build` all pass clean (`/history` shows `Revalidate: 1h` in build output)
 
 ---
 
-### Phase 6 — Daily weather cron
+### Phase 6 — Daily weather cron ⬅️ NEXT UP
 
 Replace the GitHub Actions daily cron with a Vercel Cron Job. Simpler, no secrets duplication between GitHub and Vercel.
 

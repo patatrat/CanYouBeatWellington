@@ -2,18 +2,19 @@
 // Utility functions to calculate fun facts from historical weather data
 
 import { getThresholds } from './rulesStorage';
+import type { DailyWeatherRecord } from '@/types/db';
 
-export const calculateFunFacts = (history) => {
+export const calculateFunFacts = (history: DailyWeatherRecord[]): string[] => {
   if (!history || history.length === 0) {
     return [];
   }
 
-  const facts = [];
+  const facts: string[] = [];
 
   // Basic averages
   const avgTemp = history.reduce((sum, record) => sum + record.temperature, 0) / history.length;
   const avgWind = history.reduce((sum, record) => sum + record.wind_speed, 0) / history.length;
-  const avgSunniness = history.reduce((sum, record) => sum + record.sunniness, 0) / history.length;
+  const avgSunniness = history.reduce((sum, record) => sum + (record.sunniness ?? 0), 0) / history.length;
   const avgRain = history.reduce((sum, record) => sum + record.rain, 0) / history.length;
 
   facts.push(`The average temperature in Wellington is ${avgTemp.toFixed(1)}°C`);
@@ -22,7 +23,7 @@ export const calculateFunFacts = (history) => {
   facts.push(`Wellington receives an average of ${avgRain.toFixed(1)}mm of rain per day`);
 
   // Seasonal analysis
-  const seasons = {
+  const seasons: Record<string, { months: number[]; data: DailyWeatherRecord[] }> = {
     summer: { months: [11, 0, 1], data: [] }, // Dec, Jan, Feb
     autumn: { months: [2, 3, 4], data: [] },   // Mar, Apr, May
     winter: { months: [5, 6, 7], data: [] },   // Jun, Jul, Aug
@@ -63,7 +64,7 @@ export const calculateFunFacts = (history) => {
   }
 
   // Good day statistics — computed from seasonal rules, not stored DB value
-  const isGoodDay = (r) => {
+  const isGoodDay = (r: DailyWeatherRecord) => {
     const { minTemp, maxWind, maxRain } = getThresholds(r.date);
     return r.temperature >= minTemp && r.wind_speed < maxWind && r.rain <= maxRain;
   };
@@ -118,7 +119,7 @@ export const calculateFunFacts = (history) => {
   return facts;
 };
 
-export const getRandomFunFact = (facts) => {
+export const getRandomFunFact = (facts: string[]): string | null => {
   if (!facts || facts.length === 0) return null;
   return facts[Math.floor(Math.random() * facts.length)];
 };
