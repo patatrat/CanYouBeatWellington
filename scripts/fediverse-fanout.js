@@ -46,7 +46,7 @@ async function getInboxUrl(actorUrl) {
 }
 
 const main = async () => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
   console.log(`Fediverse fan-out check for ${today}`);
 
   const { data: record, error } = await supabase
