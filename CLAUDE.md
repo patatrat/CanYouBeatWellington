@@ -192,22 +192,24 @@ $$;
 
 ---
 
-### Phase 3 — Server-side data layer ⬅️ NEXT UP
+### Phase 3 — Server-side data layer ✅ DONE
 
 Replace all client-side Supabase calls with server-side Neon queries. No client ever touches the database.
 
-- [ ] **`src/lib/weather.ts`** — server-only module:
+- [x] **`src/lib/weather.ts`** — server-only module:
+  - `getTodaysNZTDate()` — shared NZT "today" helper
   - `getTodaysRecord(): Promise<DailyWeatherRecord | null>` — queries by today's NZT date
   - `getHistoricalRecords(from, to): Promise<DailyWeatherRecord[]>` — for About/History pages
-  - `upsertWeatherRecord(record)` — used by the daily cron
-- [ ] **`src/lib/votes.ts`** — server-only module:
-  - `castVote(date, type, token): Promise<{alreadyVoted: boolean}>` — wraps `increment_vote()`
-- [ ] **`src/types/db.ts`** — TypeScript types for `DailyWeatherRecord`, matching DB schema
-- [ ] Delete `src/integrations/supabase/` directory entirely
+  - `upsertWeatherRecord(record)` — `INSERT ... ON CONFLICT (date) DO UPDATE`, for the daily cron
+- [x] **`src/lib/votes.ts`** — server-only module:
+  - `castVote(date, type, token): Promise<{alreadyVoted: boolean}>` — wraps `increment_vote()`, catches Postgres error code `23505` (unique_violation) and returns `{ alreadyVoted: true }` instead of throwing — same contract `VotingButtons` already expects from the Supabase RPC error path
+- [x] **`src/types/db.ts`** — `DailyWeatherRecord` TypeScript type matching the Neon schema
+- [x] `src/integrations/supabase/` — already removed in Phase 1's scaffold; nothing to delete
+- [x] Verified end-to-end against the live Neon DB: `getTodaysRecord`-style query returns the correct row with proper casts; `increment_vote` increments counts and correctly raises `23505` on a duplicate `(token, date)` — exactly what `castVote` catches
 
 ---
 
-### Phase 4 — Home page
+### Phase 4 — Home page ⬅️ NEXT UP
 
 The home page is the critical path. It must show the correct verdict on load, without any client-side weather fetch.
 
