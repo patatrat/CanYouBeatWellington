@@ -24,7 +24,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 
 const main = async () => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
   console.log(`Populating daily_weather_records (last 92 days → ${today})`);
   console.log(`Supabase project: ${SUPABASE_URL}\n`);
 
