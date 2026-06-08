@@ -24,6 +24,13 @@ const Section = ({ title, subtitle, children }: { title: string; subtitle?: stri
 export default async function HistoryPage() {
   const history = await getAllHistoricalRecords();
 
+  // Compute NZT date server-side and pass to CalendarHistory so the client
+  // initialises state with the same year/month as the SSR output, avoiding
+  // hydration mismatches from new Date() running at different wall-clock times.
+  const nztNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Pacific/Auckland" }));
+  const todayYear = nztNow.getFullYear();
+  const todayMonth = nztNow.getMonth();
+
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200">
       <nav className="absolute top-4 right-5 flex gap-5 text-sm font-medium text-gray-500">
@@ -54,7 +61,7 @@ export default async function HistoryPage() {
         </Section>
 
         <Section title="Calendar">
-          <CalendarHistory history={history} />
+          <CalendarHistory history={history} initialYear={todayYear} initialMonth={todayMonth} />
         </Section>
       </div>
     </div>

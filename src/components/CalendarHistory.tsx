@@ -17,6 +17,8 @@ const getFirstDayOfWeek = (year: number, month: number) => new Date(year, month,
 
 interface CalendarHistoryProps {
   history: DailyWeatherRecord[];
+  initialYear: number;
+  initialMonth: number;
 }
 
 const isGoodDay = (r: DailyWeatherRecord) => {
@@ -24,11 +26,10 @@ const isGoodDay = (r: DailyWeatherRecord) => {
   return r.temperature >= minTemp && r.wind_speed < maxWind && r.rain <= maxRain;
 };
 
-const CalendarHistory = ({ history }: CalendarHistoryProps) => {
-  const [current, setCurrent] = useState(() => {
-    const d = new Date();
-    return { year: d.getFullYear(), month: d.getMonth() };
-  });
+const CalendarHistory = ({ history, initialYear, initialMonth }: CalendarHistoryProps) => {
+  // Initial state comes from the server component (NZT date) so SSR and client
+  // see the same value — no hydration mismatch from new Date() on client.
+  const [current, setCurrent] = useState({ year: initialYear, month: initialMonth });
 
   const historyMap = useMemo(() => {
     const map = new Map<string, DailyWeatherRecord>();
