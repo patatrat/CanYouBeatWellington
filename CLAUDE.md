@@ -285,16 +285,19 @@ Route Handlers replace the `api/` directory. Routes placed at their public URLs 
 
 ---
 
-### Phase 9 — Testing on the `nextjs` preview URL
+### Phase 9 — Testing on the `nextjs` preview URL ⬅️ IN PROGRESS
 
 Before touching `staging` or `main`.
+
+Preview URL: `https://can-you-beat-wellington-nextjs-git-nextjs-patatrats-projects.vercel.app`
 
 - [ ] **Verdict correctness** — visit the preview URL; confirm today's verdict matches production
 - [ ] **Voting** — cast an agree and disagree vote; confirm counts update; confirm a second vote is blocked (same token); check `vote_tokens` table in Neon has the row
 - [ ] **Historical data** — About and History pages load; chart data matches production (spot-check 3 months)
-- [ ] **ActivityPub** — WebFinger resolves (`/.well-known/webfinger?resource=acct:CanYouBeat@...`); actor JSON is valid; inbox accepts a Follow from a test Mastodon account on the preview URL (note: the preview URL won't match the actor ID, so this is limited to structural checks)
+- [x] **ActivityPub — WebFinger** — `/.well-known/webfinger?resource=acct:CanYouBeat@canyoubeatwellington.radomski.co.nz` returns correct subject + links JSON ✓
+- [ ] **ActivityPub — actor JSON** — skipped on preview; `AP_PUBLIC_KEY` / `AP_PRIVATE_KEY` are marked sensitive in Vercel and can't be copied to the preview project without rolling them. These env vars will be set at Phase 10 cutover when configuring the production `nextjs` project (same key pair — no rolling needed, no follower disruption)
 - [ ] **Cron** — trigger `/api/cron/daily-weather` manually with the `CRON_SECRET` header; confirm Neon is updated and logs show correct behaviour
-- [ ] **CI** — lint, type-check, test, build all pass on the `nextjs` branch
+- [x] **CI** — lint, type-check, test (50 tests), build, audit all pass on the `nextjs` branch (`ci-nextjs.yml`, run `27187471104`)
 
 ---
 
