@@ -83,6 +83,46 @@ export async function upsertWeatherRecord(record: WeatherUpsert): Promise<void> 
   `;
 }
 
+// Fetch the last `pastDays` of Wellington weather from Open-Meteo, upsert
+// all past records into Neon, and return the count + today's record.
+// Used by the daily cron route (/api/cron/daily-weather).
+export async function fetchAndStoreBatch(
+  pastDays = 92,
+): Promise<{ stored: number; todayRecord: WeatherUpsert | null }> {
+  const today = getTodaysNZTDate();
+
+  const url =
+    `https://api.open-meteo.com/v1/forecast` +
+    `?latitude=-41.2866&longitude=174.7756` +
+    `&past_days=${pastDays}` +
+    `&daily=weather_code,temperature_2m_max` +
+    `&hourly=precipitation,wind_speed_10m` +
+    `&timezone=Pacific%2FAuckland`;
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Open-Meteo error ${response.status}`);
+  const data = await response.json();
+
+  const records: WeatherUpsert[] = [];
+  for (let i = 0; i < data.daily.time.length; i++) {
+    if (data.daily.time[i] > today) break;
+    records.push({
+      date: data.daily.time[i],
+      temperature: data.daily.temperature_2m_max[i] ?? 0,
+      wind_speed: parseFloat(calculateDaytimeWind(data.hourly.wind_speed_10m, i).toFixed(2)),
+      sunniness: calculateSunniness(data.daily.weather_code[i] ?? 0),
+      rain: parseFloat(calculateDaytimeRain(data.hourly.precipitation, i).toFixed(2)),
+    });
+  }
+
+  await Promise.all(records.map(r => upsertWeatherRecord(r)));
+
+  return {
+    stored: records.length,
+    todayRecord: records.find(r => r.date === today) ?? null,
+  };
+}
+
 export interface ForecastDay {
   date: string;
   temperature: number;

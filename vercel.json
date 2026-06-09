@@ -1,4 +1,7 @@
 {
+  "crons": [
+    { "path": "/api/cron/daily-weather", "schedule": "0 12 * * *" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
