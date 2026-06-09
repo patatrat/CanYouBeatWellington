@@ -273,13 +273,15 @@ Route Handlers replace the `api/` directory. Routes placed at their public URLs 
 
 ---
 
-### Phase 8 — TypeScript, tests, CSP
+### Phase 8 — TypeScript, tests, CSP ✅ DONE
 
-- [ ] Convert all new files to TypeScript; ensure `tsc --noEmit` passes in CI
-- [ ] Port Vitest tests from `src/utils/__tests__/` — `rulesStorage.test.ts` and `weatherStorage.test.ts` (remove localStorage-specific tests, add server-side fetch tests)
-- [ ] Update `vercel.json` CSP `connect-src` — remove Supabase endpoint (`qumelyuoeutlnnouhguo.supabase.co`); Neon queries are server-side so they don't need a browser-facing CSP entry
-- [ ] Update Umami script `data-website-id` — same ID, no change needed
-- [ ] Remove `@supabase/supabase-js` from `package.json`
+- [x] **All new files are TypeScript** — `src/utils/quips.js` was the last `.js` file in `src/`; converted to `quips.ts` with proper types
+- [x] **Vitest set up** — added `vitest ^3.2.0` to devDependencies, `"test": "vitest run"` script, `vitest.config.ts` with `@/*` alias; `src/utils/__tests__/rulesStorage.test.ts` ported from `main` (50 tests covering all seasons, boundary conditions)
+- [x] **weatherStorage tests** — not ported; `weatherStorage.js` no longer exists (server-side weather is in `src/lib/weather.ts`). The localStorage and client-fetch tests have no equivalent. Server-side fetch tests would require mocking Neon + Open-Meteo — left as a future addition if needed
+- [x] **`tsc --noEmit` added to CI** — new `.github/workflows/ci-nextjs.yml` runs lint + typecheck + test + build on the `nextjs` branch. **Note**: the build step needs `DATABASE_URL` added as a GitHub Actions secret (same value as Vercel env var) — without it, `next build` fails when pre-rendering the home page during ISR static generation
+- [x] **CSP updated** — `qumelyuoeutlnnouhguo.supabase.co` already absent from `vercel.json` `connect-src` (removed when Supabase client was dropped in Phase 1)
+- [x] **Umami `data-website-id`** — same ID, no change needed
+- [x] **`@supabase/supabase-js`** — already absent from `package.json` (never added to the Next.js scaffold)
 
 ---
 

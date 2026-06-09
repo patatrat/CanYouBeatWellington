@@ -2,7 +2,10 @@
 // Scenario is determined by which of the three criteria (temp/wind/rain) are met.
 // Each array should have 4-6 entries so rotation feels natural.
 
-const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+type Scenario = keyof typeof QUIPS;
+type ForecastBucket = keyof typeof FORECAST_SUMMARY;
+
+const pick = (arr: string[]): string => arr[Math.floor(Math.random() * arr.length)];
 
 // ── Today's verdict quips ────────────────────────────────────────────────────
 
@@ -87,7 +90,7 @@ export const QUIPS = {
     "At least it's consistent.",
     "Honestly, respect the audacity.",
   ],
-};
+} as const satisfies Record<string, string[]>;
 
 // ── Forecast summary quips ───────────────────────────────────────────────────
 // Shown below the 6-day forecast strip based on how many good days are coming.
@@ -124,11 +127,11 @@ export const FORECAST_SUMMARY = {
     "Something's off. This is too good.",
     "A proper run of good weather. Don't tell anyone.",
   ],
-};
+} as const satisfies Record<string, string[]>;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-export const getScenario = (tempMet, windMet, rainMet) => {
+export const getScenario = (tempMet: boolean, windMet: boolean, rainMet: boolean): Scenario => {
   if (tempMet  && windMet  && rainMet)  return 'GOOD';
   if (tempMet  && windMet  && !rainMet) return 'RAIN_ONLY';
   if (tempMet  && !windMet && rainMet)  return 'WIND_ONLY';
@@ -139,11 +142,13 @@ export const getScenario = (tempMet, windMet, rainMet) => {
   return 'ALL_BAD';
 };
 
-export const pickQuip = (scenario) => pick(QUIPS[scenario] ?? QUIPS.ALL_BAD);
+export const pickQuip = (scenario: Scenario): string =>
+  pick([...(QUIPS[scenario] ?? QUIPS.ALL_BAD)]);
 
-export const pickForecastSummary = (goodDayCount) => {
-  if (goodDayCount === 0) return pick(FORECAST_SUMMARY.none);
-  if (goodDayCount === 1) return pick(FORECAST_SUMMARY.one);
-  if (goodDayCount <= 3)  return pick(FORECAST_SUMMARY.few);
-  return pick(FORECAST_SUMMARY.many);
+export const pickForecastSummary = (goodDayCount: number): string => {
+  const bucket: ForecastBucket =
+    goodDayCount === 0 ? 'none' :
+    goodDayCount === 1 ? 'one' :
+    goodDayCount <= 3  ? 'few' : 'many';
+  return pick([...FORECAST_SUMMARY[bucket]]);
 };
