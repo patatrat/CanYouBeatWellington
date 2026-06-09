@@ -50,7 +50,7 @@ const CalendarHistory = ({ history, initialYear, initialMonth }: CalendarHistory
   ];
 
   return (
-    <div className="flex flex-col items-center space-y-4">
+    <div className="flex flex-col items-center space-y-4 text-gray-800">
       {/* Legend */}
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
         <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Good Day</span>
