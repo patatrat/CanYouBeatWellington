@@ -243,40 +243,33 @@ Both are already data-heavy with recharts/react-day-picker. Ported as Server Com
 
 ---
 
-### Phase 6 — Daily weather cron ⬅️ NEXT UP
+### Phase 6 — Daily weather cron ✅ DONE
 
 Replace the GitHub Actions daily cron with a Vercel Cron Job. Simpler, no secrets duplication between GitHub and Vercel.
 
-- [ ] Create `app/api/cron/daily-weather/route.ts` — same logic as `scripts/populate-db.js`:
-  - Fetch Open-Meteo for the last 92 days + today
-  - Upsert into Neon `daily_weather_records`
-  - Evaluate today's verdict using `getThresholds()`
-  - If good day, fan out to ActivityPub followers (same `signAndDeliver` logic)
-  - Protected by `Authorization: Bearer $CRON_SECRET` header check
-- [ ] Add to `vercel.json`:
-  ```json
-  "crons": [{ "path": "/api/cron/daily-weather", "schedule": "0 12 * * *" }]
-  ```
-- [ ] Add `CRON_SECRET` to Vercel env vars
-- [ ] Delete `.github/workflows/daily-weather.yml` (replaced by Vercel Cron)
-- [ ] Delete `.github/workflows/supabase-keepalive.yml` (Neon doesn't pause)
-- [ ] Keep `.github/workflows/announce.yml` — still useful for one-off manual announcements; update it to call the Neon-based `scripts/announce.js`
+- [x] Created `app/api/cron/daily-weather/route.ts` — fetches Open-Meteo for the last 92 days + today, upserts to Neon, evaluates today's verdict, fans out to ActivityPub followers on good days, protected by `CRON_SECRET` bearer check
+- [x] Added cron to `vercel.json`: `{ "path": "/api/cron/daily-weather", "schedule": "0 12 * * *" }`
+- [x] `CRON_SECRET` added to Vercel env vars by user
+- [x] Deleted `.github/workflows/daily-weather.yml` (replaced by Vercel Cron)
+- [x] Deleted `.github/workflows/supabase-keepalive.yml` (Neon doesn't pause)
+- [x] Kept `.github/workflows/announce.yml` — still useful for one-off manual announcements
+- [x] Ported `api/lib/http-signatures.js` → `src/lib/http-signatures.ts` (typed; used by both cron and inbox)
 
 ---
 
-### Phase 7 — ActivityPub
+### Phase 7 — ActivityPub ✅ DONE
 
-Minimal changes — the logic is already correct. Route Handlers replace the `api/` directory.
+Route Handlers replace the `api/` directory. Routes placed at their public URLs directly (no rewrites needed — unlike the Vite app which had `vercel.json` rewrites from `/actor` → `/api/actor` etc.).
 
-- [ ] Move `api/well-known/webfinger.js` → `app/api/well-known/webfinger/route.ts`
-- [ ] Move `api/actor.js` → `app/api/actor/route.ts`
-- [ ] Move `api/actor/inbox.js` → `app/api/actor/inbox/route.ts`
-- [ ] Move `api/actor/outbox.js` → `app/api/actor/outbox/route.ts`
-- [ ] Move `api/actor/followers.js` → `app/api/actor/followers/route.ts`
-- [ ] Move `api/notes/[id].js` → `app/api/notes/[id]/route.ts`
-- [ ] Move `api/lib/http-signatures.js` → `src/lib/http-signatures.ts` (add types)
-- [ ] Update `vercel.json` rewrites — most become unnecessary as Next.js handles `app/api/` routing natively; keep only the `/.well-known/webfinger` rewrite if needed
-- [ ] **AP keys and KV env vars are unchanged** — same Vercel project, same keys, zero follower disruption
+- [x] `api/well-known/webfinger.js` → `src/app/.well-known/webfinger/route.ts` (serves `/.well-known/webfinger`)
+- [x] `api/actor.js` → `src/app/actor/route.ts` (serves `/actor`)
+- [x] `api/actor/inbox.js` → `src/app/actor/inbox/route.ts` (serves `/actor/inbox`)
+- [x] `api/actor/outbox.js` → `src/app/actor/outbox/route.ts` (serves `/actor/outbox`)
+- [x] `api/actor/followers.js` → `src/app/actor/followers/route.ts` (serves `/actor/followers`)
+- [x] `api/notes/[id].js` → `src/app/notes/[id]/route.ts` (serves `/notes/[id]`)
+- [x] Deleted `api/` directory entirely — no longer needed
+- [x] No `vercel.json` rewrites needed — Next.js App Router handles all routes natively
+- [x] **AP keys and KV env vars are unchanged** — same Vercel project, same keys, zero follower disruption
 
 ---
 
@@ -380,6 +373,7 @@ Do this in one sitting. Estimated time: 30 minutes.
 | 2026-06-08 | Create a separate Vercel project for the `nextjs` branch (rather than repointing the existing project) | Existing `can-you-beat-wellington` Vercel project has `framework: "vite"` locked at the project level; switching it to Next.js would break `main`'s production Vite build. A second project (Deploy Hook scoped to `nextjs`) gives an isolated, working preview URL for migration testing with zero prod risk — matches the "test on preview before touching staging/main" approach in Phase 9 |
 | 2026-06-08 | Fix cron "today" computation to use NZT, not UTC | `toISOString().split('T')[0]` returns the UTC date, causing the fediverse fan-out and populate-db scripts to evaluate the wrong calendar day around the 12:00 UTC run boundary (NZ is UTC+12/+13) — this caused a missed "good day" notification on 2026-06-08. Switched to `toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' })` to match the website's NZT-based date derivation |
 | 2026-06-08 | Force IPv4-first DNS resolution via `src/instrumentation.ts` | Node's `fetch` (undici) intermittently threw `ConnectTimeoutError` connecting to `api.open-meteo.com` from the dev sandbox — `curl` against the same host from the same shell succeeded immediately and `dns.lookup` only returned an IPv4 address. Calling `dns.setDefaultResultOrder("ipv4first")` in the `register()` hook (runs once at server startup, before any route code executes) fixed it reliably. Worth keeping for production too — Open-Meteo is IPv4-only and this removes a class of flaky-fetch risk on any undici-based Node runtime |
+| 2026-06-09 | Place ActivityPub routes at public URLs (`/actor`, `/.well-known/webfinger`, etc.) not under `/api/` | The spec suggested `/api/actor` but the existing actor's `id` field is `https://domain/actor` — mismatching would break existing followers. In Next.js App Router, placing routes at the correct public paths (`src/app/actor/route.ts`, `src/app/.well-known/webfinger/route.ts`, etc.) eliminates the `vercel.json` rewrites the Vite app required |
 
 ---
 

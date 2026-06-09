@@ -1,25 +1,13 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
-import { verifySignature, signAndDeliver } from '../lib/http-signatures.js';
-
-// Disable Vercel's body parser — ActivityPub uses application/activity+json
-// which Vercel won't auto-parse, but disabling ensures we always get the raw stream.
-export const config = { api: { bodyParser: false } };
+import { verifySignature, signAndDeliver } from '@/lib/http-signatures';
 
 const BASE = 'https://canyoubeatwellington.radomski.co.nz';
 const ACTOR_ID = `${BASE}/actor`;
 const KEY_ID = `${ACTOR_ID}#main-key`;
 const FOLLOWERS_KEY = 'cybw:ap:followers';
 
-async function readRawBody(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    req.on('data', c => chunks.push(c));
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    req.on('error', reject);
-  });
-}
-
-async function sendAccept(followActivity, followerActorUrl) {
+async function sendAccept(followActivity: unknown, followerActorUrl: string) {
   const privateKeyPem = process.env.AP_PRIVATE_KEY?.replace(/\\n/g, '\n');
   if (!privateKeyPem) throw new Error('AP_PRIVATE_KEY not configured');
 
@@ -41,28 +29,22 @@ async function sendAccept(followActivity, followerActorUrl) {
   await signAndDeliver(actor.inbox, accept, KEY_ID, privateKeyPem);
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.status(405).end();
-    return;
-  }
-
-  const rawBody = await readRawBody(req);
+export async function POST(req: NextRequest) {
+  const rawBody = await req.text();
+  const headers = Object.fromEntries(req.headers.entries());
 
   try {
-    await verifySignature('POST', '/actor/inbox', req.headers);
+    await verifySignature('POST', '/actor/inbox', headers);
   } catch (err) {
-    console.error('Inbox: signature rejected:', err.message);
-    res.status(401).json({ error: 'Invalid signature' });
-    return;
+    console.error('Inbox: signature rejected:', (err as Error).message);
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
-  let activity;
+  let activity: { type: string; actor: string | { id?: string }; object?: { type: string } };
   try {
     activity = JSON.parse(rawBody);
   } catch {
-    res.status(400).json({ error: 'Invalid JSON' });
-    return;
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
   try {
@@ -82,10 +64,9 @@ export default async function handler(req, res) {
     }
     // All other activity types (Delete, etc.) are silently accepted per AP spec
   } catch (err) {
-    console.error('Inbox: error processing activity:', err.message);
-    res.status(500).json({ error: 'Internal error' });
-    return;
+    console.error('Inbox: error processing activity:', (err as Error).message);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 
-  res.status(202).end();
+  return new NextResponse(null, { status: 202 });
 }
