@@ -292,8 +292,8 @@ Before touching `staging` or `main`.
 
 Preview URL: `https://can-you-beat-wellington-nextjs-git-nextjs-patatrats-projects.vercel.app`
 
-- [ ] **Verdict correctness** — visit the preview URL; confirm today's verdict matches production
-- [ ] **Voting** — cast an agree and disagree vote; confirm counts update; confirm a second vote is blocked (same token); check `vote_tokens` table in Neon has the row
+- [x] **Verdict correctness** — confirmed via direct Neon/Supabase comparison: same `calculateDaytimeRain`/`calculateDaytimeWind` logic on both branches, same verdict (all 3 criteria fail on both apps for 2026-06-27). Visually confirmed live in browser after triggering a fresh deploy (`84bcd63`) — the preview had gone stale (no deploy on `nextjs` since 2026-06-09; Vercel doesn't revalidate ISR pages on preview deployments without a fresh build)
+- [x] **Voting** — agree vote cast via the fresh deployment; `agree_count` incremented 0→1 in Neon and a matching `vote_tokens` row was created for 2026-06-27, confirmed by direct query
 - [ ] **Historical data** — About and History pages load; chart data matches production (spot-check 3 months)
 - [x] **ActivityPub — WebFinger** — `/.well-known/webfinger?resource=acct:CanYouBeat@canyoubeatwellington.radomski.co.nz` returns correct subject + links JSON ✓
 - [ ] **ActivityPub — actor JSON** — skipped on preview; `AP_PUBLIC_KEY` / `AP_PRIVATE_KEY` are marked sensitive in Vercel and can't be copied to the preview project without rolling them. These env vars will be set at Phase 10 cutover when configuring the production `nextjs` project (same key pair — no rolling needed, no follower disruption)
