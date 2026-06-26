@@ -294,7 +294,7 @@ Preview URL: `https://can-you-beat-wellington-nextjs-git-nextjs-patatrats-projec
 
 - [x] **Verdict correctness** — confirmed via direct Neon/Supabase comparison: same `calculateDaytimeRain`/`calculateDaytimeWind` logic on both branches, same verdict (all 3 criteria fail on both apps for 2026-06-27). Visually confirmed live in browser after triggering a fresh deploy (`84bcd63`) — the preview had gone stale (no deploy on `nextjs` since 2026-06-09; Vercel doesn't revalidate ISR pages on preview deployments without a fresh build)
 - [x] **Voting** — agree vote cast via the fresh deployment; `agree_count` incremented 0→1 in Neon and a matching `vote_tokens` row was created for 2026-06-27, confirmed by direct query
-- [ ] **Historical data** — About and History pages load; chart data matches production (spot-check 3 months)
+- [x] **Historical data** — History page loads; found a real data gap, 2026-06-10 through 2026-06-26 (17 days) missing from Neon — **root cause**: Vercel Cron only runs against a project's Production deployment, and every Production deployment on this preview project has been in `ERROR` state (triggered by `main`/Dependabot pushes containing the old Vite app, which can't build here) — so the daily cron has had zero executions since Phase 2. Self-heals: the cron route fetches the last 92 days every run and upserts idempotently, so triggering it once (see Cron item below) backfills the whole gap automatically. Not a code bug — won't recur post-cutover once `staging`/`main` get a working Production deployment.
 - [x] **ActivityPub — WebFinger** — `/.well-known/webfinger?resource=acct:CanYouBeat@canyoubeatwellington.radomski.co.nz` returns correct subject + links JSON ✓
 - [ ] **ActivityPub — actor JSON** — skipped on preview; `AP_PUBLIC_KEY` / `AP_PRIVATE_KEY` are marked sensitive in Vercel and can't be copied to the preview project without rolling them. These env vars will be set at Phase 10 cutover when configuring the production `nextjs` project (same key pair — no rolling needed, no follower disruption)
 - [ ] **Cron** — trigger `/api/cron/daily-weather` manually with the `CRON_SECRET` header; confirm Neon is updated and logs show correct behaviour
@@ -307,6 +307,7 @@ Preview URL: `https://can-you-beat-wellington-nextjs-git-nextjs-patatrats-projec
 Do this in one sitting. Estimated time: 30 minutes.
 
 **Pre-cutover (same day):**
+- [ ] **Switch the `can-you-beat-wellington` Vercel project's framework preset from `vite` to Next.js** — do this *before* merging `staging`, not after. Discovered during Phase 9: this project's framework lock is the same class of problem that forced a separate Vercel project for the `nextjs` branch (Phase 1) — once `staging`/`main` contain Next.js code, the existing project will fail to build against it unless the preset is switched first. Confirm via a `staging` deploy before touching `main`.
 - [ ] Final `pg_dump` of Supabase `daily_weather_records` and `vote_tokens` — captures any votes/records since Phase 2's data migration
 - [ ] Restore the delta into Neon production: `COPY ... FROM STDIN` for any rows newer than the Phase 2 snapshot date
 - [ ] Verify Neon row count matches Supabase row count
