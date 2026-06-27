@@ -286,7 +286,7 @@ Route Handlers replace the `api/` directory. Routes placed at their public URLs 
 
 ---
 
-### Phase 9 — Testing on the `nextjs` preview URL ⬅️ IN PROGRESS
+### Phase 9 — Testing on the `nextjs` preview URL ✅ DONE
 
 Before touching `staging` or `main`.
 
@@ -297,7 +297,7 @@ Preview URL: `https://can-you-beat-wellington-nextjs-git-nextjs-patatrats-projec
 - [x] **Historical data** — History page loads; found a real data gap, 2026-06-10 through 2026-06-26 (17 days) missing from Neon — **root cause**: Vercel Cron only runs against a project's Production deployment, and every Production deployment on this preview project has been in `ERROR` state (triggered by `main`/Dependabot pushes containing the old Vite app, which can't build here) — so the daily cron has had zero executions since Phase 2. Self-heals: the cron route fetches the last 92 days every run and upserts idempotently, so triggering it once (see Cron item below) backfills the whole gap automatically. Not a code bug — won't recur post-cutover once `staging`/`main` get a working Production deployment.
 - [x] **ActivityPub — WebFinger** — `/.well-known/webfinger?resource=acct:CanYouBeat@canyoubeatwellington.radomski.co.nz` returns correct subject + links JSON ✓
 - [ ] **ActivityPub — actor JSON** — skipped on preview; `AP_PUBLIC_KEY` / `AP_PRIVATE_KEY` are marked sensitive in Vercel and can't be copied to the preview project without rolling them. These env vars will be set at Phase 10 cutover when configuring the production `nextjs` project (same key pair — no rolling needed, no follower disruption)
-- [ ] **Cron** — trigger `/api/cron/daily-weather` manually with the `CRON_SECRET` header; confirm Neon is updated and logs show correct behaviour
+- [x] **Cron** — triggered manually via `curl` (using a fresh `CRON_SECRET` generated for this preview project + Vercel's "Protection Bypass for Automation" secret to get past Deployment Protection): `{"ok":true,"stored":93,"today":{...},"fanout":"skipped — not a good day"}`. Verified in Neon — fetched 92 days + today and upserted idempotently, which also backfilled the 2026-06-10–26 gap noted above as a side effect. Today's verdict (temp 10.7°C, wind 32.4 km/h, rain 0.4mm — all 3 fail) correctly skipped the ActivityPub fanout.
 - [x] **CI** — lint, type-check, test (50 tests), build, audit all pass on the `nextjs` branch (`ci-nextjs.yml`, run `27187471104`)
 
 ---
