@@ -103,6 +103,21 @@ export async function fetchAndStoreBatch(
   if (!response.ok) throw new Error(`Open-Meteo error ${response.status}`);
   const data = await response.json();
 
+  const dayCount = data.daily?.time?.length ?? 0;
+  if (
+    !dayCount ||
+    !Array.isArray(data.daily.temperature_2m_max) ||
+    !Array.isArray(data.daily.weather_code) ||
+    data.daily.temperature_2m_max.length < dayCount ||
+    data.daily.weather_code.length < dayCount ||
+    !Array.isArray(data.hourly?.precipitation) ||
+    !Array.isArray(data.hourly?.wind_speed_10m) ||
+    data.hourly.precipitation.length < dayCount * 24 ||
+    data.hourly.wind_speed_10m.length < dayCount * 24
+  ) {
+    throw new Error("Open-Meteo API returned incomplete data");
+  }
+
   const records: WeatherUpsert[] = [];
   for (let i = 0; i < data.daily.time.length; i++) {
     if (data.daily.time[i] > today) break;
