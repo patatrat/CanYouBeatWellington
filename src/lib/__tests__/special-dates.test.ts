@@ -69,6 +69,14 @@ describe('computeFixedRuleDate', () => {
     expect(computeFixedRuleDate('nth_weekday:4:1:1', 2024)).toEqual({ start: '2024-01-22', end: '2024-01-22' });
   });
 
+  it('computes Easter-relative dates (Good Friday / Easter Monday) across known years', () => {
+    // Easter Sunday: 2024-03-31, 2026-04-05, 2027-03-28 (independently verified dates).
+    expect(computeFixedRuleDate('easter_offset:-2', 2026)).toEqual({ start: '2026-04-03', end: '2026-04-03' });
+    expect(computeFixedRuleDate('easter_offset:1', 2026)).toEqual({ start: '2026-04-06', end: '2026-04-06' });
+    // Crosses a month boundary: Easter Sunday 2027-03-28 → Easter Monday is in March, not April.
+    expect(computeFixedRuleDate('easter_offset:1', 2027)).toEqual({ start: '2027-03-29', end: '2027-03-29' });
+  });
+
   it('throws for an nth weekday that does not exist in the month', () => {
     // No month ever has a 6th occurrence of any weekday.
     expect(() => computeFixedRuleDate('nth_weekday:6:1:1', 2026)).toThrow();
