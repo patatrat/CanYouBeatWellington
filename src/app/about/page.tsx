@@ -85,6 +85,18 @@ export default function AboutPage() {
             about 6% of the time. That&apos;s not the app being harsh — that&apos;s Wellington being Wellington.
           </p>
 
+          <h2 className="text-xl font-bold text-gray-800 pt-4">Follow on the fediverse</h2>
+          <p>
+            This site has a Fediverse account and posts a note whenever it&apos;s a good day —
+            nothing more, nothing less. Search for the handle below in Mastodon (or any other
+            ActivityPub-compatible app) and hit follow.
+          </p>
+          <p>
+            <code className="block w-fit bg-amber-100 text-amber-900 px-3 py-1.5 rounded text-sm font-mono select-all">
+              @CanYouBeat@canyoubeatwellington.radomski.co.nz
+            </code>
+          </p>
+
           <p className="pt-4 border-t border-amber-200">
             Built by{" "}
             <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">

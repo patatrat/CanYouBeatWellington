@@ -101,7 +101,7 @@ Data source: Open-Meteo API (free, no key required).
 - [ ] **Special date messages** — Wellington Anniversary Day (4th Monday Jan), Waitangi Day (Feb 6), ANZAC Day (Apr 25), Matariki, Wellington Sevens etc.; overlay a date-specific quip on the normal verdict
 - [ ] **Auto-post to social media on good days** — extend existing GitHub Actions daily cron; Mastodon REST API (simple); Bluesky atproto (slightly more involved); secrets in GitHub repo secrets; only post when `isGood === true`
 - [ ] **User sharing** — pre-composed share links (Bluesky intent URL, Mastodon share URL); no API keys needed; low-effort "Share" button that opens a pre-filled compose window
-- [ ] **ActivityPub follow instructions on About page** — add a short section explaining that the site has a Fediverse account (`@CanYouBeat@canyoubeatwellington.radomski.co.nz`) and how to follow it from Mastodon/any ActivityPub client; include the handle to copy and a brief note that followers get notified on good days
+- [x] **ActivityPub follow instructions on About page** — added a "Follow on the fediverse" section to `src/app/about/page.tsx`, between "The rules" and the footer attribution. Handle shown in a `<code>` block (`select-all` for easy copying), with a one-line note that it only posts on good days. Verified visually via `next dev`.
 
 ### P5 — Nice to have
 - [x] Add unit/integration tests — Vitest + jsdom; 68 tests across `rulesStorage` (good-day logic + boundaries) and `weatherStorage` (sunniness, daytime rain, localStorage round-trip); wired into CI
