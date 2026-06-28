@@ -46,7 +46,11 @@ export default function AboutPage() {
             <a href="https://adam.nz/realistic-calendar" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               Adam Shand&apos;s Shitsville calendar <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>
-            , calibrated against six years of actual Wellington weather data.
+            , calibrated against six years of actual Wellington weather data. Read the full story behind
+            the rule change on{" "}
+            <a href="https://radomski.co.nz/blog/shitsville" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+              the blog <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
+            </a>.
           </p>
 
           <div className="overflow-x-auto">
@@ -102,7 +106,11 @@ export default function AboutPage() {
             <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               Patrick Radomski <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>
-            , with some AI help. Say hi on{" "}
+            , with some AI help — the whole build (and rebuild) story is on{" "}
+            <a href="https://radomski.co.nz/blog/tag/can-you-beat-wellington" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+              the blog <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
+            </a>
+            . Say hi on{" "}
             <a href="https://mastodon.nz/@Pat" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               Mastodon <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>.

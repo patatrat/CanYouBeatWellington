@@ -102,6 +102,7 @@ Data source: Open-Meteo API (free, no key required).
 - [ ] **Auto-post to social media on good days** — extend existing GitHub Actions daily cron; Mastodon REST API (simple); Bluesky atproto (slightly more involved); secrets in GitHub repo secrets; only post when `isGood === true`
 - [ ] **User sharing** — pre-composed share links (Bluesky intent URL, Mastodon share URL); no API keys needed; low-effort "Share" button that opens a pre-filled compose window
 - [x] **ActivityPub follow instructions on About page** — added a "Follow on the fediverse" section to `src/app/about/page.tsx`, between "The rules" and the footer attribution. Handle shown in a `<code>` block (`select-all` for easy copying), with a one-line note that it only posts on good days. Verified visually via `next dev`.
+- [x] **Blog links on About page** — "The rules" section links to [the Shitsville rule-change post](https://radomski.co.nz/blog/shitsville); the footer attribution links to [the full build/rebuild series tag](https://radomski.co.nz/blog/tag/can-you-beat-wellington).
 
 ### P5 — Nice to have
 - [x] Add unit/integration tests — Vitest + jsdom; 68 tests across `rulesStorage` (good-day logic + boundaries) and `weatherStorage` (sunniness, daytime rain, localStorage round-trip); wired into CI
