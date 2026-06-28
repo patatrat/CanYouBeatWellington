@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Why though? — Can You Beat Wellington?",
+  title: "Why though? | Can You Beat Wellington?",
 };
 
 const SEASONS = [
@@ -31,17 +31,17 @@ export default function AboutPage() {
 
         <div className="prose prose-gray max-w-none space-y-6 text-gray-700">
           <p>
-            {`"You can't beat Wellington on a good day" — Wellington's most famous weather saying.
+            {`"You can't beat Wellington on a good day." Wellington's most famous weather saying.
             But how often is it actually true?`}
           </p>
           <p>
             Every day, real weather data for Wellington is fetched and checked against three conditions.
-            If all three pass, it&apos;s a good day. If not — well. Wellington.
+            If all three pass, it&apos;s a good day. If not, well. Wellington.
           </p>
 
           <h2 className="text-xl font-bold text-gray-800 pt-4">The rules</h2>
           <p>
-            Wellington has six seasons, not four — at least according to the locals. The app uses seasonal
+            Wellington has six seasons, not four, at least according to the locals. The app uses seasonal
             temperature thresholds based on{" "}
             <a href="https://adam.nz/realistic-calendar" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               Adam Shand&apos;s Shitsville calendar <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
@@ -80,18 +80,18 @@ export default function AboutPage() {
 
           <p>
             The wind and rain thresholds are the same year-round. Rain is rain. And 30 km/h is genuinely
-            light wind for Wellington — the old 20 km/h threshold applied to only 12% of all days across
+            light wind for Wellington: the old 20 km/h threshold applied to only 12% of all days across
             six years of data.
           </p>
           <p>
             Some months naturally produce very few good days under these rules, and the rules don&apos;t try
             to paper over that. June averages zero. Shitsville (October and November) produces good days
-            about 6% of the time. That&apos;s not the app being harsh — that&apos;s Wellington being Wellington.
+            about 6% of the time. That&apos;s not the app being harsh. That&apos;s Wellington being Wellington.
           </p>
 
           <h2 className="text-xl font-bold text-gray-800 pt-4">Follow on the fediverse</h2>
           <p>
-            This site has a Fediverse account and posts a note whenever it&apos;s a good day —
+            This site has a Fediverse account and posts a note whenever it&apos;s a good day,
             nothing more, nothing less. Search for the handle below in Mastodon (or any other
             ActivityPub-compatible app) and hit follow.
           </p>
@@ -106,7 +106,7 @@ export default function AboutPage() {
             <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               Patrick Radomski <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>
-            , with some AI help — the whole build (and rebuild) story is on{" "}
+            , with some AI help. The whole build (and rebuild) story is on{" "}
             <a href="https://radomski.co.nz/blog/tag/can-you-beat-wellington" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               the blog <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>
