@@ -54,6 +54,22 @@ Data source: Open-Meteo API (free, no key required).
 - [ ] **Validate API response shape before using (weatherStorage.js)** — if Open-Meteo returns 200 with missing fields (e.g. `temperature_2m_max[0]` is undefined), the app silently stores `undefined` in Supabase. Add a guard that throws if required fields are absent.
 - [x] **Fix fediverse fan-out evaluating the wrong day (NZT vs UTC)** — `fediverse-fanout.js` and `populate-db.js` computed `today` via `new Date().toISOString().split('T')[0]` (UTC date), which lags Wellington's NZT date by up to a day around the 12:00 UTC cron run. On 2026-06-08 the website correctly showed a "good day" (computed in NZT via Open-Meteo's `timezone=Pacific/Auckland`), but the fanout cron checked the *previous* day's (rainy) Supabase record and correctly-but-wrongly logged "not a good day — no post". Fixed by switching both scripts to `new Date().toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' })`. Fixed on `main` (`8d27b3f`) and ported to `nextjs` (`06dc254`).
 
+### P2 — Post-migration cleanup (Next.js + Neon cutover, 2026-06-28)
+- [ ] **Update the GitHub Actions `DATABASE_URL` secret** — still holds the pre-rotation Neon password; the CI run right after rotation failed with `password authentication failed for user 'neondb_owner'` during `next build`'s `/history` prerender. Vercel and GitHub Actions secrets are separate stores — rotating one doesn't touch the other. Run `gh secret set DATABASE_URL` with the current value.
+- [ ] **Fix `staging` branch CI** — never received the same `ci.yml` fix `main` got (regenerated lockfile + Next.js build env vars); will fail with the same `npm ci` EUSAGE error on the next push until updated the same way.
+- [ ] **Investigate other failed GitHub Actions runs around the cutover** — several Dependabot PR-branch CI runs failed (esbuild/postcss bumps against branches with stale `package-lock.json`); worth a pass to see which are real vs. just stale branches that can be closed.
+- [ ] **Delete dead Supabase-era scripts** — `scripts/populate-db.js`, `scripts/fediverse-fanout.js`, `scripts/backfill-historical.js`, `scripts/vote-tokens-migration.sql` all still reference the retired Supabase client; nothing calls them except the now-obsolete `backfill-historical.yml` workflow (one-off backfill already completed — Neon already has the historical data from the Phase 2 migration).
+- [ ] **Delete `.github/workflows/backfill-historical.yml`** — see above.
+- [ ] **Delete the now-redundant `.github/workflows/ci-nextjs.yml`** — scoped to the `nextjs` branch, which is fully merged; `ci.yml` on `main` covers the same ground now.
+- [ ] **Send a test Mastodon Follow** to confirm the inbox works end-to-end on production (only structurally checked pre-cutover, since the preview URL never matched the actor ID).
+- [ ] **Trigger the production cron once** (`/api/cron/daily-weather`) to confirm Vercel Cron + Neon write works for real on a schedule, not just via manual `curl`.
+- [ ] **Delete the Supabase project** (Settings → General → Delete project) once production has been stable for a few days — all data already migrated and verified (2365 weather rows, 26 vote tokens, row counts matched exactly).
+- [ ] **Remove Supabase env vars** — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` from both Vercel and GitHub Actions secrets.
+- [ ] **Delete the now-unused `can-you-beat-wellington-nextjs` Vercel project** — its job (isolated preview testing during the migration) is done; production now lives on the original `can-you-beat-wellington` project.
+- [ ] **Update this CLAUDE.md's stack description, infrastructure table, architecture notes, and key files table** at the top of the file — still describes the pre-migration Vite/Supabase stack.
+- [ ] **Monitor the `next`-bundled `postcss` moderate vulnerability** — `npm audit` flags a vulnerable `postcss` bundled inside `next`'s own `node_modules`; no real fix available yet (the suggested fix downgrades Next.js to v9, not viable) — wait for an upstream Next.js patch.
+- [ ] **Consider deleting the `nextjs` branch** — fully merged into `staging` and `main`; low priority, not urgent.
+
 ### P3 — Code quality
 - [x] Remove unused Radix UI/shadcn components — deleted 43 unused ui files; removed 25 Radix packages + other dead deps; CSS bundle 45 kB → 19 kB
 - [x] Move `esbuild` to `devDependencies`
@@ -68,16 +84,7 @@ Data source: Open-Meteo API (free, no key required).
 - [ ] **Add tests for weatherStorage error paths** — no test coverage for: network failure in `fetchAndStoreWeather`, malformed API response, localStorage quota exceeded. Add to `weatherStorage.test.js`.
 
 ### P3 — Infrastructure
-- [ ] **Migrate database from Supabase to Neon** — Supabase free tier pauses after 7 days inactivity; the keepalive cron is a workaround. Neon's free tier doesn't auto-pause, has a more generous compute allowance, and is a better long-term fit for a low-traffic hobby project. Migration involves:
-  1. Export schema + data from Supabase (`pg_dump` or Supabase dashboard export)
-  2. Create Neon project, import dump
-  3. Re-implement `increment_vote` as a Postgres function in Neon (same SQL, different dashboard)
-  4. Set up equivalent row-level security or keep votes behind the RPC function
-  5. Update `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` → Neon connection string + swap client library (`@supabase/supabase-js` → `@neondatabase/serverless` or `postgres.js`)
-  6. Update `vercel.json` CSP `connect-src` to Neon endpoint
-  7. Delete `supabase-keepalive.yml` workflow and Supabase cron ping
-  8. Update `src/integrations/` folder (rename from `supabase/` → `db/` or similar)
-  - **Note**: Neon doesn't have a built-in PostgREST REST API like Supabase — queries go via the Neon serverless driver or a connection pool. The voting RPC and data queries will need to move to a small API layer (Vercel Edge Functions or API routes) or use the Neon HTTP API directly. This adds meaningful scope; assess before starting.
+- [x] **Migrate database from Supabase to Neon** — ✅ DONE as of 2026-06-28. Didn't follow this original sketch literally — see the full **Migration Spec** below (Phases 0–10) for what actually happened: a parallel Next.js + Neon rebuild on the `nextjs` branch, tested independently, then cut over via `nextjs` → `staging` → `main`. Remaining loose ends tracked under **P2 — Post-migration cleanup** above.
 
 ### P3.5 — Historical data
 - [x] Retrieve pre-2026 weather data — `scripts/backfill-historical.js` uses archive API; triggered via GitHub Actions "Backfill Historical Weather" workflow (2020-01-01 → 2025-12-31). Uses daily `precipitation_sum` (full day, slightly more conservative than daytime-only).
@@ -100,6 +107,14 @@ Data source: Open-Meteo API (free, no key required).
 - [x] Set up Dependabot — weekly Monday updates targeting `staging`; ESLint major bumps ignored (v9 requires flat config migration)
 - [x] Update React Router to 7.x — cleared XSS vuln; API unchanged for our usage (`BrowserRouter`, `Routes`, `Route`, `Link`)
 - [ ] **Timezone-aware date handling** — dates are stored as `YYYY-MM-DD` strings and parsed with `new Date(dateString)`, which treats them as UTC midnight and can shift ±1 day in NZ timezone (UTC+12/+13). Use `date-fns/parseISO` everywhere dates are parsed from strings, and validate the calendar display in CalendarHistory against the actual NZ date.
+
+### P5 — Widgets & embeds
+- [ ] **Embeddable widget for other websites** — small `<iframe>`-able route (e.g. `/widget`) showing today's verdict with no nav/chrome, sized for embedding via a copy-paste `<iframe>` snippet (simplest approach, avoids CORS entirely). Comparatively low effort — same Next.js app, one new minimal-layout route.
+- [ ] **Desktop widget — macOS** — requires a native Swift/SwiftUI app with a WidgetKit extension; not web technology. Needs a small public JSON endpoint (e.g. `/api/widget-data`) for the widget to poll.
+- [ ] **Desktop widget — Windows** — needs a native app (WinUI, or a thin web-view wrapper) calling the same JSON endpoint.
+- [ ] **Mobile widget — iOS** — home screen widget via WidgetKit (Swift); could share most of a native shell with the macOS widget.
+- [ ] **Mobile widget — Android** — home screen widget via Glance/RemoteViews (Kotlin).
+  - **Scope note**: the four native widgets are a different category of effort from the rest of this backlog — each needs a real native app shell (Swift for Apple platforms, Kotlin for Android), code signing, and app store distribution (or at minimum local sideloading), not just a web feature. Worth treating as a separate mini-project if pursued. The embeddable web widget is far simpler and could ship first as a stepping stone — same underlying data, no native shell needed.
 
 ---
 
