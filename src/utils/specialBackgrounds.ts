@@ -5,5 +5,6 @@
 export const SPECIAL_BACKGROUNDS: Record<string, string> = {
   anniversary: "bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100",
   matariki: "bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950",
-  sevens: "bg-gradient-to-br from-blue-50 via-sky-50 to-blue-100",
+  rugby: "bg-gradient-to-br from-slate-800 via-zinc-800 to-slate-900",
+  festive: "bg-gradient-to-br from-red-50 via-rose-50 to-red-100",
 };
