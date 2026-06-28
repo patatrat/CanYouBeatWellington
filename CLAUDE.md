@@ -4,13 +4,13 @@ Project tracking, backlog, and architectural decisions.
 
 ## Project Overview
 
-A hobby webapp that checks if today's weather in Wellington, NZ is good enough that you "can't beat it". Users can vote agree/disagree. Historical data stored in Supabase, visualised on the About page.
+A hobby webapp that checks if today's weather in Wellington, NZ is good enough that you "can't beat it". Users can vote agree/disagree. Historical data stored in Neon (Postgres), visualised on the About page. Fully migrated from a Vite SPA + Supabase to Next.js + Neon on 2026-06-28 — see Migration Spec below for the full rebuild history.
 
 - **Live**: https://canyoubeatwellington.radomski.co.nz/
 - **Repo**: https://github.com/patatrat/CanYouBeatWellington
-- **Stack**: React 18 + Vite 8 + React Router 7 + Tailwind CSS + shadcn/ui + Supabase *(migration to Next.js 15 + Neon planned — see Migration Spec)*
+- **Stack**: Next.js 16 (App Router) + TypeScript + Tailwind CSS + shadcn/ui + Neon (`@neondatabase/serverless`) + Vercel KV (ActivityPub) + Vitest
 - **Analytics**: Vercel Analytics
-- **Hosting**: Vercel (auto-deploys on push to `main`)
+- **Hosting**: Vercel (auto-deploys on push to `main`; `staging` branch deploys to a Vercel preview for pre-production testing)
 - **Originally built with**: Lovable (formerly GPT Engineer) — legacy files removed
 
 ## Weather Assessment Rules
@@ -30,13 +30,14 @@ Data source: Open-Meteo API (free, no key required).
 
 | Concern | Solution |
 |---------|---------|
-| Hosting | Vercel (auto-deploys on push to `main`) |
-| Database | Supabase free tier (project: `qumelyuoeutlnnouhguo`) |
-| Supabase pause prevention | GitHub Actions cron ping every 5 days |
-| Daily weather | GitHub Actions cron at 12:00 UTC daily (`daily-weather.yml`) |
-| CI | GitHub Actions — lint + test + build + audit on every push/PR |
-| Secrets | GitHub repo secrets + Vercel env vars (both use `VITE_` prefix) |
+| Hosting | Vercel (auto-deploys on push to `main`/`staging`) |
+| Database | Neon Postgres, free tier (project: `can-you-beat-wellington` / `dawn-queen-51598624`) — no auto-pause, unlike Supabase |
+| Daily weather + fediverse fan-out | Vercel Cron at 12:00 UTC daily (`/api/cron/daily-weather`), replaces the old GitHub Actions workflow |
+| ActivityPub federation | Vercel KV (Upstash Redis) for follower list + outbox notes; same Vercel project/keys since before the migration |
+| CI | GitHub Actions (`ci.yml`) — lint + type check + test + build + audit on every push/PR to `main`/`staging` |
+| Secrets | GitHub repo secrets + Vercel env vars — `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `CRON_SECRET`, `AP_PUBLIC_KEY`, `AP_PRIVATE_KEY`, `KV_REST_API_URL`, `KV_REST_API_TOKEN` (no more `VITE_` prefix — all DB access is server-side now) |
 | DNS | Cloudflare (DNS-only, grey cloud) → Vercel |
+| **Legacy (pending removal — see P2 backlog)** | Supabase project still exists as an archived snapshot; `VITE_SUPABASE_*`/`SUPABASE_*` env vars still present in Vercel/GitHub but unused |
 
 ---
 
@@ -51,22 +52,22 @@ Data source: Open-Meteo API (free, no key required).
 ### P2 — Bug fixes (from code review, April 2026)
 - [x] **Fix React Query invalidation in VotingButtons** — updated to v5 API `invalidateQueries({ queryKey: ['todaysRecord'] })`. (`VotingButtons.jsx:56`)
 - [ ] **Fix `mutation` in useEffect dependency array (Index.jsx)** — `mutation` object is recreated each render, so the effect fires repeatedly. Either wrap `storeDailyRecord` in `useCallback` or drop `mutation` from the dep array and accept the lint warning with a comment.
-- [ ] **Validate API response shape before using (weatherStorage.js)** — if Open-Meteo returns 200 with missing fields (e.g. `temperature_2m_max[0]` is undefined), the app silently stores `undefined` in Supabase. Add a guard that throws if required fields are absent.
+- [ ] **Validate API response shape in `fetchAndStoreBatch` (`src/lib/weather.ts`)** — `fetchLiveWeather()` in the same file already guards against short/missing hourly arrays (throws if `< 18` entries), but `fetchAndStoreBatch()` — used by the daily cron to fetch 92 days at once — has no equivalent check. If Open-Meteo ever returns incomplete data here, it'll silently upsert bad rows to Neon instead of failing loudly.
 - [x] **Fix fediverse fan-out evaluating the wrong day (NZT vs UTC)** — `fediverse-fanout.js` and `populate-db.js` computed `today` via `new Date().toISOString().split('T')[0]` (UTC date), which lags Wellington's NZT date by up to a day around the 12:00 UTC cron run. On 2026-06-08 the website correctly showed a "good day" (computed in NZT via Open-Meteo's `timezone=Pacific/Auckland`), but the fanout cron checked the *previous* day's (rainy) Supabase record and correctly-but-wrongly logged "not a good day — no post". Fixed by switching both scripts to `new Date().toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' })`. Fixed on `main` (`8d27b3f`) and ported to `nextjs` (`06dc254`).
 
 ### P2 — Post-migration cleanup (Next.js + Neon cutover, 2026-06-28)
-- [ ] **Update the GitHub Actions `DATABASE_URL` secret** — still holds the pre-rotation Neon password; the CI run right after rotation failed with `password authentication failed for user 'neondb_owner'` during `next build`'s `/history` prerender. Vercel and GitHub Actions secrets are separate stores — rotating one doesn't touch the other. Run `gh secret set DATABASE_URL` with the current value.
-- [ ] **Fix `staging` branch CI** — never received the same `ci.yml` fix `main` got (regenerated lockfile + Next.js build env vars); will fail with the same `npm ci` EUSAGE error on the next push until updated the same way.
+- [x] **Update the GitHub Actions `DATABASE_URL` secret** — updated via `gh secret set DATABASE_URL` with the rotated value; CI confirmed green afterward.
+- [x] **Fix `staging` branch CI** — regenerated `package-lock.json` (vitest/vite were never properly installed when added to `package.json` mid-migration) and updated `ci.yml`'s build env vars to the Next.js set. CI green on `staging`, merged into `main`.
 - [ ] **Investigate other failed GitHub Actions runs around the cutover** — several Dependabot PR-branch CI runs failed (esbuild/postcss bumps against branches with stale `package-lock.json`); worth a pass to see which are real vs. just stale branches that can be closed.
-- [ ] **Delete dead Supabase-era scripts** — `scripts/populate-db.js`, `scripts/fediverse-fanout.js`, `scripts/backfill-historical.js`, `scripts/vote-tokens-migration.sql` all still reference the retired Supabase client; nothing calls them except the now-obsolete `backfill-historical.yml` workflow (one-off backfill already completed — Neon already has the historical data from the Phase 2 migration).
-- [ ] **Delete `.github/workflows/backfill-historical.yml`** — see above.
-- [ ] **Delete the now-redundant `.github/workflows/ci-nextjs.yml`** — scoped to the `nextjs` branch, which is fully merged; `ci.yml` on `main` covers the same ground now.
+- [x] **Delete dead Supabase-era scripts** — `scripts/populate-db.js`, `scripts/fediverse-fanout.js`, `scripts/backfill-historical.js`, `scripts/vote-tokens-migration.sql`, and `scripts/utils.js` (only ever used by the two deleted scripts) all deleted — superseded by `src/app/api/cron/daily-weather/route.ts`.
+- [x] **Delete `.github/workflows/backfill-historical.yml`** — deleted.
+- [x] **Delete the now-redundant `.github/workflows/ci-nextjs.yml`** — deleted.
 - [ ] **Send a test Mastodon Follow** to confirm the inbox works end-to-end on production (only structurally checked pre-cutover, since the preview URL never matched the actor ID).
 - [ ] **Trigger the production cron once** (`/api/cron/daily-weather`) to confirm Vercel Cron + Neon write works for real on a schedule, not just via manual `curl`.
 - [ ] **Delete the Supabase project** (Settings → General → Delete project) once production has been stable for a few days — all data already migrated and verified (2365 weather rows, 26 vote tokens, row counts matched exactly).
 - [ ] **Remove Supabase env vars** — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` from both Vercel and GitHub Actions secrets.
 - [ ] **Delete the now-unused `can-you-beat-wellington-nextjs` Vercel project** — its job (isolated preview testing during the migration) is done; production now lives on the original `can-you-beat-wellington` project.
-- [ ] **Update this CLAUDE.md's stack description, infrastructure table, architecture notes, and key files table** at the top of the file — still describes the pre-migration Vite/Supabase stack.
+- [x] **Update this CLAUDE.md's stack description, infrastructure table, architecture notes, and key files table** — done; all now describe the Next.js + Neon architecture.
 - [ ] **Monitor the `next`-bundled `postcss` moderate vulnerability** — `npm audit` flags a vulnerable `postcss` bundled inside `next`'s own `node_modules`; no real fix available yet (the suggested fix downgrades Next.js to v9, not viable) — wait for an upstream Next.js patch.
 - [ ] **Consider deleting the `nextjs` branch** — fully merged into `staging` and `main`; low priority, not urgent.
 
@@ -93,7 +94,7 @@ Data source: Open-Meteo API (free, no key required).
 - [x] **Daily weather cron job** — GitHub Actions runs `scripts/populate-db.js` at 12:00 UTC (midnight NZST) daily; upserts idempotently so also backfills any missed days
 - [x] Make voting tamper-resistant — `vote_tokens (token, date)` table enforces one vote per browser identity per day at DB level; `increment_vote()` updated to accept `voter_token` arg; unique constraint violation (23505) rejects duplicate votes server-side. Run `scripts/vote-tokens-migration.sql` in Supabase dashboard to activate.
 - [x] Adjust good-day rules to account for seasons — six-season Shitsville calendar with seasonal temp thresholds; `rulesStorage.js` is source of truth
-- [x] Staging environment — `staging` branch auto-deploys to Vercel preview URL (`canyoubeatwellington-git-staging-patatrat.vercel.app`); shares production Supabase DB
+- [x] Staging environment — `staging` branch auto-deploys to Vercel preview URL (`canyoubeatwellington-git-staging-patatrat.vercel.app`); shared production Supabase DB at the time (now shares the production Neon DB, since the 2026-06-28 migration)
 - [x] **Scenario-based verdict quips** — `src/utils/quips.js`; 8 failure-scenario arrays (GOOD / WIND_ONLY / RAIN_ONLY / TEMP_ONLY / WIND_RAIN / WIND_TEMP / RAIN_TEMP / ALL_BAD) replacing the previous 3-bucket system; quips need fleshing out with more NZ flavour
 - [x] **7-day good day forecast** — Open-Meteo already returns 7 days; `weatherStorage.js` now exposes `forecast[]` (days 1–6); `ForecastStrip` component on home page shows each day's verdict (✓/✗) + temp + forecast summary quip; `calculateDaytimeRain` accepts a `dayIndex` for multi-day rain calculation
 - [ ] **NZ-specific vocabulary** — build a word bank ("munted", "choice", "sweet as", "mean as", "stoked", "gutted", "staunch") to weave into quips in `quips.js`
@@ -118,7 +119,9 @@ Data source: Open-Meteo API (free, no key required).
 
 ---
 
-## Migration Spec — Next.js + Neon rebuild
+## Migration Spec — Next.js + Neon rebuild ✅ COMPLETE (cut over 2026-06-28)
+
+Kept in full below as a historical record of the rebuild — not an active TODO list. Remaining loose ends from the cutover are tracked under **P2 — Post-migration cleanup** above.
 
 Full rebuild of the stack using the current app as the functional spec. UI and feature parity is the goal — no new features during the migration. The rebuild happens on a long-lived `nextjs` branch in this repo; production is untouched until cutover.
 
@@ -402,23 +405,31 @@ Do this in one sitting. Estimated time: 30 minutes.
 ## Architecture Notes
 
 ### Data flow
-1. Page load → Open-Meteo API → today's weather fetched
-2. Today's record upserted to Supabase `daily_weather_records`
-3. Historical records fetched from Supabase for About page charts/calendar
-4. `is_good_day` computed at runtime using `getThresholds(date)` from `rulesStorage.js`
-5. Votes stored in localStorage (client-side only) + incremented in Supabase via `increment_vote()` RPC
+1. Home page (`src/app/page.tsx`, Server Component) → calls `getTodaysRecord()` (Neon) and `fetchLiveWeather()` (Open-Meteo) in parallel
+2. If today's row doesn't exist yet, it's seeded immediately from the live fetch so voting has something to attach to before the daily cron runs; the cron later overwrites it with the final full-day reading (idempotent upsert)
+3. Verdict computed server-side via `getThresholds(date)`/`countCriteriaMet()` from `rulesStorage.ts` — same logic on every page, no home/history divergence
+4. History/About pages fetch the full record set from Neon via `getHistoricalRecords()`/`getAllHistoricalRecords()` in `src/lib/weather.ts`
+5. Votes: `VotingButtons` (client component) calls the `castVoteAction` Server Action → `castVote()` in `src/lib/votes.ts` → `increment_vote()` Postgres function in Neon; a `vote_tokens (token, date)` unique constraint blocks duplicate votes per browser identity per day
+6. Daily cron (`/api/cron/daily-weather`, Vercel Cron at 12:00 UTC) re-fetches 92 days of Open-Meteo data, upserts to Neon, and fans out an ActivityPub `Create{Note}` to followers via Vercel KV + signed HTTP delivery if today is a good day
 
 ### Key files
 | File | Purpose |
 |------|---------|
-| `src/utils/weatherStorage.js` | Open-Meteo fetch + localStorage cache |
-| `src/utils/rulesStorage.js` | Seasonal weather criteria — `getThresholds(date)`, `getSeasonLabel(date)`, `countCriteriaMet(weather, date)` |
-| `src/utils/weatherFunFacts.js` | Fun fact generation from historical data |
-| `src/integrations/supabase/client.ts` | Supabase client (reads from `VITE_` env vars) |
-| `src/integrations/supabase/types.ts` | DB types (manually maintained — no `is_good_day`) |
-| `scripts/populate-db.js` | Node.js script to seed/refresh weather data (run manually or via daily cron) |
-| `scripts/backfill-historical.js` | One-off backfill of 2020–2025 using Open-Meteo archive API |
-| `vercel.json` | SPA rewrites + security headers + cache headers |
-| `.github/workflows/ci.yml` | Lint + test + build + audit gate |
-| `.github/workflows/supabase-keepalive.yml` | Prevents Supabase free tier from pausing (delete if migrating to Neon) |
-| `.github/workflows/daily-weather.yml` | Fetches and stores Wellington weather daily at midnight NZT |
+| `src/lib/weather.ts` | Neon queries — `getTodaysRecord`, `getHistoricalRecords`, `getAllHistoricalRecords`, `upsertWeatherRecord`, `fetchLiveWeather`, `fetchAndStoreBatch`, `getTodaysNZTDate` |
+| `src/lib/votes.ts` | `castVote()` — wraps `increment_vote()`, translates the `23505` unique-violation into `{ alreadyVoted: true }` |
+| `src/lib/db.ts` | Exports the `sql` Neon client (`@neondatabase/serverless`), reads `DATABASE_URL` |
+| `src/lib/http-signatures.ts` | HTTP signature sign/verify for ActivityPub delivery and inbox auth |
+| `src/utils/rulesStorage.ts` | Seasonal weather criteria — `getThresholds(date)`, `getSeasonLabel(date)`, `countCriteriaMet(weather, date)` |
+| `src/utils/quips.ts` | Scenario-based verdict quips + forecast summary quips |
+| `src/utils/weatherFunFacts.ts` | Fun fact generation from historical data |
+| `src/types/db.ts` | `DailyWeatherRecord` type matching the Neon schema |
+| `src/app/page.tsx` | Home page — Server Component, the critical path |
+| `src/app/history/page.tsx`, `src/app/about/page.tsx` | Server Components for historical charts/calendar and static rules content |
+| `src/app/api/cron/daily-weather/route.ts` | Daily cron handler — fetch, upsert, evaluate verdict, fan out on good days |
+| `src/app/actor/route.ts`, `src/app/actor/inbox/route.ts`, `src/app/actor/outbox/route.ts`, `src/app/actor/followers/route.ts`, `src/app/.well-known/webfinger/route.ts`, `src/app/notes/[id]/route.ts` | ActivityPub endpoints, placed at their public URLs directly (no rewrites needed) |
+| `src/instrumentation.ts` | Forces IPv4-first DNS resolution at server startup (works around an intermittent undici/Open-Meteo connection issue) |
+| `vercel.json` | Security headers, cache headers, Vercel Cron schedule |
+| `.github/workflows/ci.yml` | Lint + type check + test + build + audit gate, runs on `main`/`staging` |
+| `.github/workflows/announce.yml` | Manual one-off ActivityPub announcements via `workflow_dispatch` |
+| `scripts/announce.js` | Delivers a one-off announcement to all followers (called by `announce.yml`) |
+| `scripts/gen-ap-keys.js` | One-off RSA key pair generator for the ActivityPub actor |
