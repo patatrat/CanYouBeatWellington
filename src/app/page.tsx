@@ -3,15 +3,24 @@ import { ExternalLink } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getThresholds, getSeasonLabel } from "@/utils/rulesStorage";
 import { getScenario, pickQuip } from "@/utils/quips";
-import { getTodaysRecord, fetchLiveWeather, upsertWeatherRecord } from "@/lib/weather";
+import { getTodaysRecord, fetchLiveWeather, upsertWeatherRecord, getTodaysNZTDate } from "@/lib/weather";
+import { getActiveSpecialDates, pickPrimarySpecialDate, resolveVerdict } from "@/lib/special-dates";
+import { SPECIAL_BACKGROUNDS } from "@/utils/specialBackgrounds";
 import WeatherStat from "@/components/WeatherStat";
 import VotingButtons from "@/components/VotingButtons";
 import ForecastStrip from "@/components/ForecastStrip";
+import SpecialDateEffect from "@/components/SpecialDateEffect";
 
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const [todaysRecord, liveWeather] = await Promise.all([getTodaysRecord(), fetchLiveWeather()]);
+  const today = getTodaysNZTDate();
+  const [todaysRecord, liveWeather, activeSpecialDates] = await Promise.all([
+    getTodaysRecord(),
+    fetchLiveWeather(),
+    getActiveSpecialDates(today),
+  ]);
+  const special = pickPrimarySpecialDate(activeSpecialDates);
 
   // Seed today's row as soon as it's known so voting has something to attach
   // to before the daily cron runs — the cron will overwrite with the final
@@ -44,17 +53,23 @@ export default async function HomePage() {
   const tempMet = effectiveWeather.temperature >= rules.minTemp;
   const windMet = effectiveWeather.windSpeed < rules.maxWind;
   const rainMet = effectiveWeather.rain <= rules.maxRain;
-  const isGood = tempMet && windMet && rainMet;
-  const verdictLine = pickQuip(getScenario(tempMet, windMet, rainMet));
+  const weatherIsGood = tempMet && windMet && rainMet;
+  // A non-null verdict_override from an active special date wins over the
+  // weather-computed verdict — e.g. a Wellington team winning can force a
+  // good day regardless of temperature/wind/rain. WeatherStat below still
+  // shows the real per-criterion facts unchanged either way.
+  const isGood = resolveVerdict(weatherIsGood, special?.verdict_override ?? null);
+  const verdictLine = special?.quip_override ?? pickQuip(getScenario(tempMet, windMet, rainMet));
+  const bgClass =
+    (special?.background_key && SPECIAL_BACKGROUNDS[special.background_key]) ||
+    (isGood
+      ? "bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100"
+      : "bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200");
 
   return (
-    <div
-      className={`min-h-screen flex flex-col transition-colors duration-700 ${
-        isGood
-          ? "bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100"
-          : "bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200"
-      }`}
-    >
+    <div className={`min-h-screen flex flex-col transition-colors duration-700 ${bgClass}`}>
+      <SpecialDateEffect effect={special?.effect ?? "none"} />
+
       {/* Top-right nav */}
       <nav className="flex justify-end px-5 pt-4 gap-5 text-sm font-medium text-gray-500">
         <Link href="/about" className="hover:text-gray-800 transition-colors">Why though?</Link>
@@ -62,6 +77,27 @@ export default async function HomePage() {
       </nav>
 
       <div className="flex flex-col items-center justify-center flex-1 px-6 py-6">
+        {/* Special-date banner */}
+        {special && (special.title || special.link_url) && (
+          <p className="text-xs text-gray-500 text-center mb-3">
+            {special.title}
+            {special.outcome_note && ` — ${special.outcome_note}`}
+            {special.link_url && (
+              <>
+                {" · "}
+                <a
+                  href={special.link_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-gray-700"
+                >
+                  {special.link_label ?? "More"}
+                </a>
+              </>
+            )}
+          </p>
+        )}
+
         {/* Season badge */}
         <span
           className={`text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-6 ${

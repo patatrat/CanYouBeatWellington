@@ -11,7 +11,7 @@
  */
 
 import { kv } from '@vercel/kv';
-import { signAndDeliver } from '../api/lib/http-signatures.js';
+import { signAndDeliver } from '../src/lib/http-signatures.ts';
 
 const BASE = 'https://canyoubeatwellington.radomski.co.nz';
 const ACTOR_ID = `${BASE}/actor`;

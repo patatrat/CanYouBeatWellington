@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Check, X, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, X, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { addDays, format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getThresholds } from "@/utils/rulesStorage";
 import type { DailyWeatherRecord } from "@/types/db";
+import type { ActiveSpecialDate } from "@/lib/special-dates";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -17,6 +19,7 @@ const getFirstDayOfWeek = (year: number, month: number) => new Date(year, month,
 
 interface CalendarHistoryProps {
   history: DailyWeatherRecord[];
+  specialDates?: ActiveSpecialDate[];
   initialYear: number;
   initialMonth: number;
 }
@@ -26,7 +29,7 @@ const isGoodDay = (r: DailyWeatherRecord) => {
   return r.temperature >= minTemp && r.wind_speed < maxWind && r.rain <= maxRain;
 };
 
-const CalendarHistory = ({ history, initialYear, initialMonth }: CalendarHistoryProps) => {
+const CalendarHistory = ({ history, specialDates, initialYear, initialMonth }: CalendarHistoryProps) => {
   // Initial state comes from the server component (NZT date) so SSR and client
   // see the same value — no hydration mismatch from new Date() on client.
   const [current, setCurrent] = useState({ year: initialYear, month: initialMonth });
@@ -36,6 +39,16 @@ const CalendarHistory = ({ history, initialYear, initialMonth }: CalendarHistory
     history?.forEach((r) => map.set(r.date, r));
     return map;
   }, [history]);
+
+  const specialMap = useMemo(() => {
+    const map = new Map<string, ActiveSpecialDate>();
+    specialDates?.forEach((s) => {
+      for (let d = parseISO(s.start_date); d <= parseISO(s.end_date); d = addDays(d, 1)) {
+        map.set(format(d, "yyyy-MM-dd"), s); // last-wins if multiple overlap a day — acceptable for a badge
+      }
+    });
+    return map;
+  }, [specialDates]);
 
   const { year, month } = current;
   const daysInMonth = getDaysInMonth(year, month);
@@ -57,6 +70,7 @@ const CalendarHistory = ({ history, initialYear, initialMonth }: CalendarHistory
         <span className="flex items-center gap-1"><X className="w-4 h-4 text-red-500" /> Not a Good Day</span>
         <span className="flex items-center gap-1"><ThumbsUp className="w-4 h-4 text-green-600" /> Most Agree</span>
         <span className="flex items-center gap-1"><ThumbsDown className="w-4 h-4 text-red-600" /> Most Disagree</span>
+        <span className="flex items-center gap-1"><Sparkles className="w-4 h-4 text-purple-500" /> Special date</span>
         <span className="text-gray-500">No symbol = No data</span>
       </div>
 
@@ -83,6 +97,7 @@ const CalendarHistory = ({ history, initialYear, initialMonth }: CalendarHistory
           const dd = String(day).padStart(2, "0");
           const dateStr = `${year}-${mm}-${dd}`;
           const record = historyMap.get(dateStr);
+          const special = specialMap.get(dateStr);
           const good = record ? isGoodDay(record) : null;
           const agreeCount = record?.agree_count ?? 0;
           const disagreeCount = record?.disagree_count ?? 0;
@@ -95,22 +110,32 @@ const CalendarHistory = ({ history, initialYear, initialMonth }: CalendarHistory
           const votesTitle = totalVotes > 0 && agreeCount !== disagreeCount
             ? `👍 ${agreeCount} | 👎 ${disagreeCount}`
             : undefined;
+          const specialTitle = special
+            ? special.title + (special.outcome_note ? ` — ${special.outcome_note}` : "")
+            : undefined;
 
           return (
             <div key={dateStr} className={cn("relative h-12 w-full flex items-center justify-center rounded text-sm", record && "hover:bg-gray-50")}>
               <span>{day}</span>
-              {record && (
+              {(record || special) && (
                 <div className="absolute top-0.5 right-0.5 flex flex-col items-center gap-0.5">
-                  <span title={weatherTitle}>
-                    {good
-                      ? <Check className="w-3 h-3 text-green-500" />
-                      : <X className="w-3 h-3 text-red-500" />}
-                  </span>
+                  {record && (
+                    <span title={weatherTitle}>
+                      {good
+                        ? <Check className="w-3 h-3 text-green-500" />
+                        : <X className="w-3 h-3 text-red-500" />}
+                    </span>
+                  )}
                   {votesTitle && (
                     <span title={votesTitle}>
                       {majorityAgree
                         ? <ThumbsUp className="w-2.5 h-2.5 text-green-600" />
                         : <ThumbsDown className="w-2.5 h-2.5 text-red-600" />}
+                    </span>
+                  )}
+                  {special && (
+                    <span title={specialTitle}>
+                      <Sparkles className="w-2.5 h-2.5 text-purple-500" />
                     </span>
                   )}
                 </div>

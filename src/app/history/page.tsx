@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAllHistoricalRecords } from "@/lib/weather";
+import { getAllHistoricalRecords, getTodaysNZTDate } from "@/lib/weather";
+import { getSpecialDatesForRange } from "@/lib/special-dates";
 import FunFacts from "@/components/FunFacts";
 import MonthlyGoodDaysChart from "@/components/MonthlyGoodDaysChart";
 import SeasonBreakdown from "@/components/SeasonBreakdown";
@@ -23,6 +24,13 @@ const Section = ({ title, subtitle, children }: { title: string; subtitle?: stri
 
 export default async function HistoryPage() {
   const history = await getAllHistoricalRecords();
+
+  // The special_dates table will only ever have tens of rows, so fetching
+  // the whole history-spanning range in one shot is cheap — same pattern
+  // as getAllHistoricalRecords() above.
+  const today = getTodaysNZTDate();
+  const earliestDate = history.at(-1)?.date ?? today;
+  const specialDates = await getSpecialDatesForRange(earliestDate, today);
 
   // Compute NZT date server-side and pass to CalendarHistory so the client
   // initialises state with the same year/month as the SSR output, avoiding
@@ -61,7 +69,12 @@ export default async function HistoryPage() {
         </Section>
 
         <Section title="Calendar">
-          <CalendarHistory history={history} initialYear={todayYear} initialMonth={todayMonth} />
+          <CalendarHistory
+            history={history}
+            specialDates={specialDates}
+            initialYear={todayYear}
+            initialMonth={todayMonth}
+          />
         </Section>
       </div>
     </div>

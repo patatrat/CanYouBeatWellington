@@ -10,3 +10,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Special-date "balloons" celebration effect — see SpecialDateEffect.tsx */
+@keyframes balloon-rise {
+  from {
+    transform: translateY(0) rotate(-3deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-115vh) rotate(3deg);
+    opacity: 0;
+  }
+}
+
+.balloon {
+  animation: balloon-rise 6s ease-in forwards;
+}
