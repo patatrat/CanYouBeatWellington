@@ -312,11 +312,11 @@ Do this in one sitting. Estimated time: 30 minutes.
 - [x] **Verify Neon row count matches Supabase row count** — `daily_weather_records`: 2365 ↔ 2365. `vote_tokens`: 26 ↔ 26 (23 from Phase 2 + 3 newly merged).
 
 **Cutover:**
-- [ ] Merge `nextjs` → `staging`; confirm staging Vercel deployment succeeds
-- [ ] Do a final smoke test on the staging URL: verdict, voting, history, AP WebFinger
-- [ ] In Vercel, update `DATABASE_URL` / `DATABASE_URL_UNPOOLED` from test Neon project to production Neon project (or promote the same project — just ensure it has the final data)
-- [ ] Merge `staging` → `main`; Vercel deploys to production
-- [ ] Verify production: home page loads with correct verdict, vote counts visible, `/actor` returns valid JSON, `/.well-known/webfinger` resolves
+- [x] **Merge `nextjs` → `staging`; confirm staging Vercel deployment succeeds** — clean fast-forward. First deploy failed (`DATABASE_URL` not yet set on this project — it had only ever held `VITE_`-prefixed Supabase vars). After adding `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `CRON_SECRET` (copied from the now-retired `can-you-beat-wellington-nextjs` project — same Neon project throughout, no migration needed; `AP_PUBLIC_KEY`/`AP_PRIVATE_KEY` already existed here from the live ActivityPub actor), a fresh deploy succeeded.
+- [x] **Final smoke test on the staging URL** — WebFinger confirmed via tool; home page/voting/history visually confirmed by user in-browser.
+- [x] **DATABASE_URL / DATABASE_URL_UNPOOLED** — only one Neon project ever existed (`dawn-queen-51598624`); no "test → production" promotion needed, just added the existing connection strings to this project's env vars.
+- [x] **Merge `staging` → `main`; Vercel deploys to production** — conflicts in `CLAUDE.md`/`package.json`/`package-lock.json` (main had one unique commit, the Dependabot security-fix bump on the old Vite deps, irrelevant once replaced by the Next.js dependency set; resolved by taking `staging`'s version). **Post-merge CI broke**: the old `ci.yml` (`npm ci` + `VITE_SUPABASE_URL` build env) choked on the new Next.js `package.json` — same lockfile-drift issue hit earlier on the `nextjs` branch (vitest/vite added to `package.json` by hand mid-migration without a real `npm install`). Fixed same-day by regenerating `package-lock.json` properly and updating `ci.yml`'s build env to the Next.js vars (`DATABASE_URL` secret already existed from Phase 8) — CI green again.
+- [x] **Verify production** — confirmed live on `canyoubeatwellington.radomski.co.nz`: home page shows correct date/verdict/weather/vote count (`x-nextjs-prerender` header present, CSP no longer references Supabase), `/actor` returns the actor JSON with the **same public key as before** (zero follower disruption), `/.well-known/webfinger` resolves correctly.
 
 **Post-cutover:**
 - [ ] Send a test Follow from a real Mastodon account to confirm the new inbox works end-to-end
@@ -324,6 +324,7 @@ Do this in one sitting. Estimated time: 30 minutes.
 - [ ] Delete the Supabase project (Settings → General → Delete project) — keep the pg_dump as the archive
 - [ ] Update this CLAUDE.md: stack description, infrastructure table, architecture notes, key files table
 - [ ] Remove Supabase env vars from Vercel and GitHub secrets
+- [x] **Rotate the Neon DB password** — it was fetched via the Neon MCP tool and appeared in plaintext in the chat session (an attempted shell command using it was blocked by the auto-mode classifier before execution, but the connection string had already been displayed by the tool call itself). User rotated the `neondb_owner` role password in the Neon dashboard and updated `DATABASE_URL`/`DATABASE_URL_UNPOOLED` + redeployed.
 
 ---
 
