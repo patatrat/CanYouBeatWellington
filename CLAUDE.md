@@ -81,7 +81,7 @@ Solemn/civic holidays (ANZAC Day, Waitangi Day, Good Friday, King's Birthday, La
 
 ### P4 — Feature improvements
 - [ ] **NZ-specific vocabulary** — build a word bank ("munted", "choice", "sweet as", "mean as", "stoked", "gutted", "staunch") to weave into quips in `quips.ts`
-- [ ] **User sharing** — pre-composed share links (Bluesky intent URL, Mastodon share URL); no API keys needed; low-effort "Share" button that opens a pre-filled compose window
+- [x] **User sharing** (2026-06-29) — `src/components/ShareButtons.tsx` on the About page. Bluesky uses its one compose-intent URL; Mastodon has no single domain, so the button asks once for the user's instance and remembers it in `localStorage` for next time, then opens that instance's `/share?text=` compose URL. Plus a copy-link fallback. No API keys, no new data fetch — share text is a static line, matching the About page's existing fully-static nature.
 - [ ] **Resolve the All Blacks v Italy fixture** (`all-blacks-v-italy-2026-07-11`) after the 2026-07-11 test — `POST /api/admin/resolve-sporting` with the result, exercising the semi-automated sporting workflow live for the first time
 - [ ] **Keep moveable special dates current** — Matariki/CubaDupa/WOW/Beervana occurrences only run through 2026–2027; add next year's real dates as they're announced (`special_date_occurrences`, manual insert — `fixed_rule` holidays self-heal via the cron, these don't)
 
