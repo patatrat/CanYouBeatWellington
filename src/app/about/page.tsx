@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import ShareButtons from "@/components/ShareButtons";
 
 export const metadata: Metadata = {
   title: "Why though? | Can You Beat Wellington?",
@@ -100,6 +101,12 @@ export default function AboutPage() {
               @CanYouBeat@canyoubeatwellington.radomski.co.nz
             </code>
           </p>
+
+          <h2 className="text-xl font-bold text-gray-800 pt-4">Share this</h2>
+          <p>
+            Got someone who needs convincing you can&apos;t beat Wellington on a good day, or even a bad one? Send them here.
+          </p>
+          <ShareButtons />
 
           <p className="pt-4 border-t border-amber-200">
             Built by{" "}
