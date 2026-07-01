@@ -76,6 +76,7 @@ Solemn/civic holidays (ANZAC Day, Waitangi Day, Good Friday, King's Birthday, La
 ## Backlog
 
 ### P2 — Post-migration cleanup
+- [ ] **Run the occurrence unique index in Neon** — `CREATE UNIQUE INDEX special_date_occurrences_def_start_key ON special_date_occurrences (def_id, start_date);` (already documented in `db/schema.sql`; the code's `ON CONFLICT DO NOTHING` in `ensureUpcomingOccurrences()` is safe with or without it, but the concurrency guard only bites once the index exists — running DDL against production was blocked during the 2026-07-02 hardening pass, needs a manual run)
 - [ ] **Delete the Supabase project** (Settings → General → Delete project) once production has been stable for a while — deliberately holding off; all data already migrated and verified.
 - [ ] **Monitor the `next`-bundled `postcss` moderate vulnerability** — `npm audit` flags a vulnerable `postcss` bundled inside `next`'s own `node_modules`; no real fix available yet — wait for an upstream Next.js patch.
 
@@ -100,6 +101,7 @@ Solemn/civic holidays (ANZAC Day, Waitangi Day, Good Friday, King's Birthday, La
 
 ## Changelog
 
+- **2026-07-02** — Security/correctness hardening pass across the migration + special dates work: ActivityPub inbox now verifies the signed `Digest` against the body, requires `(request-target)/host/date/digest` in the signature, rejects stale `Date` headers, and matches the body's `actor` against the signing key's actor (previously any fediverse account could spoof Follow/Undo for someone else); vote Server Action validates type/token and only accepts today's date (historical counts were client-rewritable); cron auth fails closed and both bearer checks are constant-time (`src/lib/auth.ts`); History calendar now applies `verdict_override` via shared `isGoodWeatherDay()`/`resolveVerdict()` (it was showing the Hurricanes-final forced good day as a red ✗); `resolve-sporting` returns 404/409 on no-ops instead of `ok`; AP fan-out parallelised with per-request timeouts, KV-cached inbox URLs, and a 1-year TTL on stored notes; dark special backgrounds (matariki/rugby) now swap to readable light text; home `revalidate` 3600→600 to shrink the stale-page window at NZ midnight; pure special-dates logic split into client-safe `special-dates-logic.ts`; Neon schema snapshot checked in at `db/schema.sql`.
 - **2026-04 to 2026-06** — Hardened and polished the original Vite + Supabase app: RLS policies, security headers, seasonal weather rules (the "Shitsville" calendar), tamper-resistant voting, historical backfill, scenario-based quips, 7-day forecast.
 - **2026-06-08 to 2026-06-28** — Rebuilt the entire stack as Next.js (App Router) + Neon, in parallel on a `nextjs` branch, tested independently on a separate Vercel project, then cut over via `nextjs → staging → main`. Zero ActivityPub follower disruption (same actor URL/keys throughout). Full phase-by-phase history, schema, env var changes, risk register, and decision log archived in `CLAUDE_ARCHIVE.md`.
 - **2026-06-28** — Shipped the special dates system (see above) and seeded the first real catalogue: 17 defs / 30 occurrences across NZ public holidays, Matariki/CubaDupa/WOW/Beervana, and two rugby fixtures (the Hurricanes' actual Super Rugby Pacific Grand Final win, and the upcoming All Blacks v Italy test).
@@ -120,12 +122,15 @@ Solemn/civic holidays (ANZAC Day, Waitangi Day, Good Friday, King's Birthday, La
 | File | Purpose |
 |------|---------|
 | `src/lib/weather.ts` | Neon queries — `getTodaysRecord`, `getHistoricalRecords`, `getAllHistoricalRecords`, `upsertWeatherRecord`, `fetchLiveWeather`, `fetchAndStoreBatch`, `getTodaysNZTDate` |
-| `src/lib/special-dates.ts` | Special-dates data layer — `getActiveSpecialDates`, `getSpecialDatesForRange`, `pickPrimarySpecialDate`, `resolveVerdict`, `computeFixedRuleDate`, `ensureUpcomingOccurrences`, `resolveSportingOccurrence` |
+| `src/lib/special-dates.ts` | Special-dates DB layer — `getActiveSpecialDates`, `getSpecialDatesForRange`, `ensureUpcomingOccurrences`, `resolveSportingOccurrence`; re-exports all of `special-dates-logic.ts` |
+| `src/lib/special-dates-logic.ts` | Pure special-dates logic + types (`pickPrimarySpecialDate`, `resolveVerdict`, `computeFixedRuleDate`) — no DB import, safe for client components like `CalendarHistory` |
+| `src/lib/auth.ts` | `isBearerAuthorized()` — constant-time, fail-closed bearer check shared by the cron and admin routes |
+| `db/schema.sql` | Reference snapshot of the Neon schema (tables, indexes, `increment_vote()`) — documentation, not a migration runner |
 | `src/lib/votes.ts` | `castVote()` — wraps `increment_vote()`, translates the `23505` unique-violation into `{ alreadyVoted: true }` |
 | `src/lib/db.ts` | Exports the `sql` Neon client (`@neondatabase/serverless`), reads `DATABASE_URL` |
 | `src/lib/ap-posting.ts` | `postToFollowers()` — Note+Create assembly and fanout delivery, shared by the cron route and `scripts/announce.js` |
 | `src/lib/http-signatures.ts` | HTTP signature sign/verify for ActivityPub delivery and inbox auth |
-| `src/utils/rulesStorage.ts` | Seasonal weather criteria — `getThresholds(date)`, `getSeasonLabel(date)`, `countCriteriaMet(weather, date)` |
+| `src/utils/rulesStorage.ts` | Seasonal weather criteria — `getThresholds(date)`, `getSeasonLabel(date)`, `countCriteriaMet(weather, date)`, `isGoodWeatherDay(weather, date)` (the single good-weather-day definition used by home/cron/calendar) |
 | `src/utils/quips.ts` | Scenario-based verdict quips + forecast summary quips |
 | `src/utils/specialBackgrounds.ts` | Code-side `background_key` → Tailwind gradient lookup (never raw CSS from the DB) |
 | `src/utils/weatherFunFacts.ts` | Fun fact generation from historical data |

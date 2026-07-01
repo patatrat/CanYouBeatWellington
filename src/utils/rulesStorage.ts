@@ -62,3 +62,10 @@ export const countCriteriaMet = (weather: Weather, date: Date | string = new Dat
     weather.rain <= maxRain,
   ].filter(Boolean).length;
 };
+
+// The single definition of a good *weather* day — every verdict in the app
+// (home page, daily cron, History calendar) must go through this so the
+// pages can never disagree about the same day. A special date's
+// verdict_override is applied on top via resolveVerdict(), not here.
+export const isGoodWeatherDay = (weather: Weather, date: Date | string): boolean =>
+  countCriteriaMet(weather, date) === 3;

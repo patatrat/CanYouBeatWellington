@@ -14,11 +14,20 @@ export interface PostResult {
 }
 
 async function getInboxUrl(actorUrl: string): Promise<string> {
-  const res = await fetch(actorUrl, { headers: { Accept: "application/activity+json" } });
+  const cacheKey = `cybw:ap:inbox:${actorUrl}`;
+  const cached = await kv.get<string>(cacheKey);
+  if (cached?.startsWith("https://")) return cached;
+
+  const res = await fetch(actorUrl, {
+    headers: { Accept: "application/activity+json" },
+    signal: AbortSignal.timeout(10_000),
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${actorUrl}`);
   const actor = await res.json();
-  if (!actor.inbox) throw new Error(`No inbox at ${actorUrl}`);
-  return actor.inbox as string;
+  const inbox = actor.inbox as string | undefined;
+  if (!inbox?.startsWith("https://")) throw new Error(`No https inbox at ${actorUrl}`);
+  await kv.set(cacheKey, inbox);
+  return inbox;
 }
 
 // Builds a Note wrapped in a Create activity, stores it in KV (so the note
@@ -61,26 +70,23 @@ export async function postToFollowers(htmlContent: string, noteIdSuffix: string)
     object: note,
   };
 
-  await kv.set(`cybw:post:${noteIdSuffix}`, activity);
+  // Expire stored notes after a year — the outbox list is trimmed to 50
+  // entries below, so without a TTL the trimmed cybw:post:* keys would
+  // accumulate in KV forever.
+  await kv.set(`cybw:post:${noteIdSuffix}`, activity, { ex: 60 * 60 * 24 * 365 });
   await kv.lpush("cybw:posts", noteIdSuffix);
   await kv.ltrim("cybw:posts", 0, 49);
 
-  let delivered = 0;
-  let failed = 0;
-
-  for (const followerUrl of followers) {
-    try {
+  // Deliveries run in parallel with per-request timeouts so one hung remote
+  // server can't stall the whole fan-out into the route's maxDuration.
+  const results = await Promise.allSettled(
+    followers.map(async (followerUrl) => {
       const inboxUrl = await getInboxUrl(followerUrl);
       const status = await signAndDeliver(inboxUrl, activity, KEY_ID, privateKeyPem);
-      if (status >= 200 && status < 300) {
-        delivered++;
-      } else {
-        failed++;
-      }
-    } catch {
-      failed++;
-    }
-  }
+      if (status < 200 || status >= 300) throw new Error(`HTTP ${status} delivering to ${inboxUrl}`);
+    }),
+  );
+  const delivered = results.filter((r) => r.status === "fulfilled").length;
 
-  return { posted: true, delivered, failed, total: followers.length };
+  return { posted: true, delivered, failed: followers.length - delivered, total: followers.length };
 }

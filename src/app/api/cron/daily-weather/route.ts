@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isBearerAuthorized } from '@/lib/auth';
 import { fetchAndStoreBatch, getTodaysNZTDate } from '@/lib/weather';
-import { getThresholds } from '@/utils/rulesStorage';
+import { isGoodWeatherDay } from '@/utils/rulesStorage';
 import { postToFollowers } from '@/lib/ap-posting';
 import {
   ensureUpcomingOccurrences,
@@ -17,11 +18,8 @@ const BASE = 'https://canyoubeatwellington.radomski.co.nz';
 export async function GET(req: NextRequest) {
   // When CRON_SECRET is set in Vercel env vars, Vercel Cron automatically
   // includes it in the Authorization header. Manual test calls must too.
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    if (req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  if (!isBearerAuthorized(req.headers.get('authorization'), process.env.CRON_SECRET)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const today = getTodaysNZTDate();
@@ -43,11 +41,10 @@ export async function GET(req: NextRequest) {
   // active special date's verdict_override (if any) take precedence — the
   // "vibes override weather" mechanic, e.g. a Wellington team winning can
   // force a good day regardless of the weather.
-  const { minTemp, maxWind, maxRain } = getThresholds(today);
-  const weatherIsGood =
-    todayRecord.temperature >= minTemp &&
-    todayRecord.wind_speed < maxWind &&
-    todayRecord.rain <= maxRain;
+  const weatherIsGood = isGoodWeatherDay(
+    { temperature: todayRecord.temperature, windSpeed: todayRecord.wind_speed, rain: todayRecord.rain },
+    today,
+  );
 
   const activeSpecialDates = await getActiveSpecialDates(today);
   const special = pickPrimarySpecialDate(activeSpecialDates);

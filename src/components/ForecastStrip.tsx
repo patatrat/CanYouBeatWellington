@@ -6,10 +6,15 @@ const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface ForecastStripProps {
   forecast: ForecastDay[];
+  // Rendered on a dark special background (matariki, rugby) — swap the
+  // gray-on-light text for light variants. Day cells keep their own
+  // backgrounds, so only the strip's header/summary text needs it.
+  onDark?: boolean;
 }
 
-const ForecastStrip = ({ forecast }: ForecastStripProps) => {
+const ForecastStrip = ({ forecast, onDark = false }: ForecastStripProps) => {
   if (!forecast?.length) return null;
+  const faintText = onDark ? "text-slate-400" : "text-gray-400";
 
   const days = forecast.map((day) => {
     const date = new Date(day.date + "T12:00:00"); // noon to avoid DST edge cases
@@ -37,7 +42,7 @@ const ForecastStrip = ({ forecast }: ForecastStripProps) => {
 
   return (
     <div className="w-full max-w-sm mt-6">
-      <p className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-3">
+      <p className={`text-xs font-bold uppercase tracking-widest ${faintText} text-center mb-3`}>
         Next {days.length} days
       </p>
 
@@ -61,7 +66,7 @@ const ForecastStrip = ({ forecast }: ForecastStripProps) => {
         ))}
       </div>
 
-      {summaryQuip && <p className="text-xs text-gray-400 text-center mt-2 italic">{summaryQuip}</p>}
+      {summaryQuip && <p className={`text-xs ${faintText} text-center mt-2 italic`}>{summaryQuip}</p>}
     </div>
   );
 };

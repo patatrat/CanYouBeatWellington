@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { getThresholds, getSeasonLabel } from "@/utils/rulesStorage";
+import { getThresholds, getSeasonLabel, isGoodWeatherDay } from "@/utils/rulesStorage";
 import { getScenario, pickQuip } from "@/utils/quips";
 import { getTodaysRecord, fetchLiveWeather, upsertWeatherRecord, getTodaysNZTDate } from "@/lib/weather";
 import { getActiveSpecialDates, pickPrimarySpecialDate, resolveVerdict } from "@/lib/special-dates";
@@ -11,7 +11,10 @@ import VotingButtons from "@/components/VotingButtons";
 import ForecastStrip from "@/components/ForecastStrip";
 import SpecialDateEffect from "@/components/SpecialDateEffect";
 
-export const revalidate = 3600;
+// Short enough that the window where a cached page straddles NZ midnight
+// (showing yesterday's date/verdict) stays small — the underlying fetches
+// are cheap, and fetchLiveWeather has its own 1-hour fetch cache anyway.
+export const revalidate = 600;
 
 export default async function HomePage() {
   const today = getTodaysNZTDate();
@@ -53,33 +56,40 @@ export default async function HomePage() {
   const tempMet = effectiveWeather.temperature >= rules.minTemp;
   const windMet = effectiveWeather.windSpeed < rules.maxWind;
   const rainMet = effectiveWeather.rain <= rules.maxRain;
-  const weatherIsGood = tempMet && windMet && rainMet;
+  const weatherIsGood = isGoodWeatherDay(effectiveWeather, weatherDate);
   // A non-null verdict_override from an active special date wins over the
   // weather-computed verdict — e.g. a Wellington team winning can force a
   // good day regardless of temperature/wind/rain. WeatherStat below still
   // shows the real per-criterion facts unchanged either way.
   const isGood = resolveVerdict(weatherIsGood, special?.verdict_override ?? null);
   const verdictLine = special?.quip_override ?? pickQuip(getScenario(tempMet, windMet, rainMet));
+  const specialBg = special?.background_key ? SPECIAL_BACKGROUNDS[special.background_key] : undefined;
+  // Dark special backgrounds (matariki, rugby) need light text — the default
+  // grays below are designed for the light gradients and vanish on near-black.
+  const onDark = specialBg?.dark ?? false;
   const bgClass =
-    (special?.background_key && SPECIAL_BACKGROUNDS[special.background_key]) ||
+    specialBg?.className ||
     (isGood
       ? "bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100"
       : "bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200");
+  const mutedText = onDark ? "text-slate-300" : "text-gray-500";
+  const faintText = onDark ? "text-slate-400" : "text-gray-400";
+  const mutedHover = onDark ? "hover:text-white" : "hover:text-gray-800";
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-700 ${bgClass}`}>
       <SpecialDateEffect effect={special?.effect ?? "none"} />
 
       {/* Top-right nav */}
-      <nav className="flex justify-end px-5 pt-4 gap-5 text-sm font-medium text-gray-500">
-        <Link href="/about" className="hover:text-gray-800 transition-colors">Why though?</Link>
-        <Link href="/history" className="hover:text-gray-800 transition-colors">The record</Link>
+      <nav className={`flex justify-end px-5 pt-4 gap-5 text-sm font-medium ${mutedText}`}>
+        <Link href="/about" className={`${mutedHover} transition-colors`}>Why though?</Link>
+        <Link href="/history" className={`${mutedHover} transition-colors`}>The record</Link>
       </nav>
 
       <div className="flex flex-col items-center justify-center flex-1 px-6 py-6">
         {/* Special-date banner */}
         {special && (special.title || special.link_url) && (
-          <p className="text-xs text-gray-500 text-center mb-3">
+          <p className={`text-xs ${mutedText} text-center mb-3`}>
             {special.title}
             {special.outcome_note && ` — ${special.outcome_note}`}
             {special.link_url && (
@@ -89,7 +99,7 @@ export default async function HomePage() {
                   href={special.link_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline underline-offset-2 hover:text-gray-700"
+                  className={`underline underline-offset-2 ${mutedHover}`}
                 >
                   {special.link_label ?? "More"}
                 </a>
@@ -108,17 +118,21 @@ export default async function HomePage() {
         </span>
 
         {/* Question */}
-        <h1 className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-2">
+        <h1 className={`text-sm font-medium ${faintText} uppercase tracking-widest mb-2`}>
           Can you beat Wellington today?
         </h1>
 
         {/* Verdict */}
-        <p className={`text-[8rem] sm:text-[10rem] leading-none font-black mb-3 ${isGood ? "text-green-600" : "text-red-500"}`}>
+        <p
+          className={`text-[8rem] sm:text-[10rem] leading-none font-black mb-3 ${
+            isGood ? (onDark ? "text-green-400" : "text-green-600") : onDark ? "text-red-400" : "text-red-500"
+          }`}
+        >
           {isGood ? "NO" : "YES"}
         </p>
 
         {/* Cheeky line — no max-width so quips stay on one line */}
-        <p className="text-sm text-gray-500 text-center mb-8 italic whitespace-nowrap">{verdictLine}</p>
+        <p className={`text-sm ${mutedText} text-center mb-8 italic whitespace-nowrap`}>{verdictLine}</p>
 
         {/* Weather stats */}
         <div className="grid grid-cols-3 gap-3 sm:gap-10 mb-6">
@@ -127,18 +141,21 @@ export default async function HomePage() {
             value={`${effectiveWeather.temperature.toFixed(1)}°C`}
             meets={tempMet}
             threshold={`≥ ${rules.minTemp}°C`}
+            onDark={onDark}
           />
           <WeatherStat
             label="Wind"
             value={`${effectiveWeather.windSpeed.toFixed(1)} km/h`}
             meets={windMet}
             threshold={`< ${rules.maxWind} km/h`}
+            onDark={onDark}
           />
           <WeatherStat
             label="Rain"
             value={`${effectiveWeather.rain.toFixed(1)} mm`}
             meets={rainMet}
             threshold="0 mm"
+            onDark={onDark}
           />
         </div>
 
@@ -153,16 +170,16 @@ export default async function HomePage() {
         )}
 
         {/* Forecast */}
-        <ForecastStrip forecast={liveWeather.forecast} />
+        <ForecastStrip forecast={liveWeather.forecast} onDark={onDark} />
 
         {/* Attribution */}
-        <p className="text-xs text-gray-400 text-center mt-5">
+        <p className={`text-xs ${faintText} text-center mt-5`}>
           Updated {format(parseISO(liveWeather.timestamp), "PPP")} ·{" "}
           <a
             href={liveWeather.source}
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-gray-600 underline underline-offset-2"
+            className={`${mutedHover} underline underline-offset-2`}
           >
             open-meteo.com <ExternalLink className="inline-block w-3 h-3 ml-0.5" />
           </a>

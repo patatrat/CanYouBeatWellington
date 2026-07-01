@@ -4,9 +4,13 @@ import { useState, useMemo } from "react";
 import { Check, X, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import { getThresholds } from "@/utils/rulesStorage";
+import { isGoodWeatherDay } from "@/utils/rulesStorage";
 import type { DailyWeatherRecord } from "@/types/db";
-import type { ActiveSpecialDate } from "@/lib/special-dates";
+import {
+  pickPrimarySpecialDate,
+  resolveVerdict,
+  type ActiveSpecialDate,
+} from "@/lib/special-dates-logic";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -24,10 +28,14 @@ interface CalendarHistoryProps {
   initialMonth: number;
 }
 
-const isGoodDay = (r: DailyWeatherRecord) => {
-  const { minTemp, maxWind, maxRain } = getThresholds(r.date);
-  return r.temperature >= minTemp && r.wind_speed < maxWind && r.rain <= maxRain;
-};
+// Same verdict as the home page showed on the day: shared weather rule, then
+// an active special date's verdict_override (e.g. a Wellington team winning)
+// takes precedence — the calendar must never disagree with what the site said.
+const isGoodDay = (r: DailyWeatherRecord, special: ActiveSpecialDate | null) =>
+  resolveVerdict(
+    isGoodWeatherDay({ temperature: r.temperature, windSpeed: r.wind_speed, rain: r.rain }, r.date),
+    special?.verdict_override ?? null,
+  );
 
 const CalendarHistory = ({ history, specialDates, initialYear, initialMonth }: CalendarHistoryProps) => {
   // Initial state comes from the server component (NZT date) so SSR and client
@@ -41,11 +49,19 @@ const CalendarHistory = ({ history, specialDates, initialYear, initialMonth }: C
   }, [history]);
 
   const specialMap = useMemo(() => {
-    const map = new Map<string, ActiveSpecialDate>();
+    const byDay = new Map<string, ActiveSpecialDate[]>();
     specialDates?.forEach((s) => {
       for (let d = parseISO(s.start_date); d <= parseISO(s.end_date); d = addDays(d, 1)) {
-        map.set(format(d, "yyyy-MM-dd"), s); // last-wins if multiple overlap a day — acceptable for a badge
+        const key = format(d, "yyyy-MM-dd");
+        byDay.set(key, [...(byDay.get(key) ?? []), s]);
       }
+    });
+    // When several occasions overlap a day, use the same precedence rule as
+    // the home page so the badge and any verdict_override match what was shown.
+    const map = new Map<string, ActiveSpecialDate>();
+    byDay.forEach((dates, key) => {
+      const primary = pickPrimarySpecialDate(dates);
+      if (primary) map.set(key, primary);
     });
     return map;
   }, [specialDates]);
@@ -97,8 +113,8 @@ const CalendarHistory = ({ history, specialDates, initialYear, initialMonth }: C
           const dd = String(day).padStart(2, "0");
           const dateStr = `${year}-${mm}-${dd}`;
           const record = historyMap.get(dateStr);
-          const special = specialMap.get(dateStr);
-          const good = record ? isGoodDay(record) : null;
+          const special = specialMap.get(dateStr) ?? null;
+          const good = record ? isGoodDay(record, special) : null;
           const agreeCount = record?.agree_count ?? 0;
           const disagreeCount = record?.disagree_count ?? 0;
           const totalVotes = agreeCount + disagreeCount;

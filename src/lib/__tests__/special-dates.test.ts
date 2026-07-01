@@ -166,7 +166,7 @@ describe('ensureUpcomingOccurrences', () => {
     mockSql
       .mockResolvedValueOnce([{ id: 1, recurrence_rule: 'fixed:2:6' }]) // defs query
       .mockResolvedValueOnce([]) // existing-occurrence check: none found
-      .mockResolvedValueOnce([]); // the INSERT
+      .mockResolvedValueOnce([{ id: 99 }]); // the INSERT ... RETURNING id
 
     const inserted = await ensureUpcomingOccurrences(0); // just this year
     expect(inserted).toBe(1);
