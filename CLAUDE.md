@@ -78,8 +78,7 @@ Solemn/civic holidays (ANZAC Day, Waitangi Day, Good Friday, King's Birthday, La
 ### P2 — Post-migration cleanup
 - [x] **Run the occurrence unique index in Neon** (2026-07-02) — `special_date_occurrences_def_start_key ON (def_id, start_date)` created in production by hand (automated DDL was permission-blocked); `db/schema.sql` documents it, and `ensureUpcomingOccurrences()`'s `ON CONFLICT DO NOTHING` race guard is now fully backed.
 - [ ] **Delete the Supabase project** (Settings → General → Delete project) once production has been stable for a while — deliberately holding off; all data already migrated and verified.
-- [ ] **Merge Dependabot PR #47 to clear the `postcss` vulnerability** — the previously-unfixable `postcss` XSS advisory now has a patched version (8.5.10), and PR #47 (15-package bump incl. Next.js 16.2.7 → 16.2.9) is open against `staging`; CI passes on it except the known Dependabot-secrets Build quirk. Merge, confirm `npm audit` is clean, then close Dependabot alert #65 if it doesn't auto-close.
-- [ ] **Bump `actions/checkout@v4` → `v5` in `ci.yml`** — GitHub warns v4 targets deprecated Node 20 (forced to run on Node 24); one-line change, clears the CI annotation.
+- [ ] **Monitor the `next`-bundled `postcss` moderate vulnerability** — a patched `postcss` (8.5.10) exists, but Next.js only picks it up from `16.3.0-canary.6`; every stable Next release through 16.2.9 (current, via Dependabot PR #47 merged 2026-07-02) still bundles the vulnerable copy. Build-time-only dependency, so real exposure is negligible — clear it by taking Next 16.3.x stable when it ships. `npm audit --audit-level=high` in CI stays green meanwhile (advisory is moderate).
 
 ### P4 — Feature improvements
 - [ ] **NZ-specific vocabulary** — build a word bank ("munted", "choice", "sweet as", "mean as", "stoked", "gutted", "staunch") to weave into quips in `quips.ts`
