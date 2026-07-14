@@ -78,7 +78,8 @@ Solemn/civic holidays (ANZAC Day, Waitangi Day, Good Friday, King's Birthday, La
 ### P2 — Post-migration cleanup
 - [x] **Run the occurrence unique index in Neon** (2026-07-02) — `special_date_occurrences_def_start_key ON (def_id, start_date)` created in production by hand (automated DDL was permission-blocked); `db/schema.sql` documents it, and `ensureUpcomingOccurrences()`'s `ON CONFLICT DO NOTHING` race guard is now fully backed.
 - [ ] **Delete the Supabase project** (Settings → General → Delete project) once production has been stable for a while — deliberately holding off; all data already migrated and verified.
-- [ ] **Monitor the `next`-bundled `postcss` moderate vulnerability** — a patched `postcss` (8.5.10) exists, but Next.js only picks it up from `16.3.0-canary.6`; every stable Next release through 16.2.9 (current, via Dependabot PR #47 merged 2026-07-02) still bundles the vulnerable copy. Build-time-only dependency, so real exposure is negligible — clear it by taking Next 16.3.x stable when it ships. `npm audit --audit-level=high` in CI stays green meanwhile (advisory is moderate).
+- [x] **Resolve the `next`-bundled `postcss` moderate vulnerability** (2026-07-14) — no stable Next carries the fix (16.2.10 still pins postcss 8.4.31; only 16.3 canaries have 8.5.10), so an npm `overrides` entry in `package.json` forces `next`'s nested copy to 8.5.10 (semver-minor, API-compatible). `npm audit` reports 0 vulnerabilities; Dependabot alert #65 closes with it.
+- [ ] **Drop the `postcss` override once Next 16.3.x stable ships** — the `overrides.next.postcss` entry in `package.json` becomes redundant when Next bundles ≥ 8.5.10 itself (16.3.0-canary.6+); remove it during that upgrade so npm resolves Next's own pin again.
 
 ### P4 — Feature improvements
 - [ ] **NZ-specific vocabulary** — build a word bank ("munted", "choice", "sweet as", "mean as", "stoked", "gutted", "staunch") to weave into quips in `quips.ts`
