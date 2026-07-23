@@ -4,6 +4,7 @@
 
 type Scenario = keyof typeof QUIPS;
 type ForecastBucket = keyof typeof FORECAST_SUMMARY;
+type SeverityScenario = keyof typeof SEVERE_QUIPS;
 
 const pick = (arr: string[]): string => arr[Math.floor(Math.random() * arr.length)];
 
@@ -92,6 +93,54 @@ export const QUIPS = {
   ],
 } as const satisfies Record<string, string[]>;
 
+// ── Severity quips ───────────────────────────────────────────────────────────
+// Absolute-intensity flavour text, layered on top of the scenario quips above
+// rather than replacing them — the actual good/bad-day verdict is untouched
+// (still decided by rulesStorage.ts); these only override which line of text
+// is shown. Checked in severity order by getSeverityScenario() before falling
+// back to the scenario quips, so a single day never matches more than one.
+
+export const SEVERE_QUIPS = {
+  // Wind ≥ 40 km/h, no rain
+  WIND_40: [
+    "Hold on to your hats, it's blowing!",
+    'Here\'s my impression of Wellington today: "Whoosh, whoosh, whoosh."',
+    "Wind, wind, go away, come again another day.",
+  ],
+
+  // Wind ≥ 50 km/h (and < 60)
+  WIND_50: [
+    "I hope you aren't planning on flying today.",
+    "She's windy out there, go check your tramp.",
+    "Your glass recycling bin is in the next suburb.",
+  ],
+
+  // Wind ≥ 60 km/h
+  WIND_60: [
+    "Someone check on the Zephyrometer.",
+    "Is the Water Whirler still there?",
+  ],
+
+  // Wind ≥ 40 km/h (and < 50) and raining — takes priority over plain WIND_40
+  WIND_40_RAIN: [
+    "Don't bother with an umbrella today.",
+    "Normally rain falls down. Today it falls sideways.",
+    "Planning on heading outside today? You're brave.",
+  ],
+
+  // Rain ≥ 25mm (only reached once wind is below 40 — see getSeverityScenario)
+  RAIN_HEAVY: [
+    "It's raining cats and dogs.",
+    "Enjoy your swim.",
+  ],
+
+  // Rain ≥ 10mm (and < 25) and wind < 30 km/h
+  RAIN_STEADY_CALM: [
+    "It could be worse, it could be windy.",
+    "At least the rain is falling straight down today.",
+  ],
+} as const satisfies Record<string, string[]>;
+
 // ── Forecast summary quips ───────────────────────────────────────────────────
 // Shown below the 6-day forecast strip based on how many good days are coming.
 
@@ -144,6 +193,28 @@ export const getScenario = (tempMet: boolean, windMet: boolean, rainMet: boolean
 
 export const pickQuip = (scenario: Scenario): string =>
   pick([...(QUIPS[scenario] ?? QUIPS.ALL_BAD)]);
+
+// Priority waterfall, most severe/specific condition first — each check
+// "claims" the day before a less specific one gets a chance, so exactly one
+// tier ever matches. Wind tiers are nested (60 implies 50 implies 40), so the
+// highest one reached wins outright regardless of rain; the wind+rain combo
+// only applies in the 40-49 band, since 50+ is dramatic enough on its own.
+// Returns null when nothing severe applies — callers should fall back to the
+// standard scenario quips (getScenario/pickQuip) in that case.
+export const getSeverityScenario = (windSpeed: number, rain: number): SeverityScenario | null => {
+  if (windSpeed >= 60) return "WIND_60";
+  if (windSpeed >= 50) return "WIND_50";
+  if (windSpeed >= 40 && rain > 0) return "WIND_40_RAIN";
+  if (windSpeed >= 40) return "WIND_40";
+  if (rain >= 25) return "RAIN_HEAVY";
+  if (rain >= 10 && windSpeed < 30) return "RAIN_STEADY_CALM";
+  return null;
+};
+
+export const pickSeverityQuip = (windSpeed: number, rain: number): string | null => {
+  const scenario = getSeverityScenario(windSpeed, rain);
+  return scenario ? pick([...SEVERE_QUIPS[scenario]]) : null;
+};
 
 export const pickForecastSummary = (goodDayCount: number): string => {
   const bucket: ForecastBucket =

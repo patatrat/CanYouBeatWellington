@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getThresholds, getSeasonLabel, isGoodWeatherDay } from "@/utils/rulesStorage";
-import { getScenario, pickQuip } from "@/utils/quips";
+import { getScenario, pickQuip, pickSeverityQuip } from "@/utils/quips";
 import { getTodaysRecord, fetchLiveWeather, upsertWeatherRecord, getTodaysNZTDate } from "@/lib/weather";
 import { getActiveSpecialDates, pickPrimarySpecialDate, resolveVerdict } from "@/lib/special-dates";
 import { SPECIAL_BACKGROUNDS } from "@/utils/specialBackgrounds";
@@ -62,7 +62,12 @@ export default async function HomePage() {
   // good day regardless of temperature/wind/rain. WeatherStat below still
   // shows the real per-criterion facts unchanged either way.
   const isGood = resolveVerdict(weatherIsGood, special?.verdict_override ?? null);
-  const verdictLine = special?.quip_override ?? pickQuip(getScenario(tempMet, windMet, rainMet));
+  // Precedence: a special date's quip always wins; otherwise an extreme wind/
+  // rain reading gets its own flavour line ahead of the standard scenario quip.
+  const verdictLine =
+    special?.quip_override ??
+    pickSeverityQuip(effectiveWeather.windSpeed, effectiveWeather.rain) ??
+    pickQuip(getScenario(tempMet, windMet, rainMet));
   const specialBg = special?.background_key ? SPECIAL_BACKGROUNDS[special.background_key] : undefined;
   // Dark special backgrounds (matariki, rugby) need light text — the default
   // grays below are designed for the light gradients and vanish on near-black.
