@@ -42,5 +42,14 @@ jobs:
           KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
+      # --omit=dev: scoped to production deps deliberately, not as a blanket
+      # policy. GHSA-mh99-v99m-4gvg (brace-expansion DoS) currently has no
+      # fix compatible with the old minimatch@2-3.x line that ESLint's own
+      # plugin ecosystem (eslint-plugin-import/jsx-a11y/react, @eslint/*)
+      # still depends on — the only listed patch (5.0.8) breaks that API.
+      # That chain is 100% devDependency/build-time lint tooling with no
+      # shipped code and no untrusted input, so it can't be fixed here
+      # without breaking lint until upstream bumps their own dependency.
+      # See CLAUDE.md's P2 backlog for the tracking item.
       - name: Audit
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high

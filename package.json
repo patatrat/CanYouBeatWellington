@@ -46,8 +46,8 @@
     "node": ">=24"
   },
   "overrides": {
+    "postcss": "8.5.19",
     "next": {
-      "postcss": "8.5.19",
       "sharp": "0.35.3"
     },
     "eslint": {
@@ -59,7 +59,7 @@
       "brace-expansion": "1.1.16"
     },
     "minimatch@10.2.5": {
-      "brace-expansion": "5.0.7"
+      "brace-expansion": "5.0.8"
     }
   }
 }
