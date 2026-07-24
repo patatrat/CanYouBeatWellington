@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
+import SiteNav from "@/components/SiteNav";
 
 export const metadata: Metadata = {
   title: "Why though? | Can You Beat Wellington?",
@@ -18,11 +18,8 @@ const SEASONS = [
 
 export default function AboutPage() {
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100">
-      <nav className="absolute top-4 right-5 flex gap-5 text-sm font-medium text-gray-500">
-        <Link href="/" className="hover:text-gray-800 transition-colors">Today</Link>
-        <Link href="/history" className="hover:text-gray-800 transition-colors">The record</Link>
-      </nav>
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100">
+      <SiteNav current="about" />
 
       <div className="max-w-2xl mx-auto px-6 py-16">
         <header className="text-center mb-14">

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { getAllHistoricalRecords, getTodaysNZTDate } from "@/lib/weather";
 import { getSpecialDatesForRange } from "@/lib/special-dates";
 import FunFacts from "@/components/FunFacts";
@@ -7,6 +6,7 @@ import MonthlyGoodDaysChart from "@/components/MonthlyGoodDaysChart";
 import SeasonBreakdown from "@/components/SeasonBreakdown";
 import MonthlyAveragesChart from "@/components/MonthlyAveragesChart";
 import CalendarHistory from "@/components/CalendarHistory";
+import SiteNav from "@/components/SiteNav";
 
 export const metadata: Metadata = {
   title: "The Record — Can You Beat Wellington?",
@@ -40,11 +40,8 @@ export default async function HistoryPage() {
   const todayMonth = nztNow.getMonth();
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200">
-      <nav className="absolute top-4 right-5 flex gap-5 text-sm font-medium text-gray-500">
-        <Link href="/" className="hover:text-gray-800 transition-colors">Today</Link>
-        <Link href="/about" className="hover:text-gray-800 transition-colors">Why though?</Link>
-      </nav>
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200">
+      <SiteNav current="history" />
 
       <div className="max-w-3xl mx-auto px-6 py-14">
         <header className="text-center mb-12">
