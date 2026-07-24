@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, HelpCircle, History } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getThresholds, getSeasonLabel, isGoodWeatherDay } from "@/utils/rulesStorage";
 import { getScenario, pickQuip, pickSeverityQuip } from "@/utils/quips";
@@ -80,15 +80,34 @@ export default async function HomePage() {
   const mutedText = onDark ? "text-slate-300" : "text-gray-500";
   const faintText = onDark ? "text-slate-400" : "text-gray-400";
   const mutedHover = onDark ? "hover:text-white" : "hover:text-gray-800";
+  // Pill-button treatment for the About/History nav — plain text links here
+  // read as page furniture and got missed by a lot of first-time visitors
+  // (a Reddit post drove traffic where under half of readers clicked through);
+  // a bordered, filled button is unambiguously tappable, especially on mobile.
+  const navButton = onDark
+    ? "border-slate-500 bg-slate-800/70 text-slate-100 hover:bg-slate-700"
+    : "border-gray-300 bg-white/80 text-gray-700 hover:bg-white hover:border-gray-400";
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-700 ${bgClass}`}>
       <SpecialDateEffect effect={special?.effect ?? "none"} />
 
       {/* Top-right nav */}
-      <nav className={`flex justify-end px-5 pt-4 gap-5 text-sm font-medium ${mutedText}`}>
-        <Link href="/about" className={`${mutedHover} transition-colors`}>Why though?</Link>
-        <Link href="/history" className={`${mutedHover} transition-colors`}>The record</Link>
+      <nav className="flex flex-wrap justify-end gap-3 px-5 pt-5">
+        <Link
+          href="/about"
+          className={`flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors ${navButton}`}
+        >
+          <HelpCircle className="h-4 w-4" />
+          Why though?
+        </Link>
+        <Link
+          href="/history"
+          className={`flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors ${navButton}`}
+        >
+          <History className="h-4 w-4" />
+          The record
+        </Link>
       </nav>
 
       <div className="flex flex-col items-center justify-center flex-1 px-6 py-6">
