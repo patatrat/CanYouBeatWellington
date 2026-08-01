@@ -115,7 +115,10 @@ export default function AboutPage() {
               the blog <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>
             . Say hi on{" "}
-            <a href="https://mastodon.nz/@Pat" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+            {/* rel="me" so this reciprocates @Pat@mastodon.nz's own "Can you beat
+                Wellington?" profile field, which already links here — needed for
+                Mastodon's rel=me verification to show that field as verified. */}
+            <a href="https://mastodon.nz/@Pat" target="_blank" rel="me noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               Mastodon <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>.
           </p>
