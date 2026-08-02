@@ -5,6 +5,26 @@ const BASE = "https://canyoubeatwellington.radomski.co.nz";
 const ACTOR_ID = `${BASE}/actor`;
 const KEY_ID = `${ACTOR_ID}#main-key`;
 
+// FEP-044f quote-post context terms, copied verbatim from a live Mastodon
+// post's own ActivityPub JSON (fetched directly, not from third-party docs,
+// since third-party write-ups disagreed on the exact namespace). Mastodon
+// itself uses GoToSocial's "gts:" vocabulary for these terms even though
+// they didn't originate there — this is what Mastodon actually parses.
+const QUOTE_CONTEXT = {
+  gts: "https://gotosocial.org/ns#",
+  interactionPolicy: { "@id": "gts:interactionPolicy", "@type": "@id" },
+  canQuote: { "@id": "gts:canQuote", "@type": "@id" },
+  automaticApproval: { "@id": "gts:automaticApproval", "@type": "@id" },
+};
+
+// Public collection URI in automaticApproval means "anyone may quote this
+// without my approval" — without it, Mastodon defaults new posts to
+// author-only auto-approval (confirmed by inspecting a real Mastodon post),
+// which reads to a quoting user as "you are not allowed to quote this."
+const QUOTABLE_BY_ANYONE = {
+  canQuote: { automaticApproval: ["https://www.w3.org/ns/activitystreams#Public"] },
+};
+
 export interface PostResult {
   posted: boolean;
   delivered?: number;
@@ -48,7 +68,7 @@ export async function postToFollowers(htmlContent: string, noteIdSuffix: string)
   const noteId = `${BASE}/notes/${noteIdSuffix}`;
 
   const note = {
-    "@context": "https://www.w3.org/ns/activitystreams",
+    "@context": ["https://www.w3.org/ns/activitystreams", QUOTE_CONTEXT],
     id: noteId,
     type: "Note",
     attributedTo: ACTOR_ID,
@@ -57,10 +77,11 @@ export async function postToFollowers(htmlContent: string, noteIdSuffix: string)
     to: ["https://www.w3.org/ns/activitystreams#Public"],
     cc: [`${ACTOR_ID}/followers`],
     url: BASE,
+    interactionPolicy: QUOTABLE_BY_ANYONE,
   };
 
   const activity = {
-    "@context": "https://www.w3.org/ns/activitystreams",
+    "@context": ["https://www.w3.org/ns/activitystreams", QUOTE_CONTEXT],
     id: `${noteId}/activity`,
     type: "Create",
     actor: ACTOR_ID,

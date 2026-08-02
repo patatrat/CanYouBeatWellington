@@ -17,6 +17,19 @@ const BASE = 'https://canyoubeatwellington.radomski.co.nz';
 const ACTOR_ID = `${BASE}/actor`;
 const KEY_ID = `${ACTOR_ID}#main-key`;
 
+// FEP-044f quote-post context terms — kept in sync with src/lib/ap-posting.ts
+// (see the comment there for why these exact values, copied from a live
+// Mastodon post's own JSON rather than third-party docs).
+const QUOTE_CONTEXT = {
+  gts: 'https://gotosocial.org/ns#',
+  interactionPolicy: { '@id': 'gts:interactionPolicy', '@type': '@id' },
+  canQuote: { '@id': 'gts:canQuote', '@type': '@id' },
+  automaticApproval: { '@id': 'gts:automaticApproval', '@type': '@id' },
+};
+const QUOTABLE_BY_ANYONE = {
+  canQuote: { automaticApproval: ['https://www.w3.org/ns/activitystreams#Public'] },
+};
+
 const AP_PRIVATE_KEY = process.env.AP_PRIVATE_KEY?.replace(/\\n/g, '\n');
 // GitHub Actions workflow_dispatch inputs are single-line, so the user types
 // \n where they want line breaks. Convert those to actual newlines here.
@@ -68,7 +81,7 @@ const main = async () => {
   const noteId = `${BASE}/notes/${kvId}`;
 
   const note = {
-    '@context': 'https://www.w3.org/ns/activitystreams',
+    '@context': ['https://www.w3.org/ns/activitystreams', QUOTE_CONTEXT],
     id: noteId,
     type: 'Note',
     attributedTo: ACTOR_ID,
@@ -77,10 +90,11 @@ const main = async () => {
     to: ['https://www.w3.org/ns/activitystreams#Public'],
     cc: [`${ACTOR_ID}/followers`],
     url: BASE,
+    interactionPolicy: QUOTABLE_BY_ANYONE,
   };
 
   const activity = {
-    '@context': 'https://www.w3.org/ns/activitystreams',
+    '@context': ['https://www.w3.org/ns/activitystreams', QUOTE_CONTEXT],
     id: `${noteId}/activity`,
     type: 'Create',
     actor: ACTOR_ID,
