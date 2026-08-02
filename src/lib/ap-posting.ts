@@ -10,7 +10,9 @@ const KEY_ID = `${ACTOR_ID}#main-key`;
 // since third-party write-ups disagreed on the exact namespace). Mastodon
 // itself uses GoToSocial's "gts:" vocabulary for these terms even though
 // they didn't originate there — this is what Mastodon actually parses.
-const QUOTE_CONTEXT = {
+// Exported so the admin refresh-note route can rebuild the same shape for
+// posts published before this field existed.
+export const QUOTE_CONTEXT = {
   gts: "https://gotosocial.org/ns#",
   interactionPolicy: { "@id": "gts:interactionPolicy", "@type": "@id" },
   canQuote: { "@id": "gts:canQuote", "@type": "@id" },
@@ -21,9 +23,14 @@ const QUOTE_CONTEXT = {
 // without my approval" — without it, Mastodon defaults new posts to
 // author-only auto-approval (confirmed by inspecting a real Mastodon post),
 // which reads to a quoting user as "you are not allowed to quote this."
-const QUOTABLE_BY_ANYONE = {
+export const QUOTABLE_BY_ANYONE = {
   canQuote: { automaticApproval: ["https://www.w3.org/ns/activitystreams#Public"] },
 };
+
+// Notes are stored for a year (see the kv.set below) — reapplied whenever a
+// stored activity is rewritten (e.g. by the admin refresh-note route) so a
+// backfill never accidentally makes the key persist forever.
+export const NOTE_TTL_SECONDS = 60 * 60 * 24 * 365;
 
 export interface PostResult {
   posted: boolean;
@@ -31,6 +38,27 @@ export interface PostResult {
   failed?: number;
   total?: number;
   reason?: string;
+}
+
+// Delivers an already-built, signed-per-recipient activity to every current
+// follower's inbox in parallel, with per-request timeouts so one hung remote
+// server can't stall the caller's function-execution budget. Shared by
+// postToFollowers() and the admin refresh-note route (which sends an Update
+// rather than a Create).
+export async function deliverToFollowers(
+  activity: object,
+  privateKeyPem: string,
+): Promise<{ delivered: number; failed: number; total: number }> {
+  const followers: string[] = (await kv.smembers("cybw:ap:followers")) ?? [];
+  const results = await Promise.allSettled(
+    followers.map(async (followerUrl) => {
+      const inboxUrl = await getInboxUrl(followerUrl);
+      const status = await signAndDeliver(inboxUrl, activity, KEY_ID, privateKeyPem);
+      if (status < 200 || status >= 300) throw new Error(`HTTP ${status} delivering to ${inboxUrl}`);
+    }),
+  );
+  const delivered = results.filter((r) => r.status === "fulfilled").length;
+  return { delivered, failed: followers.length - delivered, total: followers.length };
 }
 
 async function getInboxUrl(actorUrl: string): Promise<string> {
@@ -61,8 +89,8 @@ export async function postToFollowers(htmlContent: string, noteIdSuffix: string)
   const privateKeyPem = process.env.AP_PRIVATE_KEY;
   if (!privateKeyPem) return { posted: false, reason: "AP_PRIVATE_KEY not set" };
 
-  const followers: string[] = (await kv.smembers("cybw:ap:followers")) ?? [];
-  if (followers.length === 0) return { posted: false, reason: "no followers" };
+  const followerCount = (await kv.scard("cybw:ap:followers")) ?? 0;
+  if (followerCount === 0) return { posted: false, reason: "no followers" };
 
   const now = new Date().toISOString();
   const noteId = `${BASE}/notes/${noteIdSuffix}`;
@@ -94,20 +122,10 @@ export async function postToFollowers(htmlContent: string, noteIdSuffix: string)
   // Expire stored notes after a year — the outbox list is trimmed to 50
   // entries below, so without a TTL the trimmed cybw:post:* keys would
   // accumulate in KV forever.
-  await kv.set(`cybw:post:${noteIdSuffix}`, activity, { ex: 60 * 60 * 24 * 365 });
+  await kv.set(`cybw:post:${noteIdSuffix}`, activity, { ex: NOTE_TTL_SECONDS });
   await kv.lpush("cybw:posts", noteIdSuffix);
   await kv.ltrim("cybw:posts", 0, 49);
 
-  // Deliveries run in parallel with per-request timeouts so one hung remote
-  // server can't stall the whole fan-out into the route's maxDuration.
-  const results = await Promise.allSettled(
-    followers.map(async (followerUrl) => {
-      const inboxUrl = await getInboxUrl(followerUrl);
-      const status = await signAndDeliver(inboxUrl, activity, KEY_ID, privateKeyPem);
-      if (status < 200 || status >= 300) throw new Error(`HTTP ${status} delivering to ${inboxUrl}`);
-    }),
-  );
-  const delivered = results.filter((r) => r.status === "fulfilled").length;
-
-  return { posted: true, delivered, failed: followers.length - delivered, total: followers.length };
+  const { delivered, failed, total } = await deliverToFollowers(activity, privateKeyPem);
+  return { posted: true, delivered, failed, total };
 }
