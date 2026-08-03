@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getSeverityScenario, pickSeverityQuip, SEVERE_QUIPS } from "../quips";
+import { getSeverityScenario, pickSeverityQuip, SEVERE_QUIPS, isGreatDay, pickGreatDayQuip, GREAT_DAY_QUIPS } from "../quips";
 
 describe("getSeverityScenario", () => {
   it("returns null for calm, dry conditions", () => {
@@ -49,5 +49,31 @@ describe("pickSeverityQuip", () => {
 
   it("returns null when no severity tier matches", () => {
     expect(pickSeverityQuip(10, 0)).toBeNull();
+  });
+});
+
+describe("isGreatDay", () => {
+  const minTemp = 19;
+
+  it("true when temp is 3+ above minimum, wind < 20, no rain", () => {
+    expect(isGreatDay({ temperature: 22, windSpeed: 19.9, rain: 0 }, minTemp)).toBe(true);
+  });
+
+  it("false when temp is just under the +3 margin", () => {
+    expect(isGreatDay({ temperature: 21.9, windSpeed: 10, rain: 0 }, minTemp)).toBe(false);
+  });
+
+  it("false when wind is at or above 20", () => {
+    expect(isGreatDay({ temperature: 25, windSpeed: 20, rain: 0 }, minTemp)).toBe(false);
+  });
+
+  it("false when it's raining, even if temp and wind qualify", () => {
+    expect(isGreatDay({ temperature: 25, windSpeed: 5, rain: 0.1 }, minTemp)).toBe(false);
+  });
+});
+
+describe("pickGreatDayQuip", () => {
+  it("returns a quip from the great-day list", () => {
+    expect(GREAT_DAY_QUIPS).toContain(pickGreatDayQuip());
   });
 });

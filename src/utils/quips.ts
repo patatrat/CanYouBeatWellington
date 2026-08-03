@@ -141,6 +141,17 @@ export const SEVERE_QUIPS = {
   ],
 } as const satisfies Record<string, string[]>;
 
+// ── Great day quip ───────────────────────────────────────────────────────────
+// A step up from GOOD — checked when the day clears the good-day bar by a
+// wide margin (temp 3°+ above the seasonal minimum, calm wind), not just
+// when it scrapes past. Only reached when rain is also fine, same as GOOD.
+
+export const GREAT_DAY_QUIPS = [
+  "Today is the type of day they write songs about.",
+  "One day you'll be telling your grandkids about today.",
+  "Sure, you can't beat Wellington on a good day, but today is a GREAT DAY.",
+] as const satisfies readonly string[];
+
 // ── Forecast summary quips ───────────────────────────────────────────────────
 // Shown below the 6-day forecast strip based on how many good days are coming.
 
@@ -193,6 +204,16 @@ export const getScenario = (tempMet: boolean, windMet: boolean, rainMet: boolean
 
 export const pickQuip = (scenario: Scenario): string =>
   pick([...(QUIPS[scenario] ?? QUIPS.ALL_BAD)]);
+
+// "Great day" bar: temp at least 3° above the seasonal minimum, wind under
+// 20 km/h (well inside the ordinary <30 good-day threshold), and rain still
+// fine — a stricter version of GOOD, not a replacement for it.
+export const isGreatDay = (
+  weather: { temperature: number; windSpeed: number; rain: number },
+  minTemp: number,
+): boolean => weather.temperature >= minTemp + 3 && weather.windSpeed < 20 && weather.rain <= 0;
+
+export const pickGreatDayQuip = (): string => pick([...GREAT_DAY_QUIPS]);
 
 // Priority waterfall, most severe/specific condition first — each check
 // "claims" the day before a less specific one gets a chance, so exactly one
