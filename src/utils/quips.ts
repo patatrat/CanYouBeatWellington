@@ -121,17 +121,19 @@ export const SEVERE_QUIPS = {
     "Is the Water Whirler still there?",
   ],
 
-  // Wind ≥ 40 km/h (and < 50) and raining — takes priority over plain WIND_40
+  // Wind ≥ 40 km/h (and < 50) and rain > 5mm — takes priority over plain WIND_40
   WIND_40_RAIN: [
     "Don't bother with an umbrella today.",
     "Normally rain falls down. Today it falls sideways.",
     "Planning on heading outside today? You're brave.",
+    "Today is what Aucklanders think every day is like in Wellington.",
   ],
 
   // Rain ≥ 25mm (only reached once wind is below 40 — see getSeverityScenario)
   RAIN_HEAVY: [
     "It's raining cats and dogs.",
     "Enjoy your swim.",
+    "Quick, clear the drains before the rains.",
   ],
 
   // Rain ≥ 10mm (and < 25) and wind < 30 km/h
@@ -150,6 +152,7 @@ export const GREAT_DAY_QUIPS = [
   "Today is the type of day they write songs about.",
   "One day you'll be telling your grandkids about today.",
   "Sure, you can't beat Wellington on a good day, but today is a GREAT DAY.",
+  "It's always like this in Wellington — yeah, right.",
 ] as const satisfies readonly string[];
 
 // ── Forecast summary quips ───────────────────────────────────────────────────
@@ -219,13 +222,15 @@ export const pickGreatDayQuip = (): string => pick([...GREAT_DAY_QUIPS]);
 // "claims" the day before a less specific one gets a chance, so exactly one
 // tier ever matches. Wind tiers are nested (60 implies 50 implies 40), so the
 // highest one reached wins outright regardless of rain; the wind+rain combo
-// only applies in the 40-49 band, since 50+ is dramatic enough on its own.
+// only applies in the 40-49 band, since 50+ is dramatic enough on its own —
+// and only once rain is more than a light shower (> 5mm), so a windy day
+// with a token drizzle still reads as plain WIND_40.
 // Returns null when nothing severe applies — callers should fall back to the
 // standard scenario quips (getScenario/pickQuip) in that case.
 export const getSeverityScenario = (windSpeed: number, rain: number): SeverityScenario | null => {
   if (windSpeed >= 60) return "WIND_60";
   if (windSpeed >= 50) return "WIND_50";
-  if (windSpeed >= 40 && rain > 0) return "WIND_40_RAIN";
+  if (windSpeed >= 40 && rain > 5) return "WIND_40_RAIN";
   if (windSpeed >= 40) return "WIND_40";
   if (rain >= 25) return "RAIN_HEAVY";
   if (rain >= 10 && windSpeed < 30) return "RAIN_STEADY_CALM";

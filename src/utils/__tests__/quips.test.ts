@@ -6,14 +6,15 @@ describe("getSeverityScenario", () => {
     expect(getSeverityScenario(15, 0)).toBeNull();
   });
 
-  it("WIND_40: wind >= 40, no rain", () => {
+  it("WIND_40: wind >= 40, no rain or a light shower (<= 5mm)", () => {
     expect(getSeverityScenario(40, 0)).toBe("WIND_40");
     expect(getSeverityScenario(45, 0)).toBe("WIND_40");
+    expect(getSeverityScenario(40, 5)).toBe("WIND_40");
   });
 
-  it("WIND_40_RAIN: any rain in the 40-49 wind band beats plain WIND_40", () => {
-    expect(getSeverityScenario(40, 0.1)).toBe("WIND_40_RAIN");
-    expect(getSeverityScenario(49, 5)).toBe("WIND_40_RAIN");
+  it("WIND_40_RAIN: rain over 5mm in the 40-49 wind band beats plain WIND_40", () => {
+    expect(getSeverityScenario(40, 5.1)).toBe("WIND_40_RAIN");
+    expect(getSeverityScenario(49, 20)).toBe("WIND_40_RAIN");
   });
 
   it("WIND_50: wind >= 50 wins outright, even with heavy rain", () => {
