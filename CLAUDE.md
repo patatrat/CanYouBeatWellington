@@ -75,6 +75,23 @@ Solemn/civic holidays (ANZAC Day, Waitangi Day, Good Friday, King's Birthday, La
 
 ## Backlog
 
+### Quip backlog — batched, not yet released
+Collecting quip ideas here as they come up instead of shipping each one as its own small release (previous sessions did several one-off quip PRs in a row — batching avoids the release-noise). Implement and ship together in one pass when there's a decent batch, then clear this section.
+
+**New general quips** (drop straight into the matching bucket in `quips.ts`):
+- [ ] ALL_BAD: "Wind, rain, cold. Triple threat."
+
+**Day-specific scenario quips** — needs a new mechanism, not just new strings (see note below):
+- [ ] **Christmas Day** (`christmas-day`)
+  - Good day: "Perfect day for a Christmas on the beach. Merry Christmas!"
+  - Rain > 5mm: "I hope you got a raincoat for Christmas. Merry Christmas!"
+  - Cold (temp below seasonal threshold): "It's beginning to look (and feel) a lot like Christmas... brrrrrr. Merry Christmas!" (fixed "begining" → "beginning")
+  - All three fail: "The weather didn't play ball, but at least it's Christmas! Merry Christmas!"
+- [ ] **New Year's Eve** — good day: "Wellington saved the best for last! Happy New Year's Eve!" — `new-years-eve` isn't a `special_date_defs` row yet (only `new-years-day`, Jan 1, exists); would need adding as a new `fixed_rule` def (`fixed:12:31`) first.
+- [ ] **New Year's Day** (`new-years-day`) — good day: "Starting the year off on the right foot! Happy New Year!"
+
+**Design note for whoever implements this batch**: the existing `special_date_defs.quip_override` column is a single static string per occurrence (fine for one-off events like the Hurricanes final), not weather-scenario-dependent. These need a quip that *varies by scenario* on a *specific date* — the same shape as the GOOD/RAIN_ONLY/TEMP_ONLY/ALL_BAD buckets in `quips.ts`, but scoped to one special date rather than global. Two ways to shape it: (a) a per-def JSON column of scenario→quip(s) mappings, checked in `page.tsx`'s verdict-line precedence ahead of the global scenario quips whenever that def is the active `special`; (b) a small hardcoded lookup in `quips.ts` keyed by special-date slug — simpler, but doesn't scale if more one-off dated quips get added later via the DB without a code change. Worth deciding once there's a reason to prefer one (e.g. if moveable dates like Cuba Dupa also want scenario-varying quips, (a) pays for itself).
+
 ### P2 — Post-migration cleanup
 - [x] **Run the occurrence unique index in Neon** (2026-07-02) — `special_date_occurrences_def_start_key ON (def_id, start_date)` created in production by hand (automated DDL was permission-blocked); `db/schema.sql` documents it, and `ensureUpcomingOccurrences()`'s `ON CONFLICT DO NOTHING` race guard is now fully backed.
 - [ ] **Delete the Supabase project** (Settings → General → Delete project) once production has been stable for a while — deliberately holding off; all data already migrated and verified.
