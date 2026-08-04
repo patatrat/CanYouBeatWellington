@@ -8,6 +8,11 @@ CREATE TABLE daily_weather_records (
   temperature    numeric NOT NULL,
   wind_speed     numeric NOT NULL,
   rain           numeric NOT NULL DEFAULT 0,
+  -- Coldest apparent ("feels like") temperature during the 6am-6pm daytime
+  -- window — wind chill/humidity/radiation-adjusted, from Open-Meteo's
+  -- apparent_temperature. Nullable like sunniness: added 2026-08, so rows
+  -- older than the ~92-day cron backfill window never get a value.
+  feels_like     numeric,
   sunniness      integer,
   agree_count    integer NOT NULL DEFAULT 0,
   disagree_count integer NOT NULL DEFAULT 0,
@@ -49,6 +54,15 @@ CREATE TABLE special_date_defs (
   recurrence_rule text,
   recurring       boolean NOT NULL DEFAULT false,
   quip_override   text,
+  -- Weather-scenario-dependent quips for this date (e.g. Christmas Day wants
+  -- a different line for a good day than a cold or rainy one) — a partial
+  -- JSON map of scenario key -> quip text. Keys: all_bad, cold, rain, wind,
+  -- great, good (see getSpecialDayScenario() in special-dates-logic.ts).
+  -- Checked ahead of the global scenario quips whenever this def is the
+  -- active special date; a scenario with no entry falls through to the
+  -- global quip system. Independent of quip_override (a single fixed
+  -- string, used for e.g. sporting results, which wins outright when set).
+  scenario_quips  jsonb,
   background_key  text,
   effect          text NOT NULL DEFAULT 'none' CHECK (effect IN ('none', 'confetti', 'balloons')),
   link_url        text,

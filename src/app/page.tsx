@@ -3,7 +3,7 @@ import { format, parseISO } from "date-fns";
 import { getThresholds, getSeasonLabel, isGoodWeatherDay } from "@/utils/rulesStorage";
 import { getScenario, pickQuip, pickSeverityQuip, isGreatDay, pickGreatDayQuip } from "@/utils/quips";
 import { getTodaysRecord, fetchLiveWeather, upsertWeatherRecord, getTodaysNZTDate } from "@/lib/weather";
-import { getActiveSpecialDates, pickPrimarySpecialDate, resolveVerdict } from "@/lib/special-dates";
+import { getActiveSpecialDates, pickPrimarySpecialDate, resolveVerdict, getSpecialDayQuip } from "@/lib/special-dates";
 import { SPECIAL_BACKGROUNDS } from "@/utils/specialBackgrounds";
 import WeatherStat from "@/components/WeatherStat";
 import VotingButtons from "@/components/VotingButtons";
@@ -36,6 +36,7 @@ export default async function HomePage() {
         temperature: liveWeather.temperature,
         wind_speed: liveWeather.windSpeed,
         rain: liveWeather.rain,
+        feels_like: liveWeather.feelsLike,
         sunniness: liveWeather.sunniness,
       });
       return getTodaysRecord();
@@ -62,12 +63,16 @@ export default async function HomePage() {
   // good day regardless of temperature/wind/rain. WeatherStat below still
   // shows the real per-criterion facts unchanged either way.
   const isGood = resolveVerdict(weatherIsGood, special?.verdict_override ?? null);
-  // Precedence: a special date's quip always wins; then an extreme wind/rain
-  // reading; then a day that clears the good-day bar by a wide margin gets
+  // Precedence: a special date's fixed quip_override always wins (sporting
+  // results etc, where the weather is beside the point); then an extreme
+  // wind/rain reading; then a special date's own scenario-specific line
+  // (e.g. Christmas Day's rainy-day quip), if it has one for today's
+  // scenario; then a day that clears the good-day bar by a wide margin gets
   // its own celebratory line; otherwise the standard scenario quip.
   const verdictLine =
     special?.quip_override ??
     pickSeverityQuip(effectiveWeather.windSpeed, effectiveWeather.rain) ??
+    (special ? getSpecialDayQuip(special, effectiveWeather, rules) : null) ??
     (isGreatDay(effectiveWeather, rules.minTemp) ? pickGreatDayQuip() : null) ??
     pickQuip(getScenario(tempMet, windMet, rainMet));
   const specialBg = special?.background_key ? SPECIAL_BACKGROUNDS[special.background_key] : undefined;

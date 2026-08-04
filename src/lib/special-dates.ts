@@ -10,7 +10,7 @@ export * from "./special-dates-logic";
 // Both tables have their own `id` — aliased here to avoid collision.
 const ACTIVE_DATE_COLUMNS = `
   d.id AS def_id, d.slug, d.title, d.kind, d.recurrence_rule, d.recurring,
-  d.quip_override, d.background_key, d.effect, d.link_url, d.link_label, d.active,
+  d.quip_override, d.scenario_quips, d.background_key, d.effect, d.link_url, d.link_label, d.active,
   o.id AS occurrence_id, o.start_date::text, o.end_date::text, o.status,
   o.verdict_override, o.outcome_note
 `;

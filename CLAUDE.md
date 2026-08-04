@@ -24,11 +24,15 @@ Six seasons: Summer (Jan–Mar), Autumn (Apr–Jun), Winter (Jul–Aug), Spring 
 Computed at runtime from `rulesStorage.ts` — not stored in DB, so rules can change freely.
 Data source: Open-Meteo API (free, no key required).
 
+The verdict itself is based on actual temperature, not how it feels — but the coldest daytime **apparent ("feels like") temperature** is also fetched and stored (`daily_weather_records.feels_like`, wind chill/humidity/radiation-adjusted via Open-Meteo's `apparent_temperature`) for quips to reference, even on days where the thermometer reading alone doesn't tell the whole story (e.g. 9°C actual, feels like -3 to -7°C on a very windy day). Not currently surfaced in the UI.
+
 A non-weather **verdict override** can also force the verdict either way — see Special Dates below.
 
 ## Special Dates
 
 The home page, daily cron, and History calendar all check a `special_date_defs`/`special_date_occurrences` Neon schema for active occasions on a given day — data layer in `src/lib/special-dates.ts`. Each occasion can override the quip, swap the background, trigger a confetti/balloon effect, link to an event page, and (sporting events only) flip the entire weather verdict ("a Wellington team winning forces a good day regardless of weather"). Three kinds:
+
+A special date's quip can vary by weather scenario rather than being fixed — `scenario_quips` (JSONB, partial map of `good`/`great`/`cold`/`rain`/`wind`/`all_bad` → quip text) is checked via `getSpecialDayScenario()`/`getSpecialDayQuip()` in `special-dates-logic.ts` whenever that def is the day's active special date, ahead of the global scenario quips but behind both `quip_override` (a single fixed string — still wins outright when set, e.g. for sporting results where the weather is beside the point) and the global severity quips (extreme wind/rain still takes priority over holiday flavour text). A scenario with no entry falls through to the global quip system as normal.
 
 - **`fixed_rule`** — annual holidays computed from a small rule DSL (`fixed:month:day`, `nth_weekday:n:month:weekday`, `easter_offset:days`), auto-regenerated each year by the daily cron (`ensureUpcomingOccurrences()`) — self-healing, no separate yearly cron needed
 - **`moveable`** — festivals with no formula (gazetted/announced yearly); a new occurrence row needs entering by hand each year
@@ -81,18 +85,21 @@ Collecting quip ideas here as they come up instead of shipping each one as its o
 **New general quips** (drop straight into the matching bucket in `quips.ts`):
 - [ ] ALL_BAD: "Wind, rain, cold. Triple threat."
 
-**Day-specific scenario quips** — needs a new mechanism, not just new strings (see note below):
+**Day-specific scenario quips** — the mechanism these need now exists (`getSpecialDayScenario()`/`getSpecialDayQuip()` in `special-dates-logic.ts`, `special_date_defs.scenario_quips` JSONB column — see Architecture Notes). What's still pending is writing the actual rows once the schema migration below has run; these are the content, keyed to the scenario names the code understands (`good` / `great` / `cold` / `rain` / `wind` / `all_bad`):
 - [ ] **Christmas Day** (`christmas-day`)
-  - Good day: "Perfect day for a Christmas on the beach. Merry Christmas!"
-  - Rain > 5mm: "I hope you got a raincoat for Christmas. Merry Christmas!"
-  - Cold (temp below seasonal threshold): "It's beginning to look (and feel) a lot like Christmas... brrrrrr. Merry Christmas!" (fixed "begining" → "beginning")
-  - All three fail: "The weather didn't play ball, but at least it's Christmas! Merry Christmas!"
-- [ ] **New Year's Eve** — good day: "Wellington saved the best for last! Happy New Year's Eve!" — `new-years-eve` isn't a `special_date_defs` row yet (only `new-years-day`, Jan 1, exists); would need adding as a new `fixed_rule` def (`fixed:12:31`) first.
-- [ ] **New Year's Day** (`new-years-day`) — good day: "Starting the year off on the right foot! Happy New Year!"
-
-**Design note for whoever implements this batch**: the existing `special_date_defs.quip_override` column is a single static string per occurrence (fine for one-off events like the Hurricanes final), not weather-scenario-dependent. These need a quip that *varies by scenario* on a *specific date* — the same shape as the GOOD/RAIN_ONLY/TEMP_ONLY/ALL_BAD buckets in `quips.ts`, but scoped to one special date rather than global. Two ways to shape it: (a) a per-def JSON column of scenario→quip(s) mappings, checked in `page.tsx`'s verdict-line precedence ahead of the global scenario quips whenever that def is the active `special`; (b) a small hardcoded lookup in `quips.ts` keyed by special-date slug — simpler, but doesn't scale if more one-off dated quips get added later via the DB without a code change. Worth deciding once there's a reason to prefer one (e.g. if moveable dates like Cuba Dupa also want scenario-varying quips, (a) pays for itself).
+  - `good`: "Perfect day for a Christmas on the beach. Merry Christmas!"
+  - `rain` (> 5mm): "I hope you got a raincoat for Christmas. Merry Christmas!"
+  - `cold` (temp below seasonal threshold): "It's beginning to look (and feel) a lot like Christmas... brrrrrr. Merry Christmas!" (fixed "begining" → "beginning")
+  - `all_bad`: "The weather didn't play ball, but at least it's Christmas! Merry Christmas!"
+- [ ] **New Year's Eve** — `good`: "Wellington saved the best for last! Happy New Year's Eve!" — `new-years-eve` isn't a `special_date_defs` row yet (only `new-years-day`, Jan 1, exists); would need adding as a new `fixed_rule` def (`fixed:12:31`) first.
+- [ ] **New Year's Day** (`new-years-day`) — `good`: "Starting the year off on the right foot! Happy New Year!"
 
 ### P2 — Post-migration cleanup
+- [ ] **Run the pending Neon schema migration for `feels_like` + `scenario_quips`** (blocks deploy — automated DDL was permission-blocked, same as the earlier unique-index item) — code referencing both new columns is committed on `staging` but **not pushed**, since `staging` shares the production Neon DB and pushing before this runs would break every query touching `daily_weather_records`/`special_date_defs`. Run in the Neon SQL editor, then tell Claude to push:
+  ```sql
+  ALTER TABLE daily_weather_records ADD COLUMN IF NOT EXISTS feels_like NUMERIC;
+  ALTER TABLE special_date_defs ADD COLUMN IF NOT EXISTS scenario_quips JSONB;
+  ```
 - [x] **Run the occurrence unique index in Neon** (2026-07-02) — `special_date_occurrences_def_start_key ON (def_id, start_date)` created in production by hand (automated DDL was permission-blocked); `db/schema.sql` documents it, and `ensureUpcomingOccurrences()`'s `ON CONFLICT DO NOTHING` race guard is now fully backed.
 - [ ] **Delete the Supabase project** (Settings → General → Delete project) once production has been stable for a while — deliberately holding off; all data already migrated and verified.
 - [x] **Resolve the `next`-bundled `postcss` moderate vulnerability** (2026-07-14) — no stable Next carries the fix (16.2.10 still pins postcss 8.4.31; only 16.3 canaries have 8.5.10), so an npm `overrides` entry in `package.json` forces `next`'s nested copy to 8.5.10 (semver-minor, API-compatible). `npm audit` reports 0 vulnerabilities; Dependabot alert #65 closes with it.
@@ -127,6 +134,7 @@ Collecting quip ideas here as they come up instead of shipping each one as its o
 
 ## Changelog
 
+- **2026-08-03** — Two infrastructure additions, both **pending a Neon schema migration** (see P2 backlog) before deploying: (1) `special_date_defs.scenario_quips` — special dates can now have weather-scenario-dependent quips (e.g. a different line for a rainy Christmas than a cold one) instead of only a single fixed `quip_override`; `getSpecialDayScenario()`/`getSpecialDayQuip()` in `special-dates-logic.ts` resolve it, checked in `page.tsx`'s verdict-line precedence between the global severity quips and the global great-day/standard quips. No content written yet — the actual Christmas/NYE/NYD quips stay in the batched quip backlog until there's a reason to ship. (2) `daily_weather_records.feels_like` — daytime-minimum apparent temperature (wind chill/humidity/radiation-adjusted, from Open-Meteo's `apparent_temperature`) is now fetched and stored alongside temp/wind/rain, prompted by today's actual 9°C reading feeling like -3 to -7°C on a very windy day. Not displayed anywhere yet and no quips reference it — captured now so it's available whenever quips do. Both changes are code-complete and tested (120 tests passing) but held on `staging`, not pushed, because `staging` shares the production Neon DB and the new columns don't exist there yet.
 - **2026-08-03** — Added FEP-044f `interactionPolicy` (public quote consent) to every outgoing Note, fixing Mastodon's outright "you are not allowed to quote this" block on the daily good-day posts — the exact JSON-LD `gts:` context terms were verified against a live Mastodon post's own ActivityPub JSON rather than trusted from third-party write-ups, which disagreed with each other. The deeper `QuoteRequest`/`QuoteAuthorization` inbox handshake FEP-044f also describes is not yet implemented (P4 backlog) — no verified-exact JSON shape found for it yet, unlike the static field. Separately investigated why the bot's own actor profile link still doesn't show verified on Mastodon after the 2026-08-01 fix attempt (P4 backlog) — confirmed via user report that the self-referential `rel="me"` theory hasn't produced a visible verified badge; two follow-up theories logged, neither confirmed.
 - **2026-07-24** — Moved the daily cron from 12:00 UTC (≈midnight NZT — originally chosen as "midnight NZST" pre-migration, see `CLAUDE_ARCHIVE.md`) to 21:30 UTC (≈10am NZT), after feedback that the ActivityPub good-day announcement was firing in the middle of the night and reads oddly to followers. Vercel Cron has no timezone option (UTC only), so a fixed schedule can't track NZ's daylight-saving transition; 21:30 UTC splits the difference evenly (10:30am NZDT / 9:30am NZST) rather than favouring one season. Config-only change (`vercel.json`), no code touched. Worth knowing: the "good day" verdict used for the fan-out decision is whatever Open-Meteo returns for the still-partially-elapsed day at cron time — the daytime window is 6am–6pm, so at 10am roughly a third of it is observed and the rest is same-day forecast. The stored record self-corrects with fully observed data on the *next* day's cron run (`fetchAndStoreBatch` re-upserts all 92 past days every run), but a post that already went out doesn't get retracted if the afternoon doesn't pan out as forecast — pre-existing behaviour, not introduced by this change, just more exposed by moving off a near-midnight run where forecast/actual mattered less to anyone watching the clock.
 - **2026-07-24** — Fixed the browser tab favicon, which had shown Vercel/Next's default triangle logo since the migration: `src/app/favicon.ico` was a leftover `create-next-app` scaffold file, never replaced with the real design (a black-circle "W" mark, `public/favicon.svg`, added pre-migration but never wired into Next's file-based icon convention). Rebuilt `favicon.ico` from the SVG at 16/32/48px (hand-assembled to avoid a third-party ico tool bloating it with a blurry auto-upscaled 256px frame), and added `src/app/icon.svg` so modern browsers get a crisp SVG favicon. Also deleted `public/favicon.ico` — an unrelated, unreferenced terminal-icon file dating back to the original pre-Lovable project scaffold, dead weight since day one.
@@ -150,9 +158,9 @@ Collecting quip ideas here as they come up instead of shipping each one as its o
 ### Key files
 | File | Purpose |
 |------|---------|
-| `src/lib/weather.ts` | Neon queries — `getTodaysRecord`, `getHistoricalRecords`, `getAllHistoricalRecords`, `upsertWeatherRecord`, `fetchLiveWeather`, `fetchAndStoreBatch`, `getTodaysNZTDate` |
+| `src/lib/weather.ts` | Neon queries — `getTodaysRecord`, `getHistoricalRecords`, `getAllHistoricalRecords`, `upsertWeatherRecord`, `fetchLiveWeather`, `fetchAndStoreBatch`, `getTodaysNZTDate`; also computes the daytime `feels_like` (coldest apparent temp, 6am-6pm) alongside temp/wind/rain |
 | `src/lib/special-dates.ts` | Special-dates DB layer — `getActiveSpecialDates`, `getSpecialDatesForRange`, `ensureUpcomingOccurrences`, `resolveSportingOccurrence`; re-exports all of `special-dates-logic.ts` |
-| `src/lib/special-dates-logic.ts` | Pure special-dates logic + types (`pickPrimarySpecialDate`, `resolveVerdict`, `computeFixedRuleDate`) — no DB import, safe for client components like `CalendarHistory` |
+| `src/lib/special-dates-logic.ts` | Pure special-dates logic + types (`pickPrimarySpecialDate`, `resolveVerdict`, `computeFixedRuleDate`, `getSpecialDayScenario`, `getSpecialDayQuip`) — no DB import, safe for client components like `CalendarHistory` |
 | `src/lib/auth.ts` | `isBearerAuthorized()` — constant-time, fail-closed bearer check shared by the cron and admin routes |
 | `db/schema.sql` | Reference snapshot of the Neon schema (tables, indexes, `increment_vote()`) — documentation, not a migration runner |
 | `src/lib/votes.ts` | `castVote()` — wraps `increment_vote()`, translates the `23505` unique-violation into `{ alreadyVoted: true }` |

@@ -83,7 +83,7 @@ describe('getAllHistoricalRecords', () => {
 describe('upsertWeatherRecord', () => {
   it('calls sql with the record values', async () => {
     await upsertWeatherRecord({
-      date: '2026-06-28', temperature: 10, wind_speed: 20, rain: 0, sunniness: 50,
+      date: '2026-06-28', temperature: 10, wind_speed: 20, rain: 0, feels_like: 5, sunniness: 50,
     });
     expect(mockSql).toHaveBeenCalledTimes(1);
   });
@@ -102,6 +102,7 @@ const validOpenMeteoResponse = (days = 7) => ({
   hourly: {
     precipitation: hourlyOf(days, 0),
     wind_speed_10m: hourlyOf(days, 10),
+    apparent_temperature: hourlyOf(days, 8),
   },
 });
 
@@ -116,6 +117,7 @@ describe('fetchLiveWeather', () => {
     expect(result.temperature).toBe(12);
     expect(result.windSpeed).toBe(10);
     expect(result.rain).toBe(0);
+    expect(result.feelsLike).toBe(8);
     expect(result.forecast).toHaveLength(6);
   });
 
@@ -127,6 +129,14 @@ describe('fetchLiveWeather', () => {
   it('throws when hourly arrays are shorter than 18 entries', async () => {
     const bad = validOpenMeteoResponse(7);
     bad.hourly.precipitation = bad.hourly.precipitation.slice(0, 10);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => bad })));
+    await expect(fetchLiveWeather()).rejects.toThrow(/incomplete data/);
+  });
+
+  it('throws when apparent_temperature is missing', async () => {
+    const bad = validOpenMeteoResponse(7);
+    // @ts-expect-error - simulating a malformed API response
+    bad.hourly.apparent_temperature = undefined;
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => bad })));
     await expect(fetchLiveWeather()).rejects.toThrow(/incomplete data/);
   });
@@ -157,6 +167,7 @@ describe('fetchAndStoreBatch', () => {
     const result = await fetchAndStoreBatch(3);
     expect(result.stored).toBe(3);
     expect(result.todayRecord?.date).toBe('2026-06-29');
+    expect(result.todayRecord?.feels_like).toBe(8);
   });
 
   it('excludes future days from the response (defensive against API drift)', async () => {

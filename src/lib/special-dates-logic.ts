@@ -3,10 +3,20 @@
 // the browser bundle. Server-side data access lives in special-dates.ts,
 // which re-exports everything here.
 
+import { isGreatDay } from "@/utils/quips";
+
 export type SpecialDateKind = "fixed_rule" | "moveable" | "sporting" | "oneoff";
 export type OccurrenceStatus = "confirmed" | "pending" | "cancelled";
 export type EffectType = "none" | "confetti" | "balloons";
 export type SportingOutcome = "won" | "lost" | "draw" | "cancelled";
+
+// A special date's weather-dependent flavour text — e.g. Christmas Day wants
+// a different line for a good day than for a cold or rainy one. Partial:
+// scenarios with no entry fall through to the global severity/great-day/
+// standard quip system (see getSpecialDayQuip below), so a date only needs
+// to define the scenarios worth calling out, not all six.
+export type SpecialDayScenario = "all_bad" | "cold" | "rain" | "wind" | "great" | "good";
+export type SpecialDayQuips = Partial<Record<SpecialDayScenario, string>>;
 
 export interface ActiveSpecialDate {
   def_id: number;
@@ -16,6 +26,7 @@ export interface ActiveSpecialDate {
   recurrence_rule: string | null;
   recurring: boolean;
   quip_override: string | null;
+  scenario_quips: SpecialDayQuips | null;
   background_key: string | null;
   effect: EffectType;
   link_url: string | null;
@@ -52,6 +63,54 @@ export function pickPrimarySpecialDate(dates: ActiveSpecialDate[]): ActiveSpecia
 // winning can force a good day regardless of temperature/wind/rain.
 export function resolveVerdict(weatherIsGood: boolean, override: boolean | null): boolean {
   return override ?? weatherIsGood;
+}
+
+interface SeasonRules {
+  minTemp: number;
+  maxWind: number;
+  maxRain: number;
+}
+
+// Rain amount from which it's "worth mentioning" in a special-day quip —
+// matches the same 5mm bar used for the WIND_40_RAIN severity tier in
+// quips.ts, rather than the strict >0mm the season rules use for the
+// pass/fail verdict (a token drizzle isn't what "Xmas day, rainy" means).
+const NOTABLE_RAIN_MM = 5;
+
+// Priority waterfall, most comprehensive/specific condition first — mirrors
+// the "most severe wins" precedent in quips.ts's getSeverityScenario(), just
+// applied to a small fixed vocabulary instead of raw wind/rain thresholds.
+// "great" reuses the exact same bar as the global isGreatDay() in quips.ts
+// (temp 3°+ above minimum, wind < 20, dry) so a special date's "great" quip
+// and the global one classify the same days the same way.
+export function getSpecialDayScenario(
+  weather: { temperature: number; windSpeed: number; rain: number },
+  rules: SeasonRules,
+): SpecialDayScenario {
+  const tempMet = weather.temperature >= rules.minTemp;
+  const windMet = weather.windSpeed < rules.maxWind;
+  const rainMet = weather.rain <= rules.maxRain;
+
+  if (!tempMet && !windMet && !rainMet) return "all_bad";
+  if (!tempMet) return "cold";
+  if (weather.rain > NOTABLE_RAIN_MM) return "rain";
+  if (!windMet) return "wind";
+  if (isGreatDay(weather, rules.minTemp)) return "great";
+  return "good";
+}
+
+// Looks up the special date's own quip for today's scenario, if it has one.
+// Returns null when the date has no scenario_quips at all, or has some but
+// not one for today's specific scenario — either way, callers should fall
+// through to the global severity/great-day/standard quip system.
+export function getSpecialDayQuip(
+  special: ActiveSpecialDate,
+  weather: { temperature: number; windSpeed: number; rain: number },
+  rules: SeasonRules,
+): string | null {
+  if (!special.scenario_quips) return null;
+  const scenario = getSpecialDayScenario(weather, rules);
+  return special.scenario_quips[scenario] ?? null;
 }
 
 // month: 1-12. weekday: 0(Sun)-6(Sat), matching JS Date.getDay()/getUTCDay().

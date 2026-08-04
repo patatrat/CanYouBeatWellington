@@ -12,11 +12,15 @@ const {
   computeFixedRuleDate,
   pickPrimarySpecialDate,
   resolveVerdict,
+  getSpecialDayScenario,
+  getSpecialDayQuip,
   getActiveSpecialDates,
   getSpecialDatesForRange,
   ensureUpcomingOccurrences,
   resolveSportingOccurrence,
 } = await import('../special-dates');
+
+const SEASON_RULES = { minTemp: 19, maxWind: 30, maxRain: 0 };
 
 beforeEach(() => {
   mockSql.mockReset();
@@ -37,6 +41,7 @@ const stub = (overrides: Partial<ActiveSpecialDate>): ActiveSpecialDate => ({
   recurrence_rule: null,
   recurring: false,
   quip_override: null,
+  scenario_quips: null,
   background_key: null,
   effect: 'none',
   link_url: null,
@@ -133,6 +138,62 @@ describe('resolveVerdict', () => {
 
   it('forces a bad day even when the weather says otherwise', () => {
     expect(resolveVerdict(true, false)).toBe(false);
+  });
+});
+
+// ── getSpecialDayScenario ────────────────────────────────────────────────────
+
+describe('getSpecialDayScenario', () => {
+  it('all_bad when temp, wind, and rain all fail', () => {
+    expect(getSpecialDayScenario({ temperature: 10, windSpeed: 35, rain: 2 }, SEASON_RULES)).toBe('all_bad');
+  });
+
+  it('cold when temp fails, even if wind/rain also happen to fail', () => {
+    // temp fails, wind passes, rain passes — must not fall through to all_bad
+    expect(getSpecialDayScenario({ temperature: 10, windSpeed: 10, rain: 0 }, SEASON_RULES)).toBe('cold');
+    // temp fails and wind fails but rain is fine — still "cold", not all_bad
+    expect(getSpecialDayScenario({ temperature: 10, windSpeed: 35, rain: 0 }, SEASON_RULES)).toBe('cold');
+  });
+
+  it('rain when rain exceeds the 5mm "notable" bar, temp is fine', () => {
+    expect(getSpecialDayScenario({ temperature: 20, windSpeed: 10, rain: 5.1 }, SEASON_RULES)).toBe('rain');
+  });
+
+  it('does not fire "rain" for a light shower at or under 5mm', () => {
+    expect(getSpecialDayScenario({ temperature: 20, windSpeed: 10, rain: 5 }, SEASON_RULES)).not.toBe('rain');
+  });
+
+  it('wind when wind fails alone (temp and rain fine, rain not notable)', () => {
+    expect(getSpecialDayScenario({ temperature: 20, windSpeed: 35, rain: 0 }, SEASON_RULES)).toBe('wind');
+  });
+
+  it('great when temp is 3+ above minimum, wind < 20, dry', () => {
+    expect(getSpecialDayScenario({ temperature: 23, windSpeed: 15, rain: 0 }, SEASON_RULES)).toBe('great');
+  });
+
+  it('good when the day passes but does not clear the "great" bar', () => {
+    expect(getSpecialDayScenario({ temperature: 19, windSpeed: 25, rain: 0 }, SEASON_RULES)).toBe('good');
+  });
+});
+
+// ── getSpecialDayQuip ────────────────────────────────────────────────────────
+
+describe('getSpecialDayQuip', () => {
+  it('returns null when the special date has no scenario_quips at all', () => {
+    const special = stub({ scenario_quips: null });
+    expect(getSpecialDayQuip(special, { temperature: 22, windSpeed: 10, rain: 0 }, SEASON_RULES)).toBeNull();
+  });
+
+  it('returns null when scenario_quips exists but has no entry for today\'s scenario', () => {
+    const special = stub({ scenario_quips: { cold: 'Bundle up.' } });
+    // dry, warm, calm day -> "good", which this def hasn't defined
+    expect(getSpecialDayQuip(special, { temperature: 22, windSpeed: 10, rain: 0 }, SEASON_RULES)).toBeNull();
+  });
+
+  it('returns the matching quip for the current scenario', () => {
+    const special = stub({ scenario_quips: { cold: 'Bundle up.', rain: 'Grab a brolly.' } });
+    expect(getSpecialDayQuip(special, { temperature: 10, windSpeed: 5, rain: 0 }, SEASON_RULES)).toBe('Bundle up.');
+    expect(getSpecialDayQuip(special, { temperature: 22, windSpeed: 5, rain: 8 }, SEASON_RULES)).toBe('Grab a brolly.');
   });
 });
 
