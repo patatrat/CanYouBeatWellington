@@ -37,6 +37,7 @@ export default async function HomePage() {
         wind_speed: liveWeather.windSpeed,
         rain: liveWeather.rain,
         feels_like: liveWeather.feelsLike,
+        snowfall: liveWeather.snowfall,
         sunniness: liveWeather.sunniness,
       });
       return getTodaysRecord();

@@ -13,6 +13,10 @@ CREATE TABLE daily_weather_records (
   -- apparent_temperature. Nullable like sunniness: added 2026-08, so rows
   -- older than the ~92-day cron backfill window never get a value.
   feels_like     numeric,
+  -- Daily snowfall total (cm) from Open-Meteo's snowfall_sum — Wellington
+  -- snow is rare enough to be newsworthy when it happens. Same nullable/
+  -- backfill caveat as feels_like.
+  snowfall       numeric,
   sunniness      integer,
   agree_count    integer NOT NULL DEFAULT 0,
   disagree_count integer NOT NULL DEFAULT 0,

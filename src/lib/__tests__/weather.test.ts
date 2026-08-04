@@ -83,7 +83,7 @@ describe('getAllHistoricalRecords', () => {
 describe('upsertWeatherRecord', () => {
   it('calls sql with the record values', async () => {
     await upsertWeatherRecord({
-      date: '2026-06-28', temperature: 10, wind_speed: 20, rain: 0, feels_like: 5, sunniness: 50,
+      date: '2026-06-28', temperature: 10, wind_speed: 20, rain: 0, feels_like: 5, snowfall: 0, sunniness: 50,
     });
     expect(mockSql).toHaveBeenCalledTimes(1);
   });
@@ -98,6 +98,7 @@ const validOpenMeteoResponse = (days = 7) => ({
     time: Array.from({ length: days }, (_, i) => `2026-06-${String(28 + i).padStart(2, '0')}`),
     temperature_2m_max: Array.from({ length: days }, () => 12),
     weather_code: Array.from({ length: days }, () => 1),
+    snowfall_sum: Array.from({ length: days }, () => 0),
   },
   hourly: {
     precipitation: hourlyOf(days, 0),
@@ -118,6 +119,7 @@ describe('fetchLiveWeather', () => {
     expect(result.windSpeed).toBe(10);
     expect(result.rain).toBe(0);
     expect(result.feelsLike).toBe(8);
+    expect(result.snowfall).toBe(0);
     expect(result.forecast).toHaveLength(6);
   });
 
@@ -137,6 +139,14 @@ describe('fetchLiveWeather', () => {
     const bad = validOpenMeteoResponse(7);
     // @ts-expect-error - simulating a malformed API response
     bad.hourly.apparent_temperature = undefined;
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => bad })));
+    await expect(fetchLiveWeather()).rejects.toThrow(/incomplete data/);
+  });
+
+  it('throws when daily.snowfall_sum[0] is missing', async () => {
+    const bad = validOpenMeteoResponse(7);
+    // @ts-expect-error - simulating a malformed API response
+    bad.daily.snowfall_sum[0] = undefined;
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => bad })));
     await expect(fetchLiveWeather()).rejects.toThrow(/incomplete data/);
   });
@@ -161,6 +171,7 @@ describe('fetchAndStoreBatch', () => {
   it('stores only days up to today and returns todayRecord', async () => {
     const data = validOpenMeteoResponse(3);
     data.daily.time = ['2026-06-27', '2026-06-28', '2026-06-29'];
+    data.daily.snowfall_sum = [0, 0, 1.4]; // a snowy today, for the assertion below
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
     mockSql.mockResolvedValue([]);
 
@@ -168,6 +179,7 @@ describe('fetchAndStoreBatch', () => {
     expect(result.stored).toBe(3);
     expect(result.todayRecord?.date).toBe('2026-06-29');
     expect(result.todayRecord?.feels_like).toBe(8);
+    expect(result.todayRecord?.snowfall).toBe(1.4);
   });
 
   it('excludes future days from the response (defensive against API drift)', async () => {
@@ -189,6 +201,13 @@ describe('fetchAndStoreBatch', () => {
 
   it('throws when daily arrays are missing entirely', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ daily: {}, hourly: {} }) })));
+    await expect(fetchAndStoreBatch(3)).rejects.toThrow(/incomplete data/);
+  });
+
+  it('throws when snowfall_sum is shorter than the requested day count', async () => {
+    const data = validOpenMeteoResponse(3);
+    data.daily.snowfall_sum = [0]; // needs 3 days' worth, only has 1
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
     await expect(fetchAndStoreBatch(3)).rejects.toThrow(/incomplete data/);
   });
 

@@ -6,6 +6,7 @@ export interface DailyWeatherRecord {
   // Nullable like sunniness: rows older than the ~92-day cron backfill
   // window (from before this column existed) never get a value written.
   feels_like: number | null;
+  snowfall: number | null;
   sunniness: number | null;
   agree_count: number;
   disagree_count: number;

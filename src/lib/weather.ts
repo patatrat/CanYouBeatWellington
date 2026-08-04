@@ -36,7 +36,7 @@ const calculateDaytimeFeelsLike = (hourlyApparentTemp: number[], dayIndex: numbe
 // NUMERIC columns come back from Postgres as strings (to avoid float-precision
 // surprises) — cast to float8 so callers get plain JS numbers.
 const RECORD_COLUMNS = `
-  date::text, temperature::float8, wind_speed::float8, rain::float8, feels_like::float8,
+  date::text, temperature::float8, wind_speed::float8, rain::float8, feels_like::float8, snowfall::float8,
   sunniness, agree_count, disagree_count, created_at
 `;
 
@@ -78,18 +78,20 @@ export interface WeatherUpsert {
   wind_speed: number;
   rain: number;
   feels_like: number;
+  snowfall: number;
   sunniness: number;
 }
 
 export async function upsertWeatherRecord(record: WeatherUpsert): Promise<void> {
   await sql`
-    INSERT INTO daily_weather_records (date, temperature, wind_speed, rain, feels_like, sunniness)
-    VALUES (${record.date}, ${record.temperature}, ${record.wind_speed}, ${record.rain}, ${record.feels_like}, ${record.sunniness})
+    INSERT INTO daily_weather_records (date, temperature, wind_speed, rain, feels_like, snowfall, sunniness)
+    VALUES (${record.date}, ${record.temperature}, ${record.wind_speed}, ${record.rain}, ${record.feels_like}, ${record.snowfall}, ${record.sunniness})
     ON CONFLICT (date) DO UPDATE SET
       temperature = EXCLUDED.temperature,
       wind_speed  = EXCLUDED.wind_speed,
       rain        = EXCLUDED.rain,
       feels_like  = EXCLUDED.feels_like,
+      snowfall    = EXCLUDED.snowfall,
       sunniness   = EXCLUDED.sunniness
   `;
 }
@@ -106,7 +108,7 @@ export async function fetchAndStoreBatch(
     `https://api.open-meteo.com/v1/forecast` +
     `?latitude=-41.2866&longitude=174.7756` +
     `&past_days=${pastDays}` +
-    `&daily=weather_code,temperature_2m_max` +
+    `&daily=weather_code,temperature_2m_max,snowfall_sum` +
     `&hourly=precipitation,wind_speed_10m,apparent_temperature` +
     `&timezone=Pacific%2FAuckland`;
 
@@ -119,8 +121,10 @@ export async function fetchAndStoreBatch(
     !dayCount ||
     !Array.isArray(data.daily.temperature_2m_max) ||
     !Array.isArray(data.daily.weather_code) ||
+    !Array.isArray(data.daily.snowfall_sum) ||
     data.daily.temperature_2m_max.length < dayCount ||
     data.daily.weather_code.length < dayCount ||
+    data.daily.snowfall_sum.length < dayCount ||
     !Array.isArray(data.hourly?.precipitation) ||
     !Array.isArray(data.hourly?.wind_speed_10m) ||
     !Array.isArray(data.hourly?.apparent_temperature) ||
@@ -140,6 +144,7 @@ export async function fetchAndStoreBatch(
       wind_speed: parseFloat(calculateDaytimeWind(data.hourly.wind_speed_10m, i).toFixed(2)),
       sunniness: calculateSunniness(data.daily.weather_code[i] ?? 0),
       rain: parseFloat(calculateDaytimeRain(data.hourly.precipitation, i).toFixed(2)),
+      snowfall: data.daily.snowfall_sum[i] ?? 0,
       feels_like: parseFloat(calculateDaytimeFeelsLike(data.hourly.apparent_temperature, i).toFixed(2)),
     });
   }
@@ -165,6 +170,7 @@ export interface LiveWeather {
   sunniness: number;
   rain: number;
   feelsLike: number;
+  snowfall: number;
   timestamp: string;
   source: string;
   forecast: ForecastDay[];
@@ -177,7 +183,7 @@ export async function fetchLiveWeather(): Promise<LiveWeather> {
   const url =
     "https://api.open-meteo.com/v1/forecast" +
     "?latitude=-41.2866&longitude=174.7756" +
-    "&daily=weather_code,temperature_2m_max" +
+    "&daily=weather_code,temperature_2m_max,snowfall_sum" +
     "&hourly=precipitation,wind_speed_10m,apparent_temperature" +
     "&timezone=Pacific%2FAuckland";
 
@@ -189,6 +195,7 @@ export async function fetchLiveWeather(): Promise<LiveWeather> {
     !data.daily?.time?.[0] ||
     data.daily?.temperature_2m_max?.[0] === undefined ||
     data.daily?.weather_code?.[0] === undefined ||
+    data.daily?.snowfall_sum?.[0] === undefined ||
     !Array.isArray(data.hourly?.precipitation) ||
     !Array.isArray(data.hourly?.wind_speed_10m) ||
     !Array.isArray(data.hourly?.apparent_temperature) ||
@@ -205,6 +212,7 @@ export async function fetchLiveWeather(): Promise<LiveWeather> {
     sunniness: calculateSunniness(data.daily.weather_code[0]),
     rain: calculateDaytimeRain(data.hourly.precipitation, 0),
     feelsLike: calculateDaytimeFeelsLike(data.hourly.apparent_temperature, 0),
+    snowfall: data.daily.snowfall_sum[0] ?? 0,
     timestamp: data.daily.time[0],
     source: "https://open-meteo.com/",
     // Days 1–6 (tomorrow → 6 days out). Day 0 is today, shown separately.
