@@ -85,8 +85,15 @@ Collecting quip ideas here as they come up instead of shipping each one as its o
 **New general quips** (drop straight into the matching bucket in `quips.ts`):
 - [ ] ALL_BAD: "Wind, rain, cold. Triple threat."
 
-**Snow severity tier** — Wellington snow is rare enough to make the news, so worth calling out prominently rather than letting it get lost in a generic cold/rain quip. `daily_weather_records.snowfall` is already being captured (pending its own migration, see P2 backlog); what's missing is the actual tier: add `"SNOW"` to `SeverityScenario` in `quips.ts`, check it *first* in `getSeverityScenario()` — ahead of `WIND_60` — since snow is rarer and more newsworthy than wind, on `snowfall > 0`, and add a `SEVERE_QUIPS.SNOW` bucket. Needs quip text — none written yet.
-- [ ] SNOW: _(quip text needed)_
+**Two new severity tiers** — `daily_weather_records.snowfall` and `.feels_like` are already captured; what's missing is wiring both into `getSeverityScenario()`/`SEVERE_QUIPS` in `quips.ts`. Proposed order (most-notable-first, inserted into the existing wind/rain waterfall): **SNOW** (top — rarer/more newsworthy than everything else here) → WIND_60 → WIND_50 → WIND_40_RAIN → WIND_40 → **FEELS_LIKE_COLD** (after wind, since a wind-driven cold snap is already explained by the wind quip — this tier is for the *other* kind of cold day, where low actual temp does the work rather than wind chill) → RAIN_HEAVY → RAIN_STEADY_CALM. Now has text for both — ready to implement as one piece of the batch:
+- [ ] **SNOW** (`snowfall > 0`)
+  - "Call your kids, call the press, there might be snow in Wellington!"
+  - "What is the one thing less likely than a good day in Wellington? Snow in Wellington!"
+  - "Break out the winter jandals, you'll need the extra traction for the snow."
+- [ ] **FEELS_LIKE_COLD** (`feels_like < 0`)
+  - "Bust out the long johns, she's a cold one."
+  - "The only thing worse than freezing cold temperatures is how often people in the office are going to mention it today."
+  - "Time to ironically tell the barista, 'You can't beat Wellington on a good day.'"
 
 **Day-specific scenario quips** — the mechanism these need now exists (`getSpecialDayScenario()`/`getSpecialDayQuip()` in `special-dates-logic.ts`, `special_date_defs.scenario_quips` JSONB column — see Architecture Notes). What's still pending is writing the actual rows; these are the content, keyed to the scenario names the code understands (`good` / `great` / `cold` / `rain` / `wind` / `all_bad`):
 - [ ] **Christmas Day** (`christmas-day`)
