@@ -90,6 +90,7 @@ export const QUIPS = {
     "When Wellington decides to commit to the bit.",
     "At least it's consistent.",
     "Honestly, respect the audacity.",
+    "Wind, rain, cold. Triple threat.",
   ],
 } as const satisfies Record<string, string[]>;
 
@@ -101,6 +102,14 @@ export const QUIPS = {
 // back to the scenario quips, so a single day never matches more than one.
 
 export const SEVERE_QUIPS = {
+  // Any snowfall — checked first in getSeverityScenario(), ahead of even the
+  // most extreme wind, since Wellington snow is rare enough to make the news.
+  SNOW: [
+    "Call your kids, call the press, there might be snow in Wellington!",
+    "What is the one thing less likely than a good day in Wellington? Snow in Wellington!",
+    "Break out the winter jandals, you'll need the extra traction for the snow.",
+  ],
+
   // Wind ≥ 40 km/h, no rain
   WIND_40: [
     "Hold on to your hats, it's blowing!",
@@ -127,6 +136,15 @@ export const SEVERE_QUIPS = {
     "Normally rain falls down. Today it falls sideways.",
     "Planning on heading outside today? You're brave.",
     "Today is what Aucklanders think every day is like in Wellington.",
+  ],
+
+  // Feels-like temperature below 0°C — checked after the wind tiers, since a
+  // wind-driven cold snap is already explained by the wind quip; this tier
+  // is for the day genuinely cold enough on its own merits.
+  FEELS_LIKE_COLD: [
+    "Bust out the long johns, she's a cold one.",
+    "The only thing worse than freezing cold temperatures is how often people in the office are going to mention it today.",
+    "Time to ironically tell the barista, 'You can't beat Wellington on a good day.'",
   ],
 
   // Rain ≥ 25mm (only reached once wind is below 40 — see getSeverityScenario)
@@ -220,25 +238,39 @@ export const pickGreatDayQuip = (): string => pick([...GREAT_DAY_QUIPS]);
 
 // Priority waterfall, most severe/specific condition first — each check
 // "claims" the day before a less specific one gets a chance, so exactly one
-// tier ever matches. Wind tiers are nested (60 implies 50 implies 40), so the
-// highest one reached wins outright regardless of rain; the wind+rain combo
-// only applies in the 40-49 band, since 50+ is dramatic enough on its own —
-// and only once rain is more than a light shower (> 5mm), so a windy day
-// with a token drizzle still reads as plain WIND_40.
+// tier ever matches. Snow sits at the very top — rarer and more newsworthy
+// than any wind reading. Wind tiers are nested (60 implies 50 implies 40),
+// so the highest one reached wins outright regardless of rain; the
+// wind+rain combo only applies in the 40-49 band, since 50+ is dramatic
+// enough on its own — and only once rain is more than a light shower
+// (> 5mm), so a windy day with a token drizzle still reads as plain
+// WIND_40. Feels-like-cold is checked after wind, since a wind-driven cold
+// snap is already explained by the wind quip — this tier is for the day
+// that's genuinely cold on its own merits, not because of the wind chill.
 // Returns null when nothing severe applies — callers should fall back to the
 // standard scenario quips (getScenario/pickQuip) in that case.
-export const getSeverityScenario = (windSpeed: number, rain: number): SeverityScenario | null => {
+export interface SeverityWeather {
+  windSpeed: number;
+  rain: number;
+  snowfall: number;
+  feelsLike: number;
+}
+
+export const getSeverityScenario = (weather: SeverityWeather): SeverityScenario | null => {
+  const { windSpeed, rain, snowfall, feelsLike } = weather;
+  if (snowfall > 0) return "SNOW";
   if (windSpeed >= 60) return "WIND_60";
   if (windSpeed >= 50) return "WIND_50";
   if (windSpeed >= 40 && rain > 5) return "WIND_40_RAIN";
   if (windSpeed >= 40) return "WIND_40";
+  if (feelsLike < 0) return "FEELS_LIKE_COLD";
   if (rain >= 25) return "RAIN_HEAVY";
   if (rain >= 10 && windSpeed < 30) return "RAIN_STEADY_CALM";
   return null;
 };
 
-export const pickSeverityQuip = (windSpeed: number, rain: number): string | null => {
-  const scenario = getSeverityScenario(windSpeed, rain);
+export const pickSeverityQuip = (weather: SeverityWeather): string | null => {
+  const scenario = getSeverityScenario(weather);
   return scenario ? pick([...SEVERE_QUIPS[scenario]]) : null;
 };
 

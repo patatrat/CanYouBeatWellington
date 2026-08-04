@@ -24,7 +24,7 @@ Six seasons: Summer (Jan–Mar), Autumn (Apr–Jun), Winter (Jul–Aug), Spring 
 Computed at runtime from `rulesStorage.ts` — not stored in DB, so rules can change freely.
 Data source: Open-Meteo API (free, no key required).
 
-The verdict itself is based on actual temperature, not how it feels — but the coldest daytime **apparent ("feels like") temperature** is also fetched and stored (`daily_weather_records.feels_like`, wind chill/humidity/radiation-adjusted via Open-Meteo's `apparent_temperature`) for quips to reference, even on days where the thermometer reading alone doesn't tell the whole story (e.g. 9°C actual, feels like -3 to -7°C on a very windy day). Daily **snowfall** (cm, `daily_weather_records.snowfall`, from Open-Meteo's `snowfall_sum`) is captured the same way — rare enough in Wellington to be newsworthy when it happens. Neither is currently surfaced in the UI; both exist for quips to reference.
+The verdict itself is based on actual temperature, not how it feels — but the coldest daytime **apparent ("feels like") temperature** is also fetched and stored (`daily_weather_records.feels_like`, wind chill/humidity/radiation-adjusted via Open-Meteo's `apparent_temperature`), and **snowfall** (cm, `daily_weather_records.snowfall`, from Open-Meteo's `snowfall_sum`) the same way. Both feed the `FEELS_LIKE_COLD`/`SNOW` severity quip tiers (see Key files → `quips.ts`) rather than the verdict itself, and aren't otherwise surfaced in the UI.
 
 A non-weather **verdict override** can also force the verdict either way — see Special Dates below.
 
@@ -42,7 +42,8 @@ Current catalogue (`special_date_defs` — occurrence dates live in Neon, not he
 
 | Slug | Kind | Rule / notes | Effect | Background |
 |------|------|---------------|--------|------------|
-| `new-years-day` | fixed_rule | Jan 1 | confetti | festive |
+| `new-years-day` | fixed_rule | Jan 1, has `scenario_quips.good` | confetti | festive |
+| `new-years-eve` | fixed_rule | Dec 31, has `scenario_quips.good` | confetti | festive |
 | `day-after-new-years` | fixed_rule | Jan 2 | none | — |
 | `wellington-anniversary-day` | fixed_rule | 4th Mon Jan | confetti | anniversary |
 | `waitangi-day` | fixed_rule | Feb 6 | none | — |
@@ -51,7 +52,7 @@ Current catalogue (`special_date_defs` — occurrence dates live in Neon, not he
 | `anzac-day` | fixed_rule | Apr 25 | none | — |
 | `kings-birthday` | fixed_rule | 1st Mon Jun | none | — |
 | `labour-day` | fixed_rule | 4th Mon Oct | none | — |
-| `christmas-day` | fixed_rule | Dec 25 | confetti | festive |
+| `christmas-day` | fixed_rule | Dec 25, has `scenario_quips` for good/rain/cold/all_bad | confetti | festive |
 | `boxing-day` | fixed_rule | Dec 26 | none | — |
 | `matariki` | moveable | gazetted yearly, no formula (2026: Jul 10, 2027: Jun 25) | none | matariki |
 | `cuba-dupa` | moveable | usually late March | confetti | — |
@@ -82,33 +83,17 @@ Solemn/civic holidays (ANZAC Day, Waitangi Day, Good Friday, King's Birthday, La
 ### Quip backlog — batched, not yet released
 Collecting quip ideas here as they come up instead of shipping each one as its own small release (previous sessions did several one-off quip PRs in a row — batching avoids the release-noise). Implement and ship together in one pass when there's a decent batch, then clear this section.
 
-**New general quips** (drop straight into the matching bucket in `quips.ts`):
-- [ ] ALL_BAD: "Wind, rain, cold. Triple threat."
+Empty right now — the previous batch (general ALL_BAD quip, SNOW + FEELS_LIKE_COLD severity tiers, Christmas Day/New Year's Eve/New Year's Day scenario quips) shipped 2026-08-03, prompted by an actual snow shower and wanting the SNOW tier live before the next one. See Changelog for what went out.
 
-**Two new severity tiers** — `daily_weather_records.snowfall` and `.feels_like` are already captured; what's missing is wiring both into `getSeverityScenario()`/`SEVERE_QUIPS` in `quips.ts`. Proposed order (most-notable-first, inserted into the existing wind/rain waterfall): **SNOW** (top — rarer/more newsworthy than everything else here) → WIND_60 → WIND_50 → WIND_40_RAIN → WIND_40 → **FEELS_LIKE_COLD** (after wind, since a wind-driven cold snap is already explained by the wind quip — this tier is for the *other* kind of cold day, where low actual temp does the work rather than wind chill) → RAIN_HEAVY → RAIN_STEADY_CALM. Now has text for both — ready to implement as one piece of the batch:
-- [ ] **SNOW** (`snowfall > 0`)
-  - "Call your kids, call the press, there might be snow in Wellington!"
-  - "What is the one thing less likely than a good day in Wellington? Snow in Wellington!"
-  - "Break out the winter jandals, you'll need the extra traction for the snow."
-- [ ] **FEELS_LIKE_COLD** (`feels_like < 0`)
-  - "Bust out the long johns, she's a cold one."
-  - "The only thing worse than freezing cold temperatures is how often people in the office are going to mention it today."
-  - "Time to ironically tell the barista, 'You can't beat Wellington on a good day.'"
-
-**Day-specific scenario quips** — the mechanism these need now exists (`getSpecialDayScenario()`/`getSpecialDayQuip()` in `special-dates-logic.ts`, `special_date_defs.scenario_quips` JSONB column — see Architecture Notes). What's still pending is writing the actual rows; these are the content, keyed to the scenario names the code understands (`good` / `great` / `cold` / `rain` / `wind` / `all_bad`):
-- [ ] **Christmas Day** (`christmas-day`)
-  - `good`: "Perfect day for a Christmas on the beach. Merry Christmas!"
-  - `rain` (> 5mm): "I hope you got a raincoat for Christmas. Merry Christmas!"
-  - `cold` (temp below seasonal threshold): "It's beginning to look (and feel) a lot like Christmas... brrrrrr. Merry Christmas!" (fixed "begining" → "beginning")
-  - `all_bad`: "The weather didn't play ball, but at least it's Christmas! Merry Christmas!"
-- [ ] **New Year's Eve** — `good`: "Wellington saved the best for last! Happy New Year's Eve!" — `new-years-eve` isn't a `special_date_defs` row yet (only `new-years-day`, Jan 1, exists); would need adding as a new `fixed_rule` def (`fixed:12:31`) first.
-- [ ] **New Year's Day** (`new-years-day`) — `good`: "Starting the year off on the right foot! Happy New Year!"
+### Other scenario ideas floated, not yet drafted
+Brainstormed while adding the feels-like/snow tiers, no quip text written yet — free to draft any of these whenever, same batching process:
+- **Fog** — Wellington Airport's fog delays/cancellations are locally famous; `weather_code` is already fetched (used today only for `calculateSunniness`), WMO codes 45/48 are fog, so this is a zero-new-data-cost severity tier.
+- **Dead calm / no wind** — the inverse of the wind severity tiers; Wellington's reputation as "the windy city" makes a genuinely still day (e.g. wind < 5 km/h) arguably as newsworthy as snow, just in the other direction. Also zero new cost — `wind_speed` already fetched.
+- **Extreme heat** — pairs with FEELS_LIKE_COLD; Wellington rarely breaks 25°C, so a genuinely hot day (distinct from GREAT_DAY's gentler +3°-above-threshold bar) could get its own callout. Zero new cost — `temperature` already fetched.
+- Lower priority: hail (WMO 96/99, possible from existing `weather_code` data but rarer/less distinctly-Wellington than fog); UV/extreme sun (would need a genuinely new Open-Meteo field, more setup cost).
 
 ### P2 — Post-migration cleanup
-- [ ] **Run the pending Neon schema migration for `snowfall`** (blocks deploy — automated DDL was permission-blocked, same pattern as the two migrations below) — code referencing the new column is committed on `staging` but **not pushed**, since `staging` shares the production Neon DB and pushing before this runs would break every query touching `daily_weather_records`. Run in the Neon SQL editor, then tell Claude to push:
-  ```sql
-  ALTER TABLE daily_weather_records ADD COLUMN IF NOT EXISTS snowfall NUMERIC;
-  ```
+- [x] **Run the Neon schema migration for `snowfall`** (2026-08-03) — `daily_weather_records.snowfall` added by hand in the Neon SQL editor (automated DDL was permission-blocked, same pattern as the migrations below); confirmed live via `information_schema.columns` before pushing. Deployed same day.
 - [x] **Run the Neon schema migration for `feels_like` + `scenario_quips`** (2026-08-03) — `daily_weather_records.feels_like` and `special_date_defs.scenario_quips` added by hand in the Neon SQL editor (automated DDL was permission-blocked); confirmed live via `information_schema.columns` before pushing. Deployed same day.
 - [x] **Run the occurrence unique index in Neon** (2026-07-02) — `special_date_occurrences_def_start_key ON (def_id, start_date)` created in production by hand (automated DDL was permission-blocked); `db/schema.sql` documents it, and `ensureUpcomingOccurrences()`'s `ON CONFLICT DO NOTHING` race guard is now fully backed.
 - [ ] **Delete the Supabase project** (Settings → General → Delete project) once production has been stable for a while — deliberately holding off; all data already migrated and verified.
@@ -145,7 +130,8 @@ Collecting quip ideas here as they come up instead of shipping each one as its o
 ## Changelog
 
 - **2026-08-03** — Two infrastructure additions, deployed same day once the Neon migration ran: (1) `special_date_defs.scenario_quips` — special dates can now have weather-scenario-dependent quips (e.g. a different line for a rainy Christmas than a cold one) instead of only a single fixed `quip_override`; `getSpecialDayScenario()`/`getSpecialDayQuip()` in `special-dates-logic.ts` resolve it, checked in `page.tsx`'s verdict-line precedence between the global severity quips and the global great-day/standard quips. No content written yet — the actual Christmas/NYE/NYD quips stay in the batched quip backlog until there's a reason to ship. (2) `daily_weather_records.feels_like` — daytime-minimum apparent temperature (wind chill/humidity/radiation-adjusted, from Open-Meteo's `apparent_temperature`) is now fetched and stored alongside temp/wind/rain, prompted by today's actual 9°C reading feeling like -3 to -7°C on a very windy day. Not displayed anywhere yet and no quips reference it — captured now so it's available whenever quips do.
-- **2026-08-03** — `daily_weather_records.snowfall` (daily total, cm, from Open-Meteo's `snowfall_sum`) — prompted by an actual light snow shower in Wellington that day (confirmed in the live API data: WMO code 85 at three separate hours, ~0.7cm total), which is rare enough locally to make the news, hence wanting to call it out. Data capture only, same pattern as `feels_like` — no quip wiring yet, since that would mean shipping quip content outside the batch process the quip backlog above exists to avoid, and there's no snow quip text yet either. **Pending the same kind of Neon schema migration** as the item above (P2 backlog) before this can deploy.
+- **2026-08-03** — `daily_weather_records.snowfall` (daily total, cm, from Open-Meteo's `snowfall_sum`) — prompted by an actual light snow shower in Wellington that day (confirmed in the live API data: WMO code 85 at three separate hours, ~0.7cm total), which is rare enough locally to make the news, hence wanting to call it out. Data capture only in this commit — the quip tier followed later the same day, once there was text for it (see below).
+- **2026-08-03** — Shipped the first batched quip release: a new ALL_BAD quip; two new severity tiers, `SNOW` (any snowfall, checked first — ahead of even `WIND_60` — since Wellington snow is rare enough to make the news) and `FEELS_LIKE_COLD` (`feels_like < 0`, checked after the wind tiers so a wind-driven cold snap doesn't double up with the wind quip); and `scenario_quips` content for three special dates — Christmas Day (good/rain/cold/all_bad), New Year's Day (good), and a brand new `new-years-eve` def (good) that didn't exist as a `special_date_defs` row before today. `getSeverityScenario()`/`pickSeverityQuip()` moved from positional `(windSpeed, rain)` args to a single `SeverityWeather` object now that there are four inputs (`windSpeed`/`rain`/`snowfall`/`feelsLike`) — cleaner than a five-argument function. Released together rather than piecemeal specifically so the SNOW tier would be live in case it snowed again; `new-years-eve`'s first occurrence self-generates on the next daily cron run via `ensureUpcomingOccurrences()`, no manual seeding needed.
 - **2026-08-03** — Added FEP-044f `interactionPolicy` (public quote consent) to every outgoing Note, fixing Mastodon's outright "you are not allowed to quote this" block on the daily good-day posts — the exact JSON-LD `gts:` context terms were verified against a live Mastodon post's own ActivityPub JSON rather than trusted from third-party write-ups, which disagreed with each other. The deeper `QuoteRequest`/`QuoteAuthorization` inbox handshake FEP-044f also describes is not yet implemented (P4 backlog) — no verified-exact JSON shape found for it yet, unlike the static field. Separately investigated why the bot's own actor profile link still doesn't show verified on Mastodon after the 2026-08-01 fix attempt (P4 backlog) — confirmed via user report that the self-referential `rel="me"` theory hasn't produced a visible verified badge; two follow-up theories logged, neither confirmed.
 - **2026-07-24** — Moved the daily cron from 12:00 UTC (≈midnight NZT — originally chosen as "midnight NZST" pre-migration, see `CLAUDE_ARCHIVE.md`) to 21:30 UTC (≈10am NZT), after feedback that the ActivityPub good-day announcement was firing in the middle of the night and reads oddly to followers. Vercel Cron has no timezone option (UTC only), so a fixed schedule can't track NZ's daylight-saving transition; 21:30 UTC splits the difference evenly (10:30am NZDT / 9:30am NZST) rather than favouring one season. Config-only change (`vercel.json`), no code touched. Worth knowing: the "good day" verdict used for the fan-out decision is whatever Open-Meteo returns for the still-partially-elapsed day at cron time — the daytime window is 6am–6pm, so at 10am roughly a third of it is observed and the rest is same-day forecast. The stored record self-corrects with fully observed data on the *next* day's cron run (`fetchAndStoreBatch` re-upserts all 92 past days every run), but a post that already went out doesn't get retracted if the afternoon doesn't pan out as forecast — pre-existing behaviour, not introduced by this change, just more exposed by moving off a near-midnight run where forecast/actual mattered less to anyone watching the clock.
 - **2026-07-24** — Fixed the browser tab favicon, which had shown Vercel/Next's default triangle logo since the migration: `src/app/favicon.ico` was a leftover `create-next-app` scaffold file, never replaced with the real design (a black-circle "W" mark, `public/favicon.svg`, added pre-migration but never wired into Next's file-based icon convention). Rebuilt `favicon.ico` from the SVG at 16/32/48px (hand-assembled to avoid a third-party ico tool bloating it with a blurry auto-upscaled 256px frame), and added `src/app/icon.svg` so modern browsers get a crisp SVG favicon. Also deleted `public/favicon.ico` — an unrelated, unreferenced terminal-icon file dating back to the original pre-Lovable project scaffold, dead weight since day one.

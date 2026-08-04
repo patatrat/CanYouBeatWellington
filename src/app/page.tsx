@@ -45,10 +45,24 @@ export default async function HomePage() {
 
   // Prefer the cron-written record for the verdict when it exists — it
   // captures the full daytime window, whereas the live Open-Meteo fetch may
-  // reflect a partially-elapsed day.
+  // reflect a partially-elapsed day. feels_like/snowfall are nullable on
+  // older rows (added after the column existed) — 0 is a safe fallback for
+  // both, since it just means "no snow" / "no extra chill" gets assumed.
   const effectiveWeather = record
-    ? { temperature: record.temperature, windSpeed: record.wind_speed, rain: record.rain }
-    : { temperature: liveWeather.temperature, windSpeed: liveWeather.windSpeed, rain: liveWeather.rain };
+    ? {
+        temperature: record.temperature,
+        windSpeed: record.wind_speed,
+        rain: record.rain,
+        feelsLike: record.feels_like ?? 0,
+        snowfall: record.snowfall ?? 0,
+      }
+    : {
+        temperature: liveWeather.temperature,
+        windSpeed: liveWeather.windSpeed,
+        rain: liveWeather.rain,
+        feelsLike: liveWeather.feelsLike,
+        snowfall: liveWeather.snowfall,
+      };
 
   const weatherDate = new Date(liveWeather.timestamp + "T12:00:00");
   const rules = getThresholds(weatherDate);
@@ -72,7 +86,7 @@ export default async function HomePage() {
   // its own celebratory line; otherwise the standard scenario quip.
   const verdictLine =
     special?.quip_override ??
-    pickSeverityQuip(effectiveWeather.windSpeed, effectiveWeather.rain) ??
+    pickSeverityQuip(effectiveWeather) ??
     (special ? getSpecialDayQuip(special, effectiveWeather, rules) : null) ??
     (isGreatDay(effectiveWeather, rules.minTemp) ? pickGreatDayQuip() : null) ??
     pickQuip(getScenario(tempMet, windMet, rainMet));
