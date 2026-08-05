@@ -21,7 +21,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.23.0",
-    "next": "16.2.11",
+    "next": "16.2.12",
     "next-themes": "^0.4.6",
     "react": "19.2.7",
     "react-day-picker": "^10.0.1",
@@ -37,7 +37,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
     "typescript": "^6",
     "vitest": "^4.1.9"
@@ -46,7 +46,7 @@
     "node": ">=24"
   },
   "overrides": {
-    "postcss": "8.5.19",
+    "postcss": "8.5.25",
     "next": {
       "sharp": "0.35.3"
     },
