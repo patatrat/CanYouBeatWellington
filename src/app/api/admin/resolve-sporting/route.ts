@@ -9,7 +9,7 @@ const VALID_OUTCOMES: SportingOutcome[] = ['won', 'lost', 'draw', 'cancelled'];
 // pattern as the cron route's CRON_SECRET check — no new auth
 // infrastructure. Triggered manually after a game, e.g.:
 //
-//   curl -X POST https://canyoubeatwellington.radomski.co.nz/api/admin/resolve-sporting \
+//   curl -X POST https://www.canyoubeatwellington.nz/api/admin/resolve-sporting \
 //     -H "Authorization: Bearer $ADMIN_SECRET" \
 //     -H "Content-Type: application/json" \
 //     -d '{"occurrenceId": 7, "outcome": "won", "note": "Phoenix won 2-1"}'

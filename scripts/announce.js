@@ -16,6 +16,10 @@ import { signAndDeliver } from '../src/lib/http-signatures.ts';
 const BASE = 'https://canyoubeatwellington.radomski.co.nz';
 const ACTOR_ID = `${BASE}/actor`;
 const KEY_ID = `${ACTOR_ID}#main-key`;
+// The Note's `url` (human-facing "view on the web" link) — unlike the
+// actor/note id above, this isn't part of the AP-pinned identity, so it
+// points at the new domain. See src/lib/ap-posting.ts for the same split.
+const SITE_URL = 'https://www.canyoubeatwellington.nz';
 
 // FEP-044f quote-post context terms — kept in sync with src/lib/ap-posting.ts
 // (see the comment there for why these exact values, copied from a live
@@ -89,7 +93,7 @@ const main = async () => {
     published: now,
     to: ['https://www.w3.org/ns/activitystreams#Public'],
     cc: [`${ACTOR_ID}/followers`],
-    url: BASE,
+    url: SITE_URL,
     interactionPolicy: QUOTABLE_BY_ANYONE,
   };
 

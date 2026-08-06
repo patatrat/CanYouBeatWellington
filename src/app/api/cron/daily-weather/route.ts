@@ -13,7 +13,10 @@ import {
 // Allow up to 60 s for the fan-out loop to complete.
 export const maxDuration = 60;
 
-const BASE = 'https://canyoubeatwellington.radomski.co.nz';
+// The link shown in the toot's body — human-facing content, not actor
+// identity, so it points at the new domain unlike the AP-pinned BASE
+// constants in ap-posting.ts/actor routes.
+const SITE_URL = 'https://www.canyoubeatwellington.nz';
 
 export async function GET(req: NextRequest) {
   // When CRON_SECRET is set in Vercel env vars, Vercel Cron automatically
@@ -69,7 +72,7 @@ export async function GET(req: NextRequest) {
     `<p>🌡️ ${todayRecord.temperature.toFixed(1)}°C  ` +
     `💨 ${todayRecord.wind_speed.toFixed(1)} km/h  ` +
     `🌧️ ${todayRecord.rain.toFixed(1)} mm rain</p>` +
-    `<p><a href="${BASE}">${BASE}</a></p>`;
+    `<p><a href="${SITE_URL}">${SITE_URL}</a></p>`;
 
   const result = await postToFollowers(htmlContent, today);
 

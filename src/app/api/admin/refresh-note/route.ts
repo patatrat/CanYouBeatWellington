@@ -15,7 +15,7 @@ const ACTOR_ID = `${BASE}/actor`;
 // Update to know to re-fetch. Same Bearer-token pattern as the other admin
 // routes. Triggered manually, e.g.:
 //
-//   curl -X POST https://canyoubeatwellington.radomski.co.nz/api/admin/refresh-note \
+//   curl -X POST https://www.canyoubeatwellington.nz/api/admin/refresh-note \
 //     -H "Authorization: Bearer $ADMIN_SECRET" \
 //     -H "Content-Type: application/json" \
 //     -d '{"noteIdSuffix": "2026-08-03"}'

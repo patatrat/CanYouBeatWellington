@@ -2,6 +2,11 @@ import { kv } from "@vercel/kv";
 import { signAndDeliver } from "./http-signatures";
 
 const BASE = "https://canyoubeatwellington.radomski.co.nz";
+// The Note's `url` — "a link to a representation of this object" per the
+// ActivityStreams spec, i.e. what Mastodon's "view on the web" link opens.
+// Unlike the actor/note id (which must stay on the AP-pinned domain), this
+// is just a human-facing pointer, so it goes to the new domain.
+const SITE_URL = "https://www.canyoubeatwellington.nz";
 const ACTOR_ID = `${BASE}/actor`;
 const KEY_ID = `${ACTOR_ID}#main-key`;
 
@@ -104,7 +109,7 @@ export async function postToFollowers(htmlContent: string, noteIdSuffix: string)
     published: now,
     to: ["https://www.w3.org/ns/activitystreams#Public"],
     cc: [`${ACTOR_ID}/followers`],
-    url: BASE,
+    url: SITE_URL,
     interactionPolicy: QUOTABLE_BY_ANYONE,
   };
 
