@@ -5,13 +5,13 @@ const OLD = "canyoubeatwellington.radomski.co.nz";
 
 describe("getRedirectUrl", () => {
   it("redirects ordinary pages on the old domain to the new domain", () => {
-    expect(getRedirectUrl(OLD, "/", "")).toBe("https://canyoubeatwellington.nz/");
-    expect(getRedirectUrl(OLD, "/about", "")).toBe("https://canyoubeatwellington.nz/about");
+    expect(getRedirectUrl(OLD, "/", "")).toBe("https://www.canyoubeatwellington.nz/");
+    expect(getRedirectUrl(OLD, "/about", "")).toBe("https://www.canyoubeatwellington.nz/about");
   });
 
   it("preserves the query string", () => {
     expect(getRedirectUrl(OLD, "/history", "?year=2026")).toBe(
-      "https://canyoubeatwellington.nz/history?year=2026",
+      "https://www.canyoubeatwellington.nz/history?year=2026",
     );
   });
 
@@ -32,9 +32,9 @@ describe("getRedirectUrl", () => {
   });
 
   it("does not false-positive match paths that merely start with 'actor' or 'notes'", () => {
-    expect(getRedirectUrl(OLD, "/actorial", "")).toBe("https://canyoubeatwellington.nz/actorial");
+    expect(getRedirectUrl(OLD, "/actorial", "")).toBe("https://www.canyoubeatwellington.nz/actorial");
     expect(getRedirectUrl(OLD, "/notesomething", "")).toBe(
-      "https://canyoubeatwellington.nz/notesomething",
+      "https://www.canyoubeatwellington.nz/notesomething",
     );
   });
 });
