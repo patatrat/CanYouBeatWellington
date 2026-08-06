@@ -20,6 +20,7 @@ export const QUIPS = {
     "Wellington on a good day. There, we said it.",
     "Yep. Can't argue with that.",
     "Bloody lovely. Don't waste it.",
+    "YCBWOAGD. Today, it's actually true.",
   ],
 
   // Wind is the only failure (temp ✓, rain ✓, wind ✗)

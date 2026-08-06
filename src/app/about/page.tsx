@@ -23,6 +23,12 @@ export default function AboutPage() {
 
       <div className="max-w-2xl mx-auto px-6 py-16">
         <header className="text-center mb-14">
+          <p className="text-xs font-bold uppercase tracking-widest text-amber-600 mb-3">
+            YCBWOAGD
+            <span className="block text-[10px] font-medium tracking-wide text-gray-400 normal-case mt-1">
+              You Can&apos;t Beat Wellington On A Good Day
+            </span>
+          </p>
           <h1 className="text-4xl font-black text-gray-800 mb-2">Why though?</h1>
           <p className="text-gray-500">Wellington&apos;s most famous weather claim, put on trial.</p>
         </header>
