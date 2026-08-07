@@ -27,6 +27,11 @@ describe("getRedirectUrl", () => {
     expect(getRedirectUrl(OLD, "/notes/12345", "")).toBeNull();
   });
 
+  it("leaves quote-authorizations on the old domain", () => {
+    expect(getRedirectUrl(OLD, "/quote-authorizations", "")).toBeNull();
+    expect(getRedirectUrl(OLD, "/quote-authorizations/abc-123", "")).toBeNull();
+  });
+
   it("does not touch requests already on the new domain", () => {
     expect(getRedirectUrl("canyoubeatwellington.nz", "/", "")).toBeNull();
   });
@@ -35,6 +40,9 @@ describe("getRedirectUrl", () => {
     expect(getRedirectUrl(OLD, "/actorial", "")).toBe("https://www.canyoubeatwellington.nz/actorial");
     expect(getRedirectUrl(OLD, "/notesomething", "")).toBe(
       "https://www.canyoubeatwellington.nz/notesomething",
+    );
+    expect(getRedirectUrl(OLD, "/quote-authorizationsomething", "")).toBe(
+      "https://www.canyoubeatwellington.nz/quote-authorizationsomething",
     );
   });
 });

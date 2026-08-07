@@ -28,8 +28,10 @@ export const QUOTE_CONTEXT = {
 // without my approval" — without it, Mastodon defaults new posts to
 // author-only auto-approval (confirmed by inspecting a real Mastodon post),
 // which reads to a quoting user as "you are not allowed to quote this."
+// automaticApproval is a bare string, not an array — confirmed against the
+// FEP-044f spec text and two independent server-implementer guides.
 export const QUOTABLE_BY_ANYONE = {
-  canQuote: { automaticApproval: ["https://www.w3.org/ns/activitystreams#Public"] },
+  canQuote: { automaticApproval: "https://www.w3.org/ns/activitystreams#Public" },
 };
 
 // Notes are stored for a year (see the kv.set below) — reapplied whenever a

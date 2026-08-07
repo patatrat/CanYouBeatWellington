@@ -10,7 +10,7 @@ const OLD_DOMAIN = "canyoubeatwellington.radomski.co.nz";
 // www, not the bare apex — Vercel's own domain config redirects the apex to
 // www, so pointing straight at www skips that extra hop.
 const NEW_DOMAIN = "www.canyoubeatwellington.nz";
-const AP_PATH_PREFIXES = ["/actor", "/.well-known/webfinger", "/notes"];
+const AP_PATH_PREFIXES = ["/actor", "/.well-known/webfinger", "/notes", "/quote-authorizations"];
 
 // Pure so it's testable without constructing a NextRequest — returns the
 // redirect target, or null if this request should pass through untouched.

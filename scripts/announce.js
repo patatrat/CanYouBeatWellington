@@ -30,8 +30,9 @@ const QUOTE_CONTEXT = {
   canQuote: { '@id': 'gts:canQuote', '@type': '@id' },
   automaticApproval: { '@id': 'gts:automaticApproval', '@type': '@id' },
 };
+// automaticApproval is a bare string, not an array — see ap-posting.ts.
 const QUOTABLE_BY_ANYONE = {
-  canQuote: { automaticApproval: ['https://www.w3.org/ns/activitystreams#Public'] },
+  canQuote: { automaticApproval: 'https://www.w3.org/ns/activitystreams#Public' },
 };
 
 const AP_PRIVATE_KEY = process.env.AP_PRIVATE_KEY?.replace(/\\n/g, '\n');
