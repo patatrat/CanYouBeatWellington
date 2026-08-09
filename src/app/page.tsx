@@ -175,7 +175,7 @@ export default async function HomePage() {
           />
           <WeatherStat
             label="Rain"
-            value={`${effectiveWeather.rain.toFixed(1)} mm`}
+            value={`${(rainMet ? 0 : effectiveWeather.rain).toFixed(1)} mm`}
             meets={rainMet}
             threshold="0 mm"
             onDark={onDark}
