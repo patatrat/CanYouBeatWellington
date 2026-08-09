@@ -117,6 +117,11 @@ export async function postToFollowers(htmlContent: string, noteIdSuffix: string)
     type: "Note",
     attributedTo: ACTOR_ID,
     content: htmlContent,
+    // Without this, Mastodon can't tell the post's language and offers a
+    // "Translate" button regardless of what it's actually written in —
+    // confirmed against a real Mastodon post's own JSON (same shape,
+    // content duplicated under the language key).
+    contentMap: { en: htmlContent },
     published: now,
     to: ["https://www.w3.org/ns/activitystreams#Public"],
     cc: [`${ACTOR_ID}/followers`],

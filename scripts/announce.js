@@ -125,6 +125,10 @@ const main = async () => {
     type: 'Note',
     attributedTo: ACTOR_ID,
     content: toHtml(NOTE_CONTENT),
+    // Without this, Mastodon can't tell the post's language and offers a
+    // "Translate" button regardless of what it's actually written in — see
+    // src/lib/ap-posting.ts for the same fix and how it was confirmed.
+    contentMap: { en: toHtml(NOTE_CONTENT) },
     published: now,
     to: ['https://www.w3.org/ns/activitystreams#Public'],
     cc: [`${ACTOR_ID}/followers`],
