@@ -180,6 +180,43 @@ async function handleFollowReject(us: ActorIdentity, activity: Record<string, un
   console.log(`Inbox: follow request to ${signerActorUrl} rejected (${us.domain})`);
 }
 
+// Records an incoming boost (Announce) of one of our own posts, for our own
+// record-keeping — this is separate from, and has no effect on, the
+// booster-list Mastodon's own UI already shows natively for any post viewed
+// there. No response is sent back: unlike Follow/QuoteRequest, Announce
+// isn't a request awaiting an Accept/Reject. Silently ignored if the
+// announced object isn't verifiably one of our real posts, same defensive
+// pattern as handleQuoteRequest.
+async function handleAnnounce(us: ActorIdentity, activity: Record<string, unknown>, signerActorUrl: string) {
+  const claimedActor =
+    typeof activity.actor === 'string' ? activity.actor : (activity.actor as { id?: string } | undefined)?.id;
+  if (claimedActor !== signerActorUrl) {
+    console.error(`Inbox: Announce actor mismatch — body claims ${claimedActor}, signed by ${signerActorUrl}`);
+    return;
+  }
+
+  const objectUrl = instrumentUrl(activity.object);
+  if (!objectUrl) return;
+
+  const suffix = noteSuffixFromUrl(objectUrl, us.base);
+  const stored = suffix
+    ? await kv.get<{ object?: { id?: string } }>(`cybw:post:${suffix}`)
+    : null;
+  if (!stored?.object?.id || stored.object.id !== objectUrl) {
+    console.log(`Inbox: Announce for unknown/mismatched post ${objectUrl} — ignoring`);
+    return;
+  }
+
+  const record = JSON.stringify({
+    actor: signerActorUrl,
+    object: objectUrl,
+    published: new Date().toISOString(),
+  });
+  await kv.lpush(us.boostsKey, record);
+  await kv.ltrim(us.boostsKey, 0, 199);
+  console.log(`Inbox: boost recorded — ${signerActorUrl} announced ${objectUrl} (${us.domain})`);
+}
+
 export async function POST(req: NextRequest) {
   const us = actorForHost(req.headers.get('host'));
   const rawBody = await req.text();
@@ -207,12 +244,12 @@ export async function POST(req: NextRequest) {
   // The body is attacker-supplied even when the signature is valid — only act
   // on Follow/Undo when the claimed actor is the actor that signed the
   // request, or anyone with a fediverse account could (un)follow on behalf
-  // of someone else. QuoteRequest/Accept/Reject do their own equivalent
-  // check and log separately, so they're excluded here to avoid a duplicate
-  // log line.
+  // of someone else. QuoteRequest/Accept/Reject/Announce do their own
+  // equivalent check and log separately, so they're excluded here to avoid a
+  // duplicate log line.
   const claimedActor = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
   const followerUrl = claimedActor === signerActorUrl ? claimedActor : undefined;
-  const selfHandledTypes = ['QuoteRequest', 'Accept', 'Reject'];
+  const selfHandledTypes = ['QuoteRequest', 'Accept', 'Reject', 'Announce'];
   if (claimedActor && !followerUrl && !selfHandledTypes.includes(activity.type)) {
     console.error(`Inbox: actor mismatch — body claims ${claimedActor}, signed by ${signerActorUrl}`);
   }
@@ -238,6 +275,8 @@ export async function POST(req: NextRequest) {
       await handleFollowAccept(us, activity, signerActorUrl);
     } else if (activity.type === 'Reject' && (objectType === 'Follow' || objectType === undefined)) {
       await handleFollowReject(us, activity, signerActorUrl);
+    } else if (activity.type === 'Announce') {
+      await handleAnnounce(us, activity, signerActorUrl);
     }
     // All other activity types (Delete, etc.) are silently accepted per AP spec
   } catch (err) {

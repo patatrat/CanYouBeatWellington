@@ -15,6 +15,8 @@ export interface ActorIdentity {
   followingKey: string;
   /** KV list key indexing this actor's own published post ids, for its outbox. */
   postsListKey: string;
+  /** KV list key of recorded Announce (boost) events on this actor's posts — internal record-keeping only, not exposed via any AP collection. */
+  boostsKey: string;
   publicKeyEnvVar: string;
   privateKeyEnvVar: string;
 }
@@ -30,6 +32,7 @@ export const OLD_ACTOR: ActorIdentity = {
   followersKey: "cybw:ap:followers",
   followingKey: "cybw:ap:following",
   postsListKey: "cybw:posts",
+  boostsKey: "cybw:ap:boosts",
   publicKeyEnvVar: "AP_PUBLIC_KEY",
   privateKeyEnvVar: "AP_PRIVATE_KEY",
 };
@@ -50,6 +53,7 @@ export const NEW_ACTOR: ActorIdentity = {
   followersKey: "cybw:ap:followers:new",
   followingKey: "cybw:ap:following:new",
   postsListKey: "cybw:posts:new",
+  boostsKey: "cybw:ap:boosts:new",
   publicKeyEnvVar: "AP_PUBLIC_KEY_NEW",
   privateKeyEnvVar: "AP_PRIVATE_KEY_NEW",
 };

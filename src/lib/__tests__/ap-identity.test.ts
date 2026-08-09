@@ -48,6 +48,7 @@ describe("identity consistency", () => {
     expect(OLD_ACTOR.followersKey).not.toBe(NEW_ACTOR.followersKey);
     expect(OLD_ACTOR.followingKey).not.toBe(NEW_ACTOR.followingKey);
     expect(OLD_ACTOR.postsListKey).not.toBe(NEW_ACTOR.postsListKey);
+    expect(OLD_ACTOR.boostsKey).not.toBe(NEW_ACTOR.boostsKey);
     expect(OLD_ACTOR.publicKeyEnvVar).not.toBe(NEW_ACTOR.publicKeyEnvVar);
     expect(OLD_ACTOR.privateKeyEnvVar).not.toBe(NEW_ACTOR.privateKeyEnvVar);
   });
