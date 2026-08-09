@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { actorForHost } from '@/lib/ap-identity';
+import { wantsActivityJson, renderActorListHtml } from '@/lib/collection-html';
 
 // Accounts this actor follows (not to be confused with actor/followers,
 // which is the reverse). Same paginated shape as followers/outbox — see
 // the comment there for why a flat top-level collection doesn't work with
-// Mastodon's own rendering.
+// Mastodon's own rendering. Same HTML content-negotiation as
+// actor/followers/route.ts, for the same reason.
 export async function GET(req: NextRequest) {
   const actor = actorForHost(req.headers.get('host'));
   const collectionId = `${actor.base}/actor/following`;
@@ -15,6 +17,12 @@ export async function GET(req: NextRequest) {
     following = (await kv.smembers(actor.followingKey)) ?? [];
   } catch {
     // KV unavailable — return empty rather than an error
+  }
+
+  if (!wantsActivityJson(req.headers.get('accept'))) {
+    return new NextResponse(renderActorListHtml('Following', following), {
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
   }
 
   const isPageRequest = req.nextUrl.searchParams.has('page');
