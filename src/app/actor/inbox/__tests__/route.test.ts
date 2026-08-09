@@ -1,24 +1,30 @@
 import { describe, it, expect } from "vitest";
 import { noteSuffixFromUrl, instrumentUrl } from "../route";
-
-const NOTES_PREFIX = "https://canyoubeatwellington.radomski.co.nz/notes/";
+import { OLD_ACTOR, NEW_ACTOR } from "../../../../lib/ap-identity";
 
 describe("noteSuffixFromUrl", () => {
-  it("extracts the suffix from one of our own note URLs", () => {
-    expect(noteSuffixFromUrl(`${NOTES_PREFIX}2026-08-03`)).toBe("2026-08-03");
-    expect(noteSuffixFromUrl(`${NOTES_PREFIX}announce-12345`)).toBe("announce-12345");
+  it("extracts the suffix from one of the given actor's own note URLs", () => {
+    expect(noteSuffixFromUrl(`${OLD_ACTOR.base}/notes/2026-08-03`, OLD_ACTOR.base)).toBe("2026-08-03");
+    expect(noteSuffixFromUrl(`${NEW_ACTOR.base}/notes/announce-12345`, NEW_ACTOR.base)).toBe(
+      "announce-12345",
+    );
+  });
+
+  it("returns null when the URL belongs to the other actor's domain", () => {
+    expect(noteSuffixFromUrl(`${OLD_ACTOR.base}/notes/2026-08-03`, NEW_ACTOR.base)).toBeNull();
+    expect(noteSuffixFromUrl(`${NEW_ACTOR.base}/notes/announce-12345`, OLD_ACTOR.base)).toBeNull();
   });
 
   it("returns null for a URL that isn't shaped like one of ours", () => {
-    expect(noteSuffixFromUrl("https://example.com/users/bob/statuses/1")).toBeNull();
-    expect(noteSuffixFromUrl("https://canyoubeatwellington.radomski.co.nz/actor")).toBeNull();
+    expect(noteSuffixFromUrl("https://example.com/users/bob/statuses/1", OLD_ACTOR.base)).toBeNull();
+    expect(noteSuffixFromUrl(`${OLD_ACTOR.base}/actor`, OLD_ACTOR.base)).toBeNull();
   });
 
   it("returns null for the bare notes prefix with nothing after it", () => {
     // Empty string is falsy but still a defined match — startsWith is true,
     // slice gives "", which is the correct (if degenerate) extraction; the
     // caller's KV lookup for cybw:post: will simply miss and be ignored.
-    expect(noteSuffixFromUrl(NOTES_PREFIX)).toBe("");
+    expect(noteSuffixFromUrl(`${OLD_ACTOR.base}/notes/`, OLD_ACTOR.base)).toBe("");
   });
 });
 

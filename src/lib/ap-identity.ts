@@ -11,6 +11,8 @@ export interface ActorIdentity {
   actorId: string;
   keyId: string;
   followersKey: string;
+  /** KV list key indexing this actor's own published post ids, for its outbox. */
+  postsListKey: string;
   publicKeyEnvVar: string;
   privateKeyEnvVar: string;
 }
@@ -24,6 +26,7 @@ export const OLD_ACTOR: ActorIdentity = {
   actorId: `${OLD_BASE}/actor`,
   keyId: `${OLD_BASE}/actor#main-key`,
   followersKey: "cybw:ap:followers",
+  postsListKey: "cybw:posts",
   publicKeyEnvVar: "AP_PUBLIC_KEY",
   privateKeyEnvVar: "AP_PRIVATE_KEY",
 };
@@ -42,6 +45,7 @@ export const NEW_ACTOR: ActorIdentity = {
   actorId: `${NEW_BASE}/actor`,
   keyId: `${NEW_BASE}/actor#main-key`,
   followersKey: "cybw:ap:followers:new",
+  postsListKey: "cybw:posts:new",
   publicKeyEnvVar: "AP_PUBLIC_KEY_NEW",
   privateKeyEnvVar: "AP_PRIVATE_KEY_NEW",
 };

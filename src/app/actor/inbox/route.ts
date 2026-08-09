@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { kv } from '@vercel/kv';
 import { verifySignature, signAndDeliver } from '@/lib/http-signatures';
-import { actorForHost, OLD_ACTOR, type ActorIdentity } from '@/lib/ap-identity';
-
-// Published posts only ever exist under the old actor so far (publishing
-// hasn't moved to the new actor — see CLAUDE.md's migration backlog), so
-// QuoteRequest resolution always checks against the old actor's /notes/
-// regardless of which actor's inbox actually received the request.
-const NOTES_PREFIX = `${OLD_ACTOR.base}/notes/`;
+import { actorForHost, type ActorIdentity } from '@/lib/ap-identity';
 
 const ACCEPT_QUOTE_CONTEXT = { QuoteRequest: 'https://w3id.org/fep/044f#QuoteRequest' };
 const QUOTE_AUTH_CONTEXT = {
@@ -53,9 +47,13 @@ async function sendAccept(us: ActorIdentity, followActivity: unknown, followerAc
 
 // Extracts the noteIdSuffix from one of our own note URLs (used as the
 // cybw:post:<suffix> KV key), or null if the URL isn't shaped like one of
-// ours — exported for unit testing.
-export function noteSuffixFromUrl(url: string): string | null {
-  return url.startsWith(NOTES_PREFIX) ? url.slice(NOTES_PREFIX.length) : null;
+// ours. Takes the actor base explicitly rather than assuming one fixed
+// actor, since a QuoteRequest resolves against whichever actor's inbox
+// actually received it (both can publish posts now) — exported for
+// unit testing.
+export function noteSuffixFromUrl(url: string, actorBase: string): string | null {
+  const prefix = `${actorBase}/notes/`;
+  return url.startsWith(prefix) ? url.slice(prefix.length) : null;
 }
 
 // QuoteRequest's `instrument` (the quoting post) is shown in the FEP-044f
@@ -94,7 +92,7 @@ async function handleQuoteRequest(us: ActorIdentity, activity: Record<string, un
     return;
   }
 
-  const suffix = noteSuffixFromUrl(objectUrl);
+  const suffix = noteSuffixFromUrl(objectUrl, us.base);
   const stored = suffix
     ? await kv.get<{ object?: { id?: string } }>(`cybw:post:${suffix}`)
     : null;
