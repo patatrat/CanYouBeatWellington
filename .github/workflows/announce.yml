@@ -7,6 +7,14 @@ on:
         description: 'Message to post. Use \n for a line break, \n\n for a paragraph break.'
         required: true
         type: string
+      actor:
+        description: 'Which actor to post as'
+        required: false
+        type: choice
+        options:
+          - old
+          - new
+        default: new
 
 jobs:
   announce:
@@ -26,8 +34,10 @@ jobs:
 
       - name: Deliver announcement to all followers
         env:
+          AP_PRIVATE_KEY: ${{ secrets.AP_PRIVATE_KEY }}
           AP_PRIVATE_KEY_NEW: ${{ secrets.AP_PRIVATE_KEY_NEW }}
           KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
           NOTE_CONTENT: ${{ inputs.message }}
+          TARGET_ACTOR: ${{ inputs.actor }}
         run: node scripts/announce.js

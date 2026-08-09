@@ -4,22 +4,25 @@
  *
  * The NOTE_CONTENT env var supplies the message text (plain text; the script
  * wraps it in minimal HTML for ActivityPub). If unset, the script exits without
- * posting.
+ * posting. TARGET_ACTOR selects which actor posts: "old" or "new" (default).
  *
  * Run locally with:
- *   NOTE_CONTENT="..." node --env-file=.env.local scripts/announce.js
+ *   NOTE_CONTENT="..." TARGET_ACTOR=old node --env-file=.env.local scripts/announce.js
  */
 
 import { kv } from '@vercel/kv';
 import { signAndDeliver } from '../src/lib/http-signatures.ts';
-import { NEW_ACTOR } from '../src/lib/ap-identity.ts';
+import { OLD_ACTOR, NEW_ACTOR } from '../src/lib/ap-identity.ts';
 
-// Announcements post as the new actor — daily posting (ap-posting.ts)
-// still targets the old actor separately, unchanged, until that's
-// deliberately switched over too (see CLAUDE.md's migration backlog).
-const BASE = NEW_ACTOR.base;
-const ACTOR_ID = NEW_ACTOR.actorId;
-const KEY_ID = NEW_ACTOR.keyId;
+// Defaults to the new actor — daily posting (ap-posting.ts) still targets
+// the old actor separately either way, unchanged, until that's a
+// deliberate later decision (see CLAUDE.md's migration backlog). TARGET_ACTOR
+// exists for the one-off exception: a heads-up post on the old actor
+// announcing the move, before the Move activity itself goes out.
+const TARGET = process.env.TARGET_ACTOR === 'old' ? OLD_ACTOR : NEW_ACTOR;
+const BASE = TARGET.base;
+const ACTOR_ID = TARGET.actorId;
+const KEY_ID = TARGET.keyId;
 // The Note's `url` (human-facing "view on the web" link) — unlike the
 // actor/note id above, this isn't part of the AP-pinned identity, so it
 // points at the new domain. See src/lib/ap-posting.ts for the same split.
@@ -39,13 +42,13 @@ const QUOTABLE_BY_ANYONE = {
   canQuote: { automaticApproval: 'https://www.w3.org/ns/activitystreams#Public' },
 };
 
-const AP_PRIVATE_KEY = process.env[NEW_ACTOR.privateKeyEnvVar]?.replace(/\\n/g, '\n');
+const AP_PRIVATE_KEY = process.env[TARGET.privateKeyEnvVar]?.replace(/\\n/g, '\n');
 // GitHub Actions workflow_dispatch inputs are single-line, so the user types
 // \n where they want line breaks. Convert those to actual newlines here.
 const NOTE_CONTENT = process.env.NOTE_CONTENT?.replace(/\\n/g, '\n');
 
 if (!AP_PRIVATE_KEY) {
-  console.error(`❌ Missing ${NEW_ACTOR.privateKeyEnvVar}`);
+  console.error(`❌ Missing ${TARGET.privateKeyEnvVar}`);
   process.exit(1);
 }
 if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
@@ -77,7 +80,7 @@ function toHtml(text) {
 }
 
 const main = async () => {
-  const followers = await kv.smembers(NEW_ACTOR.followersKey);
+  const followers = await kv.smembers(TARGET.followersKey);
   if (!followers || followers.length === 0) {
     console.log('No followers yet — nothing to deliver.');
     return;
@@ -115,8 +118,8 @@ const main = async () => {
 
   // Store before delivery so the note ID URL is resolvable when Mastodon fetches it
   await kv.set(`cybw:post:${kvId}`, activity);
-  await kv.lpush(NEW_ACTOR.postsListKey, kvId);
-  await kv.ltrim(NEW_ACTOR.postsListKey, 0, 49);
+  await kv.lpush(TARGET.postsListKey, kvId);
+  await kv.ltrim(TARGET.postsListKey, 0, 49);
 
   let delivered = 0;
   let failed = 0;
