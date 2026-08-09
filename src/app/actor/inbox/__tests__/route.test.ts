@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { noteSuffixFromUrl, instrumentUrl } from "../route";
+import { noteSuffixFromUrl, instrumentUrl, followSuffixFromUrl } from "../route";
 import { OLD_ACTOR, NEW_ACTOR } from "../../../../lib/ap-identity";
 
 describe("noteSuffixFromUrl", () => {
@@ -25,6 +25,23 @@ describe("noteSuffixFromUrl", () => {
     // slice gives "", which is the correct (if degenerate) extraction; the
     // caller's KV lookup for cybw:post: will simply miss and be ignored.
     expect(noteSuffixFromUrl(`${OLD_ACTOR.base}/notes/`, OLD_ACTOR.base)).toBe("");
+  });
+});
+
+describe("followSuffixFromUrl", () => {
+  it("extracts the suffix from one of the given actor's own outgoing Follow URLs", () => {
+    expect(followSuffixFromUrl(`${NEW_ACTOR.base}/actor/follows/1786255704076`, NEW_ACTOR.base)).toBe(
+      "1786255704076",
+    );
+  });
+
+  it("returns null when the URL belongs to the other actor's domain", () => {
+    expect(followSuffixFromUrl(`${NEW_ACTOR.base}/actor/follows/123`, OLD_ACTOR.base)).toBeNull();
+  });
+
+  it("returns null for a URL that isn't shaped like one of ours", () => {
+    expect(followSuffixFromUrl("https://example.com/users/bob/statuses/1", NEW_ACTOR.base)).toBeNull();
+    expect(followSuffixFromUrl(`${NEW_ACTOR.base}/actor/accepts/123`, NEW_ACTOR.base)).toBeNull();
   });
 });
 

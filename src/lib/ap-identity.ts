@@ -11,6 +11,8 @@ export interface ActorIdentity {
   actorId: string;
   keyId: string;
   followersKey: string;
+  /** KV set key of actor URLs this actor is following (accounts we follow, not our followers). */
+  followingKey: string;
   /** KV list key indexing this actor's own published post ids, for its outbox. */
   postsListKey: string;
   publicKeyEnvVar: string;
@@ -26,6 +28,7 @@ export const OLD_ACTOR: ActorIdentity = {
   actorId: `${OLD_BASE}/actor`,
   keyId: `${OLD_BASE}/actor#main-key`,
   followersKey: "cybw:ap:followers",
+  followingKey: "cybw:ap:following",
   postsListKey: "cybw:posts",
   publicKeyEnvVar: "AP_PUBLIC_KEY",
   privateKeyEnvVar: "AP_PRIVATE_KEY",
@@ -45,6 +48,7 @@ export const NEW_ACTOR: ActorIdentity = {
   actorId: `${NEW_BASE}/actor`,
   keyId: `${NEW_BASE}/actor#main-key`,
   followersKey: "cybw:ap:followers:new",
+  followingKey: "cybw:ap:following:new",
   postsListKey: "cybw:posts:new",
   publicKeyEnvVar: "AP_PUBLIC_KEY_NEW",
   privateKeyEnvVar: "AP_PRIVATE_KEY_NEW",

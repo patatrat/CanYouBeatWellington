@@ -42,10 +42,11 @@ describe("actorForWebfingerDomain", () => {
 });
 
 describe("identity consistency", () => {
-  it("the two actors have distinct ids, keys, followers keys, and posts list keys", () => {
+  it("the two actors have distinct ids, keys, followers/following/posts-list keys", () => {
     expect(OLD_ACTOR.actorId).not.toBe(NEW_ACTOR.actorId);
     expect(OLD_ACTOR.keyId).not.toBe(NEW_ACTOR.keyId);
     expect(OLD_ACTOR.followersKey).not.toBe(NEW_ACTOR.followersKey);
+    expect(OLD_ACTOR.followingKey).not.toBe(NEW_ACTOR.followingKey);
     expect(OLD_ACTOR.postsListKey).not.toBe(NEW_ACTOR.postsListKey);
     expect(OLD_ACTOR.publicKeyEnvVar).not.toBe(NEW_ACTOR.publicKeyEnvVar);
     expect(OLD_ACTOR.privateKeyEnvVar).not.toBe(NEW_ACTOR.privateKeyEnvVar);

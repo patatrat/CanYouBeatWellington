@@ -56,15 +56,24 @@ export function noteSuffixFromUrl(url: string, actorBase: string): string | null
   return url.startsWith(prefix) ? url.slice(prefix.length) : null;
 }
 
-// QuoteRequest's `instrument` (the quoting post) is shown in the FEP-044f
-// spec both as a bare URL string and as a fully embedded object (whose `id`
-// is the canonical URL in that case) — handle both. Exported for testing.
+// Shared shape-normalizer: the spec shows both QuoteRequest's `instrument`
+// and Accept/Reject's `object` as either a bare URL string or a fully
+// embedded object (whose `id` is the canonical URL in that case) — handle
+// both. Exported for testing.
 export function instrumentUrl(instrument: unknown): string | null {
   if (typeof instrument === 'string') return instrument;
   if (instrument && typeof instrument === 'object' && typeof (instrument as { id?: unknown }).id === 'string') {
     return (instrument as { id: string }).id;
   }
   return null;
+}
+
+// Extracts the follow-request id suffix from one of our own outgoing Follow
+// URLs (used as the cybw:ap:pending-follow:<suffix> KV key), or null if the
+// URL isn't shaped like one of ours. Exported for unit testing.
+export function followSuffixFromUrl(url: string, actorBase: string): string | null {
+  const prefix = `${actorBase}/actor/follows/`;
+  return url.startsWith(prefix) ? url.slice(prefix.length) : null;
 }
 
 // Our policy is unconditional public auto-approval (QUOTABLE_BY_ANYONE in
@@ -132,6 +141,45 @@ async function handleQuoteRequest(us: ActorIdentity, activity: Record<string, un
   console.log(`Inbox: approved QuoteRequest — ${quoterPostUrl} quoting ${objectUrl}`);
 }
 
+// Confirms a Follow we sent (api/admin/follow-account) was accepted —
+// cross-checked against the pending-follow record that route stores, so we
+// don't blindly trust any Accept that merely claims to reference us.
+async function handleFollowAccept(us: ActorIdentity, activity: Record<string, unknown>, signerActorUrl: string) {
+  const claimedActor =
+    typeof activity.actor === 'string' ? activity.actor : (activity.actor as { id?: string } | undefined)?.id;
+  if (claimedActor !== signerActorUrl) {
+    console.error(`Inbox: Accept actor mismatch — body claims ${claimedActor}, signed by ${signerActorUrl}`);
+    return;
+  }
+
+  const followId = instrumentUrl(activity.object);
+  const suffix = followId ? followSuffixFromUrl(followId, us.base) : null;
+  if (!suffix) {
+    // Not a Follow we recognize as one of ours — nothing to do.
+    return;
+  }
+
+  const pendingKey = `cybw:ap:pending-follow:${suffix}`;
+  const pendingTarget = await kv.get<string>(pendingKey);
+  if (!pendingTarget || pendingTarget !== signerActorUrl) {
+    console.log(`Inbox: Accept for unknown/mismatched pending follow ${followId} — ignoring`);
+    return;
+  }
+
+  await kv.sadd(us.followingKey, signerActorUrl);
+  await kv.del(pendingKey);
+  console.log(`Inbox: now following ${signerActorUrl} (${us.domain})`);
+}
+
+async function handleFollowReject(us: ActorIdentity, activity: Record<string, unknown>, signerActorUrl: string) {
+  const followId = instrumentUrl(activity.object);
+  const suffix = followId ? followSuffixFromUrl(followId, us.base) : null;
+  if (!suffix) return;
+
+  await kv.del(`cybw:ap:pending-follow:${suffix}`);
+  console.log(`Inbox: follow request to ${signerActorUrl} rejected (${us.domain})`);
+}
+
 export async function POST(req: NextRequest) {
   const us = actorForHost(req.headers.get('host'));
   const rawBody = await req.text();
@@ -159,13 +207,17 @@ export async function POST(req: NextRequest) {
   // The body is attacker-supplied even when the signature is valid — only act
   // on Follow/Undo when the claimed actor is the actor that signed the
   // request, or anyone with a fediverse account could (un)follow on behalf
-  // of someone else. QuoteRequest does its own equivalent check and logs
-  // separately, so it's excluded here to avoid a duplicate log line.
+  // of someone else. QuoteRequest/Accept/Reject do their own equivalent
+  // check and log separately, so they're excluded here to avoid a duplicate
+  // log line.
   const claimedActor = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
   const followerUrl = claimedActor === signerActorUrl ? claimedActor : undefined;
-  if (claimedActor && !followerUrl && activity.type !== 'QuoteRequest') {
+  const selfHandledTypes = ['QuoteRequest', 'Accept', 'Reject'];
+  if (claimedActor && !followerUrl && !selfHandledTypes.includes(activity.type)) {
     console.error(`Inbox: actor mismatch — body claims ${claimedActor}, signed by ${signerActorUrl}`);
   }
+
+  const objectType = (activity.object as { type?: string } | undefined)?.type;
 
   try {
     if (activity.type === 'Follow') {
@@ -174,7 +226,7 @@ export async function POST(req: NextRequest) {
         await sendAccept(us, activity, followerUrl);
         console.log(`Inbox: new follower ${followerUrl} (${us.domain})`);
       }
-    } else if (activity.type === 'Undo' && (activity.object as { type?: string } | undefined)?.type === 'Follow') {
+    } else if (activity.type === 'Undo' && objectType === 'Follow') {
       if (followerUrl) {
         await kv.srem(us.followersKey, followerUrl);
         await kv.del(`cybw:ap:inbox:${followerUrl}`);
@@ -182,6 +234,10 @@ export async function POST(req: NextRequest) {
       }
     } else if (activity.type === 'QuoteRequest') {
       await handleQuoteRequest(us, activity, signerActorUrl);
+    } else if (activity.type === 'Accept' && (objectType === 'Follow' || objectType === undefined)) {
+      await handleFollowAccept(us, activity, signerActorUrl);
+    } else if (activity.type === 'Reject' && (objectType === 'Follow' || objectType === undefined)) {
+      await handleFollowReject(us, activity, signerActorUrl);
     }
     // All other activity types (Delete, etc.) are silently accepted per AP spec
   } catch (err) {

@@ -33,6 +33,7 @@ export function GET(req: NextRequest) {
       inbox: `${actor.base}/actor/inbox`,
       outbox: `${actor.base}/actor/outbox`,
       followers: `${actor.base}/actor/followers`,
+      following: `${actor.base}/actor/following`,
       ...(actor === NEW_ACTOR ? { alsoKnownAs: NEW_ACTOR_ALSO_KNOWN_AS } : {}),
       ...(actor === OLD_ACTOR ? { movedTo: OLD_ACTOR_MOVED_TO } : {}),
       attachment: [
