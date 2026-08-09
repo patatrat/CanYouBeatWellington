@@ -12,10 +12,12 @@
 
 import { kv } from '@vercel/kv';
 import { signAndDeliver } from '../src/lib/http-signatures.ts';
+import { OLD_ACTOR } from '../src/lib/ap-identity.ts';
 
-const BASE = 'https://canyoubeatwellington.radomski.co.nz';
-const ACTOR_ID = `${BASE}/actor`;
-const KEY_ID = `${ACTOR_ID}#main-key`;
+// Only the old actor has published anything so far — see ap-posting.ts.
+const BASE = OLD_ACTOR.base;
+const ACTOR_ID = OLD_ACTOR.actorId;
+const KEY_ID = OLD_ACTOR.keyId;
 // The Note's `url` (human-facing "view on the web" link) — unlike the
 // actor/note id above, this isn't part of the AP-pinned identity, so it
 // points at the new domain. See src/lib/ap-posting.ts for the same split.
@@ -35,13 +37,13 @@ const QUOTABLE_BY_ANYONE = {
   canQuote: { automaticApproval: 'https://www.w3.org/ns/activitystreams#Public' },
 };
 
-const AP_PRIVATE_KEY = process.env.AP_PRIVATE_KEY?.replace(/\\n/g, '\n');
+const AP_PRIVATE_KEY = process.env[OLD_ACTOR.privateKeyEnvVar]?.replace(/\\n/g, '\n');
 // GitHub Actions workflow_dispatch inputs are single-line, so the user types
 // \n where they want line breaks. Convert those to actual newlines here.
 const NOTE_CONTENT = process.env.NOTE_CONTENT?.replace(/\\n/g, '\n');
 
 if (!AP_PRIVATE_KEY) {
-  console.error('❌ Missing AP_PRIVATE_KEY');
+  console.error(`❌ Missing ${OLD_ACTOR.privateKeyEnvVar}`);
   process.exit(1);
 }
 if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
@@ -73,7 +75,7 @@ function toHtml(text) {
 }
 
 const main = async () => {
-  const followers = await kv.smembers('cybw:ap:followers');
+  const followers = await kv.smembers(OLD_ACTOR.followersKey);
   if (!followers || followers.length === 0) {
     console.log('No followers yet — nothing to deliver.');
     return;

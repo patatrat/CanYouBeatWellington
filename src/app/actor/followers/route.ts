@@ -1,12 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import { actorForHost } from '@/lib/ap-identity';
 
-const BASE = 'https://canyoubeatwellington.radomski.co.nz';
+export async function GET(req: NextRequest) {
+  const actor = actorForHost(req.headers.get('host'));
 
-export async function GET() {
   let followers: string[] = [];
   try {
-    followers = (await kv.smembers('cybw:ap:followers')) ?? [];
+    followers = (await kv.smembers(actor.followersKey)) ?? [];
   } catch {
     // KV unavailable — return empty list rather than an error
   }
@@ -14,7 +15,7 @@ export async function GET() {
   return NextResponse.json(
     {
       '@context': 'https://www.w3.org/ns/activitystreams',
-      id: `${BASE}/actor/followers`,
+      id: `${actor.base}/actor/followers`,
       type: 'OrderedCollection',
       totalItems: followers.length,
       orderedItems: followers,

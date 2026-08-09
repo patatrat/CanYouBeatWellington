@@ -2,17 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { kv } from '@vercel/kv';
 import { verifySignature, signAndDeliver } from '@/lib/http-signatures';
+import { actorForHost, OLD_ACTOR, type ActorIdentity } from '@/lib/ap-identity';
 
-const BASE = 'https://canyoubeatwellington.radomski.co.nz';
-const ACTOR_ID = `${BASE}/actor`;
-const KEY_ID = `${ACTOR_ID}#main-key`;
-const FOLLOWERS_KEY = 'cybw:ap:followers';
-const NOTES_PREFIX = `${BASE}/notes/`;
+// Published posts only ever exist under the old actor so far (publishing
+// hasn't moved to the new actor — see CLAUDE.md's migration backlog), so
+// QuoteRequest resolution always checks against the old actor's /notes/
+// regardless of which actor's inbox actually received the request.
+const NOTES_PREFIX = `${OLD_ACTOR.base}/notes/`;
 
-// FEP-044f terms needed on the *response* side (Accept + QuoteAuthorization).
-// The declaration side (interactionPolicy on outgoing Notes) has its own
-// QUOTE_CONTEXT in src/lib/ap-posting.ts — these are deliberately separate
-// since each is attached to a different object type.
 const ACCEPT_QUOTE_CONTEXT = { QuoteRequest: 'https://w3id.org/fep/044f#QuoteRequest' };
 const QUOTE_AUTH_CONTEXT = {
   QuoteAuthorization: 'https://w3id.org/fep/044f#QuoteAuthorization',
@@ -21,9 +18,6 @@ const QUOTE_AUTH_CONTEXT = {
   interactionTarget: { '@id': 'gts:interactionTarget', '@type': '@id' },
 };
 
-// Shared by the Follow-accept flow and the QuoteRequest-accept flow — both
-// need to resolve an arbitrary remote actor's inbox URL, with the same KV
-// cache used by the daily fan-out (src/lib/ap-posting.ts's getInboxUrl).
 async function resolveInboxUrl(actorUrl: string): Promise<string> {
   const cacheKey = `cybw:ap:inbox:${actorUrl}`;
   const cached = await kv.get<string>(cacheKey);
@@ -40,21 +34,21 @@ async function resolveInboxUrl(actorUrl: string): Promise<string> {
   return actor.inbox;
 }
 
-async function sendAccept(followActivity: unknown, followerActorUrl: string) {
-  const privateKeyPem = process.env.AP_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!privateKeyPem) throw new Error('AP_PRIVATE_KEY not configured');
+async function sendAccept(us: ActorIdentity, followActivity: unknown, followerActorUrl: string) {
+  const privateKeyPem = process.env[us.privateKeyEnvVar]?.replace(/\\n/g, '\n');
+  if (!privateKeyPem) throw new Error(`${us.privateKeyEnvVar} not configured`);
 
   const inbox = await resolveInboxUrl(followerActorUrl);
 
   const accept = {
     '@context': 'https://www.w3.org/ns/activitystreams',
-    id: `${BASE}/actor/accepts/${Date.now()}`,
+    id: `${us.base}/actor/accepts/${Date.now()}`,
     type: 'Accept',
-    actor: ACTOR_ID,
+    actor: us.actorId,
     object: followActivity,
   };
 
-  await signAndDeliver(inbox, accept, KEY_ID, privateKeyPem);
+  await signAndDeliver(inbox, accept, us.keyId, privateKeyPem);
 }
 
 // Extracts the noteIdSuffix from one of our own note URLs (used as the
@@ -82,7 +76,7 @@ export function instrumentUrl(instrument: unknown): string | null {
 // silently ignore (no Accept, no authorization minted) rather than send a
 // Reject, matching this inbox's existing silent-no-op pattern for
 // unrecognized/invalid input elsewhere.
-async function handleQuoteRequest(activity: Record<string, unknown>, signerActorUrl: string) {
+async function handleQuoteRequest(us: ActorIdentity, activity: Record<string, unknown>, signerActorUrl: string) {
   const claimedActor =
     typeof activity.actor === 'string' ? activity.actor : (activity.actor as { id?: string } | undefined)?.id;
   if (claimedActor !== signerActorUrl) {
@@ -109,16 +103,16 @@ async function handleQuoteRequest(activity: Record<string, unknown>, signerActor
     return;
   }
 
-  const privateKeyPem = process.env.AP_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!privateKeyPem) throw new Error('AP_PRIVATE_KEY not configured');
+  const privateKeyPem = process.env[us.privateKeyEnvVar]?.replace(/\\n/g, '\n');
+  if (!privateKeyPem) throw new Error(`${us.privateKeyEnvVar} not configured`);
 
   const guid = crypto.randomUUID();
-  const authId = `${BASE}/quote-authorizations/${guid}`;
+  const authId = `${us.base}/quote-authorizations/${guid}`;
   const authorization = {
     '@context': ['https://www.w3.org/ns/activitystreams', QUOTE_AUTH_CONTEXT],
     id: authId,
     type: 'QuoteAuthorization',
-    attributedTo: ACTOR_ID,
+    attributedTo: us.actorId,
     interactingObject: quoterPostUrl,
     interactionTarget: objectUrl,
   };
@@ -128,19 +122,20 @@ async function handleQuoteRequest(activity: Record<string, unknown>, signerActor
 
   const accept = {
     '@context': ['https://www.w3.org/ns/activitystreams', ACCEPT_QUOTE_CONTEXT],
-    id: `${BASE}/actor/accepts/${Date.now()}`,
+    id: `${us.base}/actor/accepts/${Date.now()}`,
     type: 'Accept',
-    actor: ACTOR_ID,
+    actor: us.actorId,
     object: activity,
     result: authId,
   };
 
   const inbox = await resolveInboxUrl(signerActorUrl);
-  await signAndDeliver(inbox, accept, KEY_ID, privateKeyPem);
+  await signAndDeliver(inbox, accept, us.keyId, privateKeyPem);
   console.log(`Inbox: approved QuoteRequest — ${quoterPostUrl} quoting ${objectUrl}`);
 }
 
 export async function POST(req: NextRequest) {
+  const us = actorForHost(req.headers.get('host'));
   const rawBody = await req.text();
   const headers = Object.fromEntries(req.headers.entries());
 
@@ -177,18 +172,18 @@ export async function POST(req: NextRequest) {
   try {
     if (activity.type === 'Follow') {
       if (followerUrl) {
-        await kv.sadd(FOLLOWERS_KEY, followerUrl);
-        await sendAccept(activity, followerUrl);
-        console.log(`Inbox: new follower ${followerUrl}`);
+        await kv.sadd(us.followersKey, followerUrl);
+        await sendAccept(us, activity, followerUrl);
+        console.log(`Inbox: new follower ${followerUrl} (${us.domain})`);
       }
     } else if (activity.type === 'Undo' && (activity.object as { type?: string } | undefined)?.type === 'Follow') {
       if (followerUrl) {
-        await kv.srem(FOLLOWERS_KEY, followerUrl);
+        await kv.srem(us.followersKey, followerUrl);
         await kv.del(`cybw:ap:inbox:${followerUrl}`);
-        console.log(`Inbox: unfollowed ${followerUrl}`);
+        console.log(`Inbox: unfollowed ${followerUrl} (${us.domain})`);
       }
     } else if (activity.type === 'QuoteRequest') {
-      await handleQuoteRequest(activity, signerActorUrl);
+      await handleQuoteRequest(us, activity, signerActorUrl);
     }
     // All other activity types (Delete, etc.) are silently accepted per AP spec
   } catch (err) {

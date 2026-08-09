@@ -1,14 +1,18 @@
 import { kv } from "@vercel/kv";
 import { signAndDeliver } from "./http-signatures";
+import { OLD_ACTOR } from "./ap-identity";
 
-const BASE = "https://canyoubeatwellington.radomski.co.nz";
+// Daily posting hasn't moved to the new actor yet (see CLAUDE.md's
+// migration backlog) — everything here still publishes as the old actor,
+// to the old actor's followers, exactly as before the identity work.
+const BASE = OLD_ACTOR.base;
+const ACTOR_ID = OLD_ACTOR.actorId;
+const KEY_ID = OLD_ACTOR.keyId;
 // The Note's `url` — "a link to a representation of this object" per the
 // ActivityStreams spec, i.e. what Mastodon's "view on the web" link opens.
 // Unlike the actor/note id (which must stay on the AP-pinned domain), this
 // is just a human-facing pointer, so it goes to the new domain.
 const SITE_URL = "https://www.canyoubeatwellington.nz";
-const ACTOR_ID = `${BASE}/actor`;
-const KEY_ID = `${ACTOR_ID}#main-key`;
 
 // FEP-044f quote-post context terms, copied verbatim from a live Mastodon
 // post's own ActivityPub JSON (fetched directly, not from third-party docs,
@@ -56,7 +60,7 @@ export async function deliverToFollowers(
   activity: object,
   privateKeyPem: string,
 ): Promise<{ delivered: number; failed: number; total: number }> {
-  const followers: string[] = (await kv.smembers("cybw:ap:followers")) ?? [];
+  const followers: string[] = (await kv.smembers(OLD_ACTOR.followersKey)) ?? [];
   const results = await Promise.allSettled(
     followers.map(async (followerUrl) => {
       const inboxUrl = await getInboxUrl(followerUrl);
@@ -93,10 +97,10 @@ async function getInboxUrl(actorUrl: string): Promise<string> {
 // weather post, `announce-${Date.now()}` for a one-off announcement, or
 // `special-${slug}-${date}` for a special-date post.
 export async function postToFollowers(htmlContent: string, noteIdSuffix: string): Promise<PostResult> {
-  const privateKeyPem = process.env.AP_PRIVATE_KEY;
-  if (!privateKeyPem) return { posted: false, reason: "AP_PRIVATE_KEY not set" };
+  const privateKeyPem = process.env[OLD_ACTOR.privateKeyEnvVar];
+  if (!privateKeyPem) return { posted: false, reason: `${OLD_ACTOR.privateKeyEnvVar} not set` };
 
-  const followerCount = (await kv.scard("cybw:ap:followers")) ?? 0;
+  const followerCount = (await kv.scard(OLD_ACTOR.followersKey)) ?? 0;
   if (followerCount === 0) return { posted: false, reason: "no followers" };
 
   const now = new Date().toISOString();

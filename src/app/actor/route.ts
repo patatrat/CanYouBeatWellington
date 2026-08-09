@@ -1,10 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  actorForHost,
+  NEW_ACTOR,
+  NEW_ACTOR_ALSO_KNOWN_AS,
+  OLD_ACTOR,
+  OLD_ACTOR_MOVED_TO,
+} from '@/lib/ap-identity';
 
-const DOMAIN = 'canyoubeatwellington.radomski.co.nz';
-const BASE = `https://${DOMAIN}`;
-
-export function GET() {
-  const publicKeyPem = process.env.AP_PUBLIC_KEY?.replace(/\\n/g, '\n');
+export function GET(req: NextRequest) {
+  const actor = actorForHost(req.headers.get('host'));
+  const publicKeyPem = process.env[actor.publicKeyEnvVar]?.replace(/\\n/g, '\n');
   if (!publicKeyPem) {
     return NextResponse.json({ error: 'Actor not yet configured' }, { status: 503 });
   }
@@ -15,35 +20,37 @@ export function GET() {
         'https://www.w3.org/ns/activitystreams',
         'https://w3id.org/security/v1',
       ],
-      id: `${BASE}/actor`,
+      id: actor.actorId,
       type: 'Service',
       preferredUsername: 'CanYouBeat',
       name: 'Can You Beat Wellington?',
       summary: "Daily verdict on Wellington, NZ's weather. Follow to find out when it's too good to beat. ☀️",
-      url: BASE,
-      inbox: `${BASE}/actor/inbox`,
-      outbox: `${BASE}/actor/outbox`,
-      followers: `${BASE}/actor/followers`,
+      url: actor.base,
+      inbox: `${actor.base}/actor/inbox`,
+      outbox: `${actor.base}/actor/outbox`,
+      followers: `${actor.base}/actor/followers`,
+      ...(actor === NEW_ACTOR ? { alsoKnownAs: NEW_ACTOR_ALSO_KNOWN_AS } : {}),
+      ...(actor === OLD_ACTOR ? { movedTo: OLD_ACTOR_MOVED_TO } : {}),
       attachment: [
         {
           type: 'PropertyValue',
           name: 'Website',
-          value: `<a href="${BASE}" rel="me nofollow noopener noreferrer" target="_blank">canyoubeatwellington.radomski.co.nz</a>`,
+          value: `<a href="${actor.base}" rel="me nofollow noopener noreferrer" target="_blank">${actor.domain}</a>`,
         },
       ],
       icon: {
         type: 'Image',
         mediaType: 'image/png',
-        url: `${BASE}/canyoubeatwellington_avatar.png`,
+        url: `${actor.base}/canyoubeatwellington_avatar.png`,
       },
       image: {
         type: 'Image',
         mediaType: 'image/png',
-        url: `${BASE}/canyoubeatwellington_og_image.png`,
+        url: `${actor.base}/canyoubeatwellington_og_image.png`,
       },
       publicKey: {
-        id: `${BASE}/actor#main-key`,
-        owner: `${BASE}/actor`,
+        id: actor.keyId,
+        owner: actor.actorId,
         publicKeyPem,
       },
     },

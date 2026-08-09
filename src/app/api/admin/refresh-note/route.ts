@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { isBearerAuthorized } from '@/lib/auth';
 import { deliverToFollowers, NOTE_TTL_SECONDS, QUOTE_CONTEXT, QUOTABLE_BY_ANYONE } from '@/lib/ap-posting';
+import { OLD_ACTOR } from '@/lib/ap-identity';
 
-const BASE = 'https://canyoubeatwellington.radomski.co.nz';
-const ACTOR_ID = `${BASE}/actor`;
+// Only the old actor has published anything so far — see ap-posting.ts.
+const BASE = OLD_ACTOR.base;
+const ACTOR_ID = OLD_ACTOR.actorId;
 
 // Re-stamps a previously-published Note with the current interactionPolicy
 // shape (added after some posts already went out — see quote-posts fix in
@@ -27,9 +29,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const privateKeyPem = process.env.AP_PRIVATE_KEY;
+  const privateKeyPem = process.env[OLD_ACTOR.privateKeyEnvVar];
   if (!privateKeyPem) {
-    return NextResponse.json({ error: 'AP_PRIVATE_KEY not configured' }, { status: 503 });
+    return NextResponse.json({ error: `${OLD_ACTOR.privateKeyEnvVar} not configured` }, { status: 503 });
   }
 
   let body: { noteIdSuffix?: unknown };

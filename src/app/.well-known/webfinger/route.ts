@@ -1,24 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const DOMAIN = 'canyoubeatwellington.radomski.co.nz';
-const SUBJECT = `acct:CanYouBeat@${DOMAIN}`;
-const ACTOR_URL = `https://${DOMAIN}/actor`;
+import { actorForWebfingerDomain } from '@/lib/ap-identity';
 
 export function GET(req: NextRequest) {
   const resource = req.nextUrl.searchParams.get('resource');
+  const match = resource?.match(/^acct:CanYouBeat@(.+)$/);
+  const actor = match ? actorForWebfingerDomain(match[1]) : null;
 
-  if (resource !== SUBJECT) {
+  if (!resource || !actor) {
     return NextResponse.json({ error: 'Resource not found' }, { status: 404 });
   }
 
   return NextResponse.json(
     {
-      subject: SUBJECT,
+      subject: resource,
       links: [
         {
           rel: 'self',
           type: 'application/activity+json',
-          href: ACTOR_URL,
+          href: actor.actorId,
         },
       ],
     },
