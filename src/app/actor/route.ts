@@ -24,7 +24,11 @@ export function GET(req: NextRequest) {
       type: 'Service',
       preferredUsername: 'CanYouBeat',
       name: 'Can You Beat Wellington?',
-      summary: "Daily verdict on Wellington, NZ's weather. Follow to find out when it's too good to beat. ☀️",
+      summary:
+        "<p>You can't beat Wellington on a good day! But - how do you know when it's a good day?</p>" +
+        '<p>Can you beat Wellington - judging every breath of wind, every drop of rain and every cloud ' +
+        'in the sky to decide if you can beat Wellington today or not.</p>' +
+        '<p><a href="https://canyoubeatwellington.nz" rel="noopener noreferrer" target="_blank">canyoubeatwellington.nz</a></p>',
       url: actor.base,
       inbox: `${actor.base}/actor/inbox`,
       outbox: `${actor.base}/actor/outbox`,
