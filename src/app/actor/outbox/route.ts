@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { actorForHost } from '@/lib/ap-identity';
 
+// Same shape fix as actor/followers/route.ts — Mastodon's own collections
+// only put items on a separate OrderedCollectionPage fetch (via `first`),
+// never inline on the top-level OrderedCollection.
 export async function GET(req: NextRequest) {
   const actor = actorForHost(req.headers.get('host'));
+  const collectionId = `${actor.base}/actor/outbox`;
 
   let activities: unknown[] = [];
   try {
@@ -13,16 +17,32 @@ export async function GET(req: NextRequest) {
       activities = fetched.filter(Boolean);
     }
   } catch {
-    // KV unavailable — return empty outbox rather than an error
+    // KV unavailable — return empty rather than an error
+  }
+
+  const isPageRequest = req.nextUrl.searchParams.has('page');
+
+  if (isPageRequest) {
+    return NextResponse.json(
+      {
+        '@context': 'https://www.w3.org/ns/activitystreams',
+        id: `${collectionId}?page=1`,
+        type: 'OrderedCollectionPage',
+        totalItems: activities.length,
+        partOf: collectionId,
+        orderedItems: activities,
+      },
+      { headers: { 'Content-Type': 'application/activity+json' } },
+    );
   }
 
   return NextResponse.json(
     {
       '@context': 'https://www.w3.org/ns/activitystreams',
-      id: `${actor.base}/actor/outbox`,
+      id: collectionId,
       type: 'OrderedCollection',
       totalItems: activities.length,
-      orderedItems: activities,
+      first: `${collectionId}?page=1`,
     },
     { headers: { 'Content-Type': 'application/activity+json' } },
   );
