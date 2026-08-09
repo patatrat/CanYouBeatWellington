@@ -23,14 +23,22 @@ interface Weather {
   rain: number;
 }
 
+// maxRain is 0.1mm, not a literal 0 — a trace amount this small is
+// indistinguishable from measurement/forecast noise (Open-Meteo's hourly
+// precipitation figures blend actual-so-far and forecast-for-the-rest-of-day
+// into one live-recomputed sum, so "today" often carries a tiny predicted
+// amount that hasn't fallen yet). Rounding that down to a good day, rather
+// than failing on it, still self-corrects automatically if more rain
+// actually falls later: the same daytime sum picks it up on the next fetch,
+// no separate "did it really happen" tracking needed.
 const SEASONS: Season[] = [
-  { label: 'Summer',      months: [0, 1, 2],  minTemp: 19, maxWind: 30, maxRain: 0 },
-  { label: 'Autumn',      months: [3],         minTemp: 16, maxWind: 30, maxRain: 0 },
-  { label: 'Late Autumn', months: [4, 5],      minTemp: 14, maxWind: 30, maxRain: 0 },
-  { label: 'Winter',      months: [6, 7],      minTemp: 13, maxWind: 30, maxRain: 0 },
-  { label: 'Spring 1',    months: [8],         minTemp: 14, maxWind: 30, maxRain: 0 },
-  { label: 'Shitsville',  months: [9, 10],     minTemp: 16, maxWind: 30, maxRain: 0 },
-  { label: 'Spring 2',    months: [11],        minTemp: 18, maxWind: 30, maxRain: 0 },
+  { label: 'Summer',      months: [0, 1, 2],  minTemp: 19, maxWind: 30, maxRain: 0.1 },
+  { label: 'Autumn',      months: [3],         minTemp: 16, maxWind: 30, maxRain: 0.1 },
+  { label: 'Late Autumn', months: [4, 5],      minTemp: 14, maxWind: 30, maxRain: 0.1 },
+  { label: 'Winter',      months: [6, 7],      minTemp: 13, maxWind: 30, maxRain: 0.1 },
+  { label: 'Spring 1',    months: [8],         minTemp: 14, maxWind: 30, maxRain: 0.1 },
+  { label: 'Shitsville',  months: [9, 10],     minTemp: 16, maxWind: 30, maxRain: 0.1 },
+  { label: 'Spring 2',    months: [11],        minTemp: 18, maxWind: 30, maxRain: 0.1 },
 ];
 
 const toDate = (date: Date | string): Date =>

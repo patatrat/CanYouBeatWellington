@@ -37,26 +37,26 @@ describe('getSeasonLabel', () => {
 // ── getThresholds ───────────────────────────────────────────────────────────
 
 describe('getThresholds', () => {
-  it('Summer: minTemp 19, maxWind 30, maxRain 0', () =>
-    expect(getThresholds(d(1))).toEqual({ minTemp: 19, maxWind: 30, maxRain: 0 }));
+  it('Summer: minTemp 19, maxWind 30, maxRain 0.1', () =>
+    expect(getThresholds(d(1))).toEqual({ minTemp: 19, maxWind: 30, maxRain: 0.1 }));
 
-  it('Autumn (Apr): minTemp 16, maxWind 30, maxRain 0', () =>
-    expect(getThresholds(d(4))).toEqual({ minTemp: 16, maxWind: 30, maxRain: 0 }));
+  it('Autumn (Apr): minTemp 16, maxWind 30, maxRain 0.1', () =>
+    expect(getThresholds(d(4))).toEqual({ minTemp: 16, maxWind: 30, maxRain: 0.1 }));
 
-  it('Late Autumn (May–Jun): minTemp 14, maxWind 30, maxRain 0', () =>
-    expect(getThresholds(d(5))).toEqual({ minTemp: 14, maxWind: 30, maxRain: 0 }));
+  it('Late Autumn (May–Jun): minTemp 14, maxWind 30, maxRain 0.1', () =>
+    expect(getThresholds(d(5))).toEqual({ minTemp: 14, maxWind: 30, maxRain: 0.1 }));
 
-  it('Winter: minTemp 13, maxWind 30, maxRain 0', () =>
-    expect(getThresholds(d(7))).toEqual({ minTemp: 13, maxWind: 30, maxRain: 0 }));
+  it('Winter: minTemp 13, maxWind 30, maxRain 0.1', () =>
+    expect(getThresholds(d(7))).toEqual({ minTemp: 13, maxWind: 30, maxRain: 0.1 }));
 
-  it('Spring 1: minTemp 14, maxWind 30, maxRain 0', () =>
-    expect(getThresholds(d(9))).toEqual({ minTemp: 14, maxWind: 30, maxRain: 0 }));
+  it('Spring 1: minTemp 14, maxWind 30, maxRain 0.1', () =>
+    expect(getThresholds(d(9))).toEqual({ minTemp: 14, maxWind: 30, maxRain: 0.1 }));
 
-  it('Shitsville: minTemp 16, maxWind 30, maxRain 0', () =>
-    expect(getThresholds(d(10))).toEqual({ minTemp: 16, maxWind: 30, maxRain: 0 }));
+  it('Shitsville: minTemp 16, maxWind 30, maxRain 0.1', () =>
+    expect(getThresholds(d(10))).toEqual({ minTemp: 16, maxWind: 30, maxRain: 0.1 }));
 
-  it('Spring 2: minTemp 18, maxWind 30, maxRain 0', () =>
-    expect(getThresholds(d(12))).toEqual({ minTemp: 18, maxWind: 30, maxRain: 0 }));
+  it('Spring 2: minTemp 18, maxWind 30, maxRain 0.1', () =>
+    expect(getThresholds(d(12))).toEqual({ minTemp: 18, maxWind: 30, maxRain: 0.1 }));
 });
 
 // ── countCriteriaMet ────────────────────────────────────────────────────────
@@ -124,11 +124,13 @@ describe('countCriteriaMet', () => {
   it('fails wind at exactly 30 km/h (not strictly less than)', () =>
     expect(countCriteriaMet({ temperature: 22, windSpeed: 30, rain: 0 }, d(1))).toBe(2));
 
-  // Rain boundary (same across all seasons)
+  // Rain boundary (same across all seasons) — 0.1mm trace tolerance, not a literal 0
   it('passes rain at exactly 0 mm', () =>
     expect(countCriteriaMet({ temperature: 22, windSpeed: 15, rain: 0 }, d(1))).toBe(3));
-  it('fails rain above 0 mm (0.1 mm)', () =>
-    expect(countCriteriaMet({ temperature: 22, windSpeed: 15, rain: 0.1 }, d(1))).toBe(2));
+  it('passes rain at exactly 0.1 mm (within the trace tolerance)', () =>
+    expect(countCriteriaMet({ temperature: 22, windSpeed: 15, rain: 0.1 }, d(1))).toBe(3));
+  it('fails rain above 0.1 mm (0.2 mm)', () =>
+    expect(countCriteriaMet({ temperature: 22, windSpeed: 15, rain: 0.2 }, d(1))).toBe(2));
 
   // Partial passes
   it('returns 2 when only temperature fails', () =>
