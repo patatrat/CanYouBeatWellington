@@ -70,12 +70,39 @@ async function getInboxUrl(actorUrl) {
   return actor.inbox;
 }
 
+// Wraps bare mentions of our own domains in a real link — but only once
+// escaping has already happened, and only when NOT immediately preceded by
+// "@" (an acct handle like canyoubeat@canyoubeatwellington.nz, not a URL —
+// linkifying just the domain half of that would look broken).
+const OWN_DOMAINS = [OLD_ACTOR.domain, NEW_ACTOR.domain];
+function linkifyOwnDomains(escapedText) {
+  let result = escapedText;
+  for (const domain of OWN_DOMAINS) {
+    const pattern = new RegExp(`(?<!@)\\b${domain.replace(/\./g, '\\.')}\\b`, 'g');
+    result = result.replace(
+      pattern,
+      `<a href="https://${domain}" rel="noopener noreferrer" target="_blank">${domain}</a>`,
+    );
+  }
+  return result;
+}
+
 // Convert plain text to minimal ActivityPub HTML.
 // Double newlines become paragraph breaks; single newlines become <br>.
+// Escaping must happen before the <br>/link substitutions, not after —
+// otherwise the real markup those insert gets re-escaped into literal
+// "&lt;br&gt;" text instead of rendering.
 function toHtml(text) {
   return text
     .split(/\n\n+/)
-    .map(para => `<p>${para.replace(/\n/g, '<br>').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`)
+    .map(para => {
+      const escaped = para
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+      return `<p>${linkifyOwnDomains(escaped)}</p>`;
+    })
     .join('');
 }
 
