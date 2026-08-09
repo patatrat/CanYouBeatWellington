@@ -5,7 +5,7 @@
 <h1 align="center">Can You Beat Wellington?</h1>
 
 <p align="center">
-  <a href="https://www.canyoubeatwellington.nz/"><strong>canyoubeatwellington.nz</strong></a>
+  <a href="https://canyoubeatwellington.nz/"><strong>canyoubeatwellington.nz</strong></a>
   ·
   <a href="https://github.com/patatrat/CanYouBeatWellington/actions/workflows/ci.yml"><img src="https://github.com/patatrat/CanYouBeatWellington/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
 </p>

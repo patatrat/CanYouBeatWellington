@@ -16,7 +16,7 @@ export const maxDuration = 60;
 // The link shown in the toot's body — human-facing content, not actor
 // identity, so it points at the new domain unlike the AP-pinned BASE
 // constants in ap-posting.ts/actor routes.
-const SITE_URL = 'https://www.canyoubeatwellington.nz';
+const SITE_URL = 'https://canyoubeatwellington.nz';
 
 export async function GET(req: NextRequest) {
   // When CRON_SECRET is set in Vercel env vars, Vercel Cron automatically

@@ -7,9 +7,10 @@ import type { NextRequest } from "next/server";
 // existing followers' servers have that exact actor URL cached, so those
 // paths must keep resolving on the old domain instead of redirecting.
 const OLD_DOMAIN = "canyoubeatwellington.radomski.co.nz";
-// www, not the bare apex — Vercel's own domain config redirects the apex to
-// www, so pointing straight at www skips that extra hop.
-const NEW_DOMAIN = "www.canyoubeatwellington.nz";
+// The bare apex, not www — Vercel's own domain config now redirects www to
+// the apex (flipped from the reverse), so pointing straight at the apex
+// skips that extra hop.
+const NEW_DOMAIN = "canyoubeatwellington.nz";
 const AP_PATH_PREFIXES = ["/actor", "/.well-known/webfinger", "/notes", "/quote-authorizations"];
 
 // Pure so it's testable without constructing a NextRequest — returns the

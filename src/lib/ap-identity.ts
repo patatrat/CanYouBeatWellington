@@ -6,10 +6,7 @@
 // hardcoding one domain string independently in eight separate files.
 
 export interface ActorIdentity {
-  /** Hostname this actor's id/inbox/outbox/etc. are actually served at. */
   domain: string;
-  /** Domain part of the @user@domain handle — may differ from `domain`. */
-  webfingerDomain: string;
   base: string;
   actorId: string;
   keyId: string;
@@ -23,7 +20,6 @@ const OLD_BASE = `https://${OLD_DOMAIN}`;
 
 export const OLD_ACTOR: ActorIdentity = {
   domain: OLD_DOMAIN,
-  webfingerDomain: OLD_DOMAIN,
   base: OLD_BASE,
   actorId: `${OLD_BASE}/actor`,
   keyId: `${OLD_BASE}/actor#main-key`,
@@ -32,22 +28,16 @@ export const OLD_ACTOR: ActorIdentity = {
   privateKeyEnvVar: "AP_PRIVATE_KEY",
 };
 
-// The actor id/inbox/outbox/etc. live at www, not the bare apex — Vercel's
-// own domain config 308s the apex to www for every path, which is outside
-// our control (unlike the old->new middleware redirect, which we scoped to
-// exclude AP paths), so anchoring the actual endpoints at www avoids
-// depending on redirect-following, which isn't universally implemented for
-// WebFinger across the fediverse. The human-facing handle is still the
-// clean bare-apex form (@CanYouBeat@canyoubeatwellington.nz) — WebFinger's
-// acct domain doesn't have to match the actor id's own host, so
-// webfingerDomain is deliberately different from domain below.
-const NEW_DOMAIN = "www.canyoubeatwellington.nz";
-const NEW_WEBFINGER_DOMAIN = "canyoubeatwellington.nz";
+// The bare apex — canyoubeatwellington.nz is now the canonical, non-
+// redirected domain (Vercel's own domain config redirects www to the apex,
+// flipped from the original apex-to-www setup), so the new actor's id,
+// WebFinger handle, and endpoints all live at the same clean domain with no
+// split needed between "what the handle says" and "what actually resolves."
+const NEW_DOMAIN = "canyoubeatwellington.nz";
 const NEW_BASE = `https://${NEW_DOMAIN}`;
 
 export const NEW_ACTOR: ActorIdentity = {
   domain: NEW_DOMAIN,
-  webfingerDomain: NEW_WEBFINGER_DOMAIN,
   base: NEW_BASE,
   actorId: `${NEW_BASE}/actor`,
   keyId: `${NEW_BASE}/actor#main-key`,
@@ -79,7 +69,7 @@ export function actorForHost(host: string | null): ActorIdentity {
 // queries for either acct domain regardless of which hostname the HTTP
 // request itself arrived on.
 export function actorForWebfingerDomain(domain: string): ActorIdentity | null {
-  if (domain === OLD_ACTOR.webfingerDomain) return OLD_ACTOR;
-  if (domain === NEW_ACTOR.webfingerDomain) return NEW_ACTOR;
+  if (domain === OLD_ACTOR.domain) return OLD_ACTOR;
+  if (domain === NEW_ACTOR.domain) return NEW_ACTOR;
   return null;
 }

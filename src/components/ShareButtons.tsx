@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 
-const SITE_URL = "https://www.canyoubeatwellington.nz";
+const SITE_URL = "https://canyoubeatwellington.nz";
 const SHARE_TEXT = `"You can't beat Wellington on a good day." Even on a bad one? Find out: ${SITE_URL}`;
 const MASTODON_INSTANCE_KEY = "cybw-mastodon-instance";
 

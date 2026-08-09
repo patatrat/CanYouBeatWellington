@@ -12,7 +12,7 @@ const KEY_ID = OLD_ACTOR.keyId;
 // ActivityStreams spec, i.e. what Mastodon's "view on the web" link opens.
 // Unlike the actor/note id (which must stay on the AP-pinned domain), this
 // is just a human-facing pointer, so it goes to the new domain.
-const SITE_URL = "https://www.canyoubeatwellington.nz";
+const SITE_URL = "https://canyoubeatwellington.nz";
 
 // FEP-044f quote-post context terms, copied verbatim from a live Mastodon
 // post's own ActivityPub JSON (fetched directly, not from third-party docs,

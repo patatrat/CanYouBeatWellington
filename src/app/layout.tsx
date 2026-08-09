@@ -11,7 +11,7 @@ const DESCRIPTION = "Daily verdict on the weather in Wellington, New Zealand.";
 // Human-facing canonical URL for Open Graph/Twitter cards — distinct from
 // AP_SITE_URL below, which stays pinned to the old domain for the
 // ActivityPub actor's own identity.
-const CANONICAL_URL = 'https://www.canyoubeatwellington.nz';
+const CANONICAL_URL = 'https://canyoubeatwellington.nz';
 const OG_IMAGE = `${CANONICAL_URL}/canyoubeatwellington_og_image.png`;
 
 export const metadata: Metadata = {

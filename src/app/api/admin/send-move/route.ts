@@ -15,7 +15,7 @@ import { OLD_ACTOR } from '@/lib/ap-identity';
 // complete and burned in (see CLAUDE.md's migration backlog). Same
 // Bearer-token pattern as the other admin routes. Triggered manually, e.g.:
 //
-//   curl -X POST https://www.canyoubeatwellington.nz/api/admin/send-move \
+//   curl -X POST https://canyoubeatwellington.nz/api/admin/send-move \
 //     -H "Authorization: Bearer $ADMIN_SECRET"
 export async function POST(req: NextRequest) {
   if (!process.env.ADMIN_SECRET) {

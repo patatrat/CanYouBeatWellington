@@ -10,7 +10,7 @@ import {
 
 describe("actorForHost", () => {
   it("resolves the new actor's own domain to the new actor", () => {
-    expect(actorForHost("www.canyoubeatwellington.nz")).toBe(NEW_ACTOR);
+    expect(actorForHost("canyoubeatwellington.nz")).toBe(NEW_ACTOR);
   });
 
   it("resolves the old actor's domain to the old actor", () => {
@@ -18,7 +18,9 @@ describe("actorForHost", () => {
   });
 
   it("defaults to the old actor for any unrecognized host", () => {
-    expect(actorForHost("canyoubeatwellington.nz")).toBe(OLD_ACTOR);
+    // www no longer resolves to anything on our side — Vercel's own domain
+    // config redirects it to the bare apex before we ever see the request.
+    expect(actorForHost("www.canyoubeatwellington.nz")).toBe(OLD_ACTOR);
     expect(actorForHost("some-preview-url.vercel.app")).toBe(OLD_ACTOR);
     expect(actorForHost(null)).toBe(OLD_ACTOR);
   });
@@ -29,7 +31,7 @@ describe("actorForWebfingerDomain", () => {
     expect(actorForWebfingerDomain("canyoubeatwellington.radomski.co.nz")).toBe(OLD_ACTOR);
   });
 
-  it("resolves the new actor's acct domain — the bare apex, not www", () => {
+  it("resolves the new actor's acct domain", () => {
     expect(actorForWebfingerDomain("canyoubeatwellington.nz")).toBe(NEW_ACTOR);
   });
 

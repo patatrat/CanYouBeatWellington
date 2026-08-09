@@ -21,7 +21,7 @@ const KEY_ID = OLD_ACTOR.keyId;
 // The Note's `url` (human-facing "view on the web" link) — unlike the
 // actor/note id above, this isn't part of the AP-pinned identity, so it
 // points at the new domain. See src/lib/ap-posting.ts for the same split.
-const SITE_URL = 'https://www.canyoubeatwellington.nz';
+const SITE_URL = 'https://canyoubeatwellington.nz';
 
 // FEP-044f quote-post context terms — kept in sync with src/lib/ap-posting.ts
 // (see the comment there for why these exact values, copied from a live
