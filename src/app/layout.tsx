@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Analytics } from '@vercel/analytics/react';
+import { OLD_ACTOR, NEW_ACTOR } from '@/lib/ap-identity';
 import './globals.css';
 
 const TITLE = "You Can't Beat Wellington on a Good Day — Can You Beat Wellington?";
@@ -9,8 +10,8 @@ const TITLE = "You Can't Beat Wellington on a Good Day — Can You Beat Wellingt
 // share-preview text when no explicit og:description is read correctly.
 const DESCRIPTION = "Daily verdict on the weather in Wellington, New Zealand.";
 // Human-facing canonical URL for Open Graph/Twitter cards — distinct from
-// AP_SITE_URL below, which stays pinned to the old domain for the
-// ActivityPub actor's own identity.
+// the rel="me" links below, which are about ActivityPub actor identity
+// verification, not social-preview metadata.
 const CANONICAL_URL = 'https://canyoubeatwellington.nz';
 const OG_IMAGE = `${CANONICAL_URL}/canyoubeatwellington_og_image.jpg`;
 
@@ -34,19 +35,24 @@ export const metadata: Metadata = {
   },
 };
 
-// Verifies the ActivityPub actor's own "Website" profile field (src/app/actor/route.ts,
-// which links here with rel="me"). Mastodon's rel=me check fetches that field's href and
-// looks for a reciprocal rel="me" link whose href equals the actor's own `url` — which is
-// this same homepage, so the reciprocal link is self-referential. Not a typo: the actor
-// IS the site, so the site vouching for itself (rather than a separate external page) is
-// the correct shape here. React/Next hoist <link> tags rendered anywhere in the tree to
-// <head> automatically.
-const AP_SITE_URL = 'https://canyoubeatwellington.radomski.co.nz';
+// Verifies each ActivityPub actor's own "Website" profile field (src/app/actor/route.ts,
+// which links here with rel="me"), plus Pat's personal Mastodon profile field pointing at
+// this site. Mastodon's rel=me check fetches the field's href and looks for a reciprocal
+// rel="me" link whose href equals the verifying account's own URL — it only needs to find
+// *a* matching link, not exactly one, so listing all three unconditionally on every page
+// (rather than trying to serve only the "right" one per domain, which would require
+// reading the request's Host header and force the whole app off static rendering) covers
+// both actors' self-referential checks and Pat's field regardless of which exact page or
+// domain someone's account happens to point at. React/Next hoist <link> tags rendered
+// anywhere in the tree to <head> automatically.
+const REL_ME_LINKS = [OLD_ACTOR.base, NEW_ACTOR.base, 'https://mastodon.nz/@Pat'];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-NZ">
-      <link rel="me" href={AP_SITE_URL} />
+      {REL_ME_LINKS.map((href) => (
+        <link key={href} rel="me" href={href} />
+      ))}
       <body>
         {children}
         <Analytics />
