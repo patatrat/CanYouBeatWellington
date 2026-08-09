@@ -37,15 +37,23 @@ export const metadata: Metadata = {
 
 // Verifies each ActivityPub actor's own "Website" profile field (src/app/actor/route.ts,
 // which links here with rel="me"), plus Pat's personal Mastodon profile field pointing at
-// this site. Mastodon's rel=me check fetches the field's href and looks for a reciprocal
-// rel="me" link whose href equals the verifying account's own URL — it only needs to find
-// *a* matching link, not exactly one, so listing all three unconditionally on every page
-// (rather than trying to serve only the "right" one per domain, which would require
-// reading the request's Host header and force the whole app off static rendering) covers
-// both actors' self-referential checks and Pat's field regardless of which exact page or
-// domain someone's account happens to point at. React/Next hoist <link> tags rendered
-// anywhere in the tree to <head> automatically.
-const REL_ME_LINKS = [OLD_ACTOR.base, NEW_ACTOR.base, 'https://mastodon.nz/@Pat'];
+// this site. Confirmed against Mastodon's actual source (VerifyLinkService +
+// ActivityPub::TagManager#uri_for) rather than guessed: it fetches the field's href, looks
+// for a reciprocal rel="me" link, and compares that link's href against
+// ActivityPub::TagManager#uri_for(account) — which for a *remote* account (ours, from any
+// verifying instance's point of view) returns account.uri, populated from the actor's `id`
+// field, NOT its `url` field. So the two bot links below must be the actors' `actorId`
+// (".../actor", matching their AP `id`) rather than their bare `base` domain — a link to the
+// bare domain was the original bug, since it never matched what Mastodon actually compares
+// against. Pat's own account is local to mastodon.nz, where uri_for resolves to the
+// standard profile URL, so 'https://mastodon.nz/@Pat' is already correct as-is. It only
+// needs to find *a* matching link, not exactly one, so listing all three unconditionally on
+// every page (rather than trying to serve only the "right" one per domain, which would
+// require reading the request's Host header and force the whole app off static rendering)
+// covers both actors' self-referential checks and Pat's field regardless of which exact
+// page or domain someone's account happens to point at. React/Next hoist <link> tags
+// rendered anywhere in the tree to <head> automatically.
+const REL_ME_LINKS = [OLD_ACTOR.actorId, NEW_ACTOR.actorId, 'https://mastodon.nz/@Pat'];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
