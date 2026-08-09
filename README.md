@@ -61,7 +61,7 @@ Some dates go further and vary their quip by the day's actual weather — Christ
 
 ## Following along
 
-The site posts to the fediverse whenever it's a good day — follow **`@CanYouBeat@canyoubeatwellington.radomski.co.nz`** from Mastodon or any other ActivityPub-compatible app. No spam, no bad-day posts, just the good news.
+The site posts to the fediverse whenever it's a good day — follow **`@CanYouBeat@canyoubeatwellington.nz`** from Mastodon or any other ActivityPub-compatible app. No spam, no bad-day posts, just the good news.
 
 ## Tech stack
 
