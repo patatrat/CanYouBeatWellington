@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/canyoubeatwellington_og_image.png" alt="You can't beat Wellington on a good day. But is today that day?" width="600">
+  <img src="public/canyoubeatwellington_og_image.jpg" alt="Wellington's waterfront on a sunny, busy day" width="600">
 </p>
 
 <h1 align="center">Can You Beat Wellington?</h1>

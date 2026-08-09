@@ -45,8 +45,8 @@ export function GET(req: NextRequest) {
       },
       image: {
         type: 'Image',
-        mediaType: 'image/png',
-        url: `${actor.base}/canyoubeatwellington_og_image.png`,
+        mediaType: 'image/jpeg',
+        url: `${actor.base}/canyoubeatwellington_og_image.jpg`,
       },
       publicKey: {
         id: actor.keyId,

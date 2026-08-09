@@ -12,7 +12,7 @@ const DESCRIPTION = "Daily verdict on the weather in Wellington, New Zealand.";
 // AP_SITE_URL below, which stays pinned to the old domain for the
 // ActivityPub actor's own identity.
 const CANONICAL_URL = 'https://canyoubeatwellington.nz';
-const OG_IMAGE = `${CANONICAL_URL}/canyoubeatwellington_og_image.png`;
+const OG_IMAGE = `${CANONICAL_URL}/canyoubeatwellington_og_image.jpg`;
 
 export const metadata: Metadata = {
   title: TITLE,
