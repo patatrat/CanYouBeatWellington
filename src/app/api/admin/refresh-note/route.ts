@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     object: refreshedNote,
   };
 
-  const { delivered, failed, total } = await deliverToFollowers(updateActivity, privateKeyPem);
+  const { delivered, failed, total } = await deliverToFollowers(updateActivity, privateKeyPem, OLD_ACTOR);
 
   return NextResponse.json({ ok: true, noteIdSuffix, delivered, failed, total });
 }

@@ -1,13 +1,15 @@
 import { kv } from "@vercel/kv";
 import { signAndDeliver } from "./http-signatures";
-import { OLD_ACTOR } from "./ap-identity";
+import { NEW_ACTOR, type ActorIdentity } from "./ap-identity";
 
-// Daily posting hasn't moved to the new actor yet (see CLAUDE.md's
-// migration backlog) — everything here still publishes as the old actor,
-// to the old actor's followers, exactly as before the identity work.
-const BASE = OLD_ACTOR.base;
-const ACTOR_ID = OLD_ACTOR.actorId;
-const KEY_ID = OLD_ACTOR.keyId;
+// Daily posting now targets the new actor — switched over once the Move
+// completed and the old actor's followers had migrated (see CLAUDE.md's
+// migration backlog). The old actor keeps working exactly as before for
+// anything that still needs it (e.g. refresh-note, backfilling historical
+// posts still attributed to it) via the actor parameter on
+// deliverToFollowers() below.
+const BASE = NEW_ACTOR.base;
+const ACTOR_ID = NEW_ACTOR.actorId;
 // The Note's `url` — "a link to a representation of this object" per the
 // ActivityStreams spec, i.e. what Mastodon's "view on the web" link opens.
 // Unlike the actor/note id (which must stay on the AP-pinned domain), this
@@ -54,17 +56,20 @@ export interface PostResult {
 // Delivers an already-built, signed-per-recipient activity to every current
 // follower's inbox in parallel, with per-request timeouts so one hung remote
 // server can't stall the caller's function-execution budget. Shared by
-// postToFollowers() and the admin refresh-note route (which sends an Update
-// rather than a Create).
+// postToFollowers() (new actor) and the admin refresh-note route (old actor,
+// backfilling historical posts still attributed to it) — takes the actor
+// explicitly rather than assuming one, since the two callers need different
+// identities/keys.
 export async function deliverToFollowers(
   activity: object,
   privateKeyPem: string,
+  actor: ActorIdentity,
 ): Promise<{ delivered: number; failed: number; total: number }> {
-  const followers: string[] = (await kv.smembers(OLD_ACTOR.followersKey)) ?? [];
+  const followers: string[] = (await kv.smembers(actor.followersKey)) ?? [];
   const results = await Promise.allSettled(
     followers.map(async (followerUrl) => {
       const inboxUrl = await getInboxUrl(followerUrl);
-      const status = await signAndDeliver(inboxUrl, activity, KEY_ID, privateKeyPem);
+      const status = await signAndDeliver(inboxUrl, activity, actor.keyId, privateKeyPem);
       if (status < 200 || status >= 300) throw new Error(`HTTP ${status} delivering to ${inboxUrl}`);
     }),
   );
@@ -97,10 +102,10 @@ async function getInboxUrl(actorUrl: string): Promise<string> {
 // weather post, `announce-${Date.now()}` for a one-off announcement, or
 // `special-${slug}-${date}` for a special-date post.
 export async function postToFollowers(htmlContent: string, noteIdSuffix: string): Promise<PostResult> {
-  const privateKeyPem = process.env[OLD_ACTOR.privateKeyEnvVar];
-  if (!privateKeyPem) return { posted: false, reason: `${OLD_ACTOR.privateKeyEnvVar} not set` };
+  const privateKeyPem = process.env[NEW_ACTOR.privateKeyEnvVar];
+  if (!privateKeyPem) return { posted: false, reason: `${NEW_ACTOR.privateKeyEnvVar} not set` };
 
-  const followerCount = (await kv.scard(OLD_ACTOR.followersKey)) ?? 0;
+  const followerCount = (await kv.scard(NEW_ACTOR.followersKey)) ?? 0;
   if (followerCount === 0) return { posted: false, reason: "no followers" };
 
   const now = new Date().toISOString();
@@ -134,9 +139,9 @@ export async function postToFollowers(htmlContent: string, noteIdSuffix: string)
   // entries below, so without a TTL the trimmed cybw:post:* keys would
   // accumulate in KV forever.
   await kv.set(`cybw:post:${noteIdSuffix}`, activity, { ex: NOTE_TTL_SECONDS });
-  await kv.lpush("cybw:posts", noteIdSuffix);
-  await kv.ltrim("cybw:posts", 0, 49);
+  await kv.lpush(NEW_ACTOR.postsListKey, noteIdSuffix);
+  await kv.ltrim(NEW_ACTOR.postsListKey, 0, 49);
 
-  const { delivered, failed, total } = await deliverToFollowers(activity, privateKeyPem);
+  const { delivered, failed, total } = await deliverToFollowers(activity, privateKeyPem, NEW_ACTOR);
   return { posted: true, delivered, failed, total };
 }

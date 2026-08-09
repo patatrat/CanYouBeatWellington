@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
 
   const move = buildMoveActivity();
-  const { delivered, failed, total } = await deliverToFollowers(move, privateKeyPem);
+  const { delivered, failed, total } = await deliverToFollowers(move, privateKeyPem, OLD_ACTOR);
 
   return NextResponse.json({ ok: true, move, delivered, failed, total });
 }
