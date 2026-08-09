@@ -101,7 +101,19 @@ async function getInboxUrl(actorUrl: string): Promise<string> {
 // noteIdSuffix must be unique per post — e.g. today's date for the daily
 // weather post, `announce-${Date.now()}` for a one-off announcement, or
 // `special-${slug}-${date}` for a special-date post.
-export async function postToFollowers(htmlContent: string, noteIdSuffix: string): Promise<PostResult> {
+//
+// hashtags (plain names, no leading #) become a `tag` array of Hashtag
+// objects — this is what Mastodon actually relies on to index/search a
+// remote post under a tag; a plain "#word" string in content alone isn't
+// reliably enough. No href on each entry: Mastodon substitutes its own
+// local tag-browse URL when rendering to its own users regardless of what
+// we'd put there, and we don't have a hashtag-browsing page of our own for
+// it to point at.
+export async function postToFollowers(
+  htmlContent: string,
+  noteIdSuffix: string,
+  hashtags: string[] = [],
+): Promise<PostResult> {
   const privateKeyPem = process.env[NEW_ACTOR.privateKeyEnvVar];
   if (!privateKeyPem) return { posted: false, reason: `${NEW_ACTOR.privateKeyEnvVar} not set` };
 
@@ -125,6 +137,7 @@ export async function postToFollowers(htmlContent: string, noteIdSuffix: string)
     published: now,
     to: ["https://www.w3.org/ns/activitystreams#Public"],
     cc: [`${ACTOR_ID}/followers`],
+    tag: hashtags.map((name) => ({ type: "Hashtag", name: `#${name}` })),
     url: SITE_URL,
     interactionPolicy: QUOTABLE_BY_ANYONE,
   };

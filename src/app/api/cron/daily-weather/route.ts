@@ -67,14 +67,15 @@ export async function GET(req: NextRequest) {
     : '';
 
   const htmlContent =
-    `<p>You can&#39;t beat Wellington today ☀️</p>` +
+    `<p>You can&#39;t beat Wellington on a good day! And today is a good day!</p>` +
     specialLine +
     `<p>🌡️ ${todayRecord.temperature.toFixed(1)}°C  ` +
     `💨 ${todayRecord.wind_speed.toFixed(1)} km/h  ` +
     `🌧️ ${todayRecord.rain.toFixed(1)} mm rain</p>` +
-    `<p><a href="${SITE_URL}">${SITE_URL}</a></p>`;
+    `<p><a href="${SITE_URL}">${SITE_URL}</a></p>` +
+    `<p>#Wellington #CYBW #YCBWOAGD</p>`;
 
-  const result = await postToFollowers(htmlContent, today);
+  const result = await postToFollowers(htmlContent, today, ['Wellington', 'CYBW', 'YCBWOAGD']);
 
   return NextResponse.json({
     ok: true,
