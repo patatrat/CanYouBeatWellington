@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
+import FediverseHandle from "@/components/FediverseHandle";
 import SiteNav from "@/components/SiteNav";
 
 export const metadata: Metadata = {
@@ -99,11 +100,7 @@ export default function AboutPage() {
             nothing more, nothing less. Search for the handle below in Mastodon (or any other
             ActivityPub-compatible app) and hit follow.
           </p>
-          <p>
-            <code className="block w-fit bg-amber-100 text-amber-900 px-3 py-1.5 rounded text-sm font-mono select-all">
-              @CanYouBeat@canyoubeatwellington.radomski.co.nz
-            </code>
-          </p>
+          <FediverseHandle />
 
           <h2 className="text-xl font-bold text-gray-800 pt-4">Share this</h2>
           <p>
