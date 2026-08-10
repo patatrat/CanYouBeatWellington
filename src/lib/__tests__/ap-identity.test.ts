@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   OLD_ACTOR,
   NEW_ACTOR,
@@ -6,6 +6,7 @@ import {
   OLD_ACTOR_MOVED_TO,
   actorForHost,
   actorForWebfingerDomain,
+  buildActorDocument,
 } from "../ap-identity";
 
 describe("actorForHost", () => {
@@ -56,5 +57,33 @@ describe("identity consistency", () => {
   it("alsoKnownAs/movedTo cross-reference each other correctly", () => {
     expect(NEW_ACTOR_ALSO_KNOWN_AS).toEqual([OLD_ACTOR.actorId]);
     expect(OLD_ACTOR_MOVED_TO).toBe(NEW_ACTOR.actorId);
+  });
+});
+
+describe("buildActorDocument", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("returns null when the actor's key pair isn't configured", () => {
+    vi.stubEnv(NEW_ACTOR.publicKeyEnvVar, "");
+    expect(buildActorDocument(NEW_ACTOR)).toBeNull();
+  });
+
+  it("builds a document with the actor's own id/keyId and alsoKnownAs for the new actor", () => {
+    vi.stubEnv(NEW_ACTOR.publicKeyEnvVar, "fake-pem");
+    const doc = buildActorDocument(NEW_ACTOR);
+    expect(doc?.id).toBe(NEW_ACTOR.actorId);
+    expect((doc?.publicKey as { id?: string })?.id).toBe(NEW_ACTOR.keyId);
+    expect(doc?.alsoKnownAs).toEqual(NEW_ACTOR_ALSO_KNOWN_AS);
+    expect(doc?.movedTo).toBeUndefined();
+  });
+
+  it("builds a document with movedTo (not alsoKnownAs) for the old actor", () => {
+    vi.stubEnv(OLD_ACTOR.publicKeyEnvVar, "fake-pem");
+    const doc = buildActorDocument(OLD_ACTOR);
+    expect(doc?.id).toBe(OLD_ACTOR.actorId);
+    expect(doc?.movedTo).toBe(OLD_ACTOR_MOVED_TO);
+    expect(doc?.alsoKnownAs).toBeUndefined();
   });
 });

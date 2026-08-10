@@ -1,64 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  actorForHost,
-  NEW_ACTOR,
-  NEW_ACTOR_ALSO_KNOWN_AS,
-  OLD_ACTOR,
-  OLD_ACTOR_MOVED_TO,
-} from '@/lib/ap-identity';
+import { actorForHost, buildActorDocument } from '@/lib/ap-identity';
 
 export function GET(req: NextRequest) {
   const actor = actorForHost(req.headers.get('host'));
-  const publicKeyPem = process.env[actor.publicKeyEnvVar]?.replace(/\\n/g, '\n');
-  if (!publicKeyPem) {
+  const document = buildActorDocument(actor);
+  if (!document) {
     return NextResponse.json({ error: 'Actor not yet configured' }, { status: 503 });
   }
 
-  return NextResponse.json(
-    {
-      '@context': [
-        'https://www.w3.org/ns/activitystreams',
-        'https://w3id.org/security/v1',
-      ],
-      id: actor.actorId,
-      type: 'Service',
-      preferredUsername: 'CanYouBeat',
-      name: 'Can You Beat Wellington?',
-      summary:
-        "<p>You can't beat Wellington on a good day! But - how do you know when it's a good day?</p>" +
-        '<p>Can you beat Wellington - judging every breath of wind, every drop of rain and every cloud ' +
-        'in the sky to decide if you can beat Wellington today or not.</p>' +
-        '<p><a href="https://canyoubeatwellington.nz" rel="noopener noreferrer" target="_blank">canyoubeatwellington.nz</a></p>',
-      url: actor.base,
-      inbox: `${actor.base}/actor/inbox`,
-      outbox: `${actor.base}/actor/outbox`,
-      followers: `${actor.base}/actor/followers`,
-      following: `${actor.base}/actor/following`,
-      ...(actor === NEW_ACTOR ? { alsoKnownAs: NEW_ACTOR_ALSO_KNOWN_AS } : {}),
-      ...(actor === OLD_ACTOR ? { movedTo: OLD_ACTOR_MOVED_TO } : {}),
-      attachment: [
-        {
-          type: 'PropertyValue',
-          name: 'Website',
-          value: `<a href="${actor.base}" rel="me nofollow noopener noreferrer" target="_blank">${actor.domain}</a>`,
-        },
-      ],
-      icon: {
-        type: 'Image',
-        mediaType: 'image/png',
-        url: `${actor.base}/canyoubeatwellington_avatar.png`,
-      },
-      image: {
-        type: 'Image',
-        mediaType: 'image/jpeg',
-        url: `${actor.base}/canyoubeatwellington_og_image.jpg`,
-      },
-      publicKey: {
-        id: actor.keyId,
-        owner: actor.actorId,
-        publicKeyPem,
-      },
-    },
-    { headers: { 'Content-Type': 'application/activity+json' } },
-  );
+  return NextResponse.json(document, { headers: { 'Content-Type': 'application/activity+json' } });
 }

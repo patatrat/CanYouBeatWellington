@@ -85,3 +85,58 @@ export function actorForWebfingerDomain(domain: string): ActorIdentity | null {
   if (domain === NEW_ACTOR.domain) return NEW_ACTOR;
   return null;
 }
+
+// The single source of truth for what an actor document looks like —
+// shared by GET /actor and the admin refresh-actor route (which embeds the
+// exact same document as an Update{Actor} activity's object) so the two
+// can never drift apart. Returns null if the actor's key pair isn't
+// configured yet.
+export function buildActorDocument(actor: ActorIdentity): Record<string, unknown> | null {
+  const publicKeyPem = process.env[actor.publicKeyEnvVar]?.replace(/\\n/g, '\n');
+  if (!publicKeyPem) return null;
+
+  return {
+    '@context': [
+      'https://www.w3.org/ns/activitystreams',
+      'https://w3id.org/security/v1',
+    ],
+    id: actor.actorId,
+    type: 'Service',
+    preferredUsername: 'CanYouBeat',
+    name: 'Can You Beat Wellington?',
+    summary:
+      "<p>You can't beat Wellington on a good day! But - how do you know when it's a good day?</p>" +
+      '<p>Can you beat Wellington - judging every breath of wind, every drop of rain and every cloud ' +
+      'in the sky to decide if you can beat Wellington today or not.</p>' +
+      '<p><a href="https://canyoubeatwellington.nz" rel="noopener noreferrer" target="_blank">canyoubeatwellington.nz</a></p>',
+    url: actor.base,
+    inbox: `${actor.base}/actor/inbox`,
+    outbox: `${actor.base}/actor/outbox`,
+    followers: `${actor.base}/actor/followers`,
+    following: `${actor.base}/actor/following`,
+    ...(actor === NEW_ACTOR ? { alsoKnownAs: NEW_ACTOR_ALSO_KNOWN_AS } : {}),
+    ...(actor === OLD_ACTOR ? { movedTo: OLD_ACTOR_MOVED_TO } : {}),
+    attachment: [
+      {
+        type: 'PropertyValue',
+        name: 'Website',
+        value: `<a href="${actor.base}" rel="me nofollow noopener noreferrer" target="_blank">${actor.domain}</a>`,
+      },
+    ],
+    icon: {
+      type: 'Image',
+      mediaType: 'image/png',
+      url: `${actor.base}/canyoubeatwellington_avatar.png`,
+    },
+    image: {
+      type: 'Image',
+      mediaType: 'image/jpeg',
+      url: `${actor.base}/canyoubeatwellington_og_image.jpg`,
+    },
+    publicKey: {
+      id: actor.keyId,
+      owner: actor.actorId,
+      publicKeyPem,
+    },
+  };
+}
