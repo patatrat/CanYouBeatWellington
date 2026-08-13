@@ -1,7 +1,15 @@
 import { ExternalLink } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getThresholds, getSeasonLabel, isGoodWeatherDay } from "@/utils/rulesStorage";
-import { getScenario, pickQuip, pickSeverityQuip, isGreatDay, pickGreatDayQuip } from "@/utils/quips";
+import {
+  getScenario,
+  pickQuip,
+  pickSeverityQuip,
+  isGreatDay,
+  pickGreatDayQuip,
+  isAlmostGoodDay,
+  pickAlmostGoodDayQuip,
+} from "@/utils/quips";
 import { getTodaysRecord, fetchLiveWeather, upsertWeatherRecord, getTodaysNZTDate } from "@/lib/weather";
 import { getActiveSpecialDates, pickPrimarySpecialDate, resolveVerdict, getSpecialDayQuip } from "@/lib/special-dates";
 import { SPECIAL_BACKGROUNDS } from "@/utils/specialBackgrounds";
@@ -83,12 +91,16 @@ export default async function HomePage() {
   // wind/rain reading; then a special date's own scenario-specific line
   // (e.g. Christmas Day's rainy-day quip), if it has one for today's
   // scenario; then a day that clears the good-day bar by a wide margin gets
-  // its own celebratory line; otherwise the standard scenario quip.
+  // its own celebratory line; then a razor-thin temperature-only miss gets
+  // its own near-miss line; otherwise the standard scenario quip.
   const verdictLine =
     special?.quip_override ??
     pickSeverityQuip(effectiveWeather) ??
     (special ? getSpecialDayQuip(special, effectiveWeather, rules) : null) ??
     (isGreatDay(effectiveWeather, rules.minTemp) ? pickGreatDayQuip() : null) ??
+    (isAlmostGoodDay(effectiveWeather.temperature, rules.minTemp, windMet, rainMet)
+      ? pickAlmostGoodDayQuip()
+      : null) ??
     pickQuip(getScenario(tempMet, windMet, rainMet));
   const specialBg = special?.background_key ? SPECIAL_BACKGROUNDS[special.background_key] : undefined;
   // Dark special backgrounds (matariki, rugby) need light text — the default

@@ -6,6 +6,9 @@ import {
   isGreatDay,
   pickGreatDayQuip,
   GREAT_DAY_QUIPS,
+  isAlmostGoodDay,
+  pickAlmostGoodDayQuip,
+  ALMOST_GOOD_DAY_QUIPS,
   type SeverityWeather,
 } from "../quips";
 
@@ -116,5 +119,41 @@ describe("isGreatDay", () => {
 describe("pickGreatDayQuip", () => {
   it("returns a quip from the great-day list", () => {
     expect(GREAT_DAY_QUIPS).toContain(pickGreatDayQuip());
+  });
+});
+
+describe("isAlmostGoodDay", () => {
+  const minTemp = 13;
+
+  it("true when temp is under a degree short of the minimum, wind/rain both pass", () => {
+    expect(isAlmostGoodDay(12.3, minTemp, true, true)).toBe(true);
+  });
+
+  it("true right at the edge — just under a full degree short", () => {
+    expect(isAlmostGoodDay(12.01, minTemp, true, true)).toBe(true);
+  });
+
+  it("false a full degree or more short of the minimum", () => {
+    expect(isAlmostGoodDay(12, minTemp, true, true)).toBe(false);
+    expect(isAlmostGoodDay(10, minTemp, true, true)).toBe(false);
+  });
+
+  it("false when temperature already meets the minimum", () => {
+    expect(isAlmostGoodDay(13, minTemp, true, true)).toBe(false);
+    expect(isAlmostGoodDay(15, minTemp, true, true)).toBe(false);
+  });
+
+  it("false when wind doesn't meet the good-day threshold", () => {
+    expect(isAlmostGoodDay(12.5, minTemp, false, true)).toBe(false);
+  });
+
+  it("false when rain doesn't meet the good-day threshold", () => {
+    expect(isAlmostGoodDay(12.5, minTemp, true, false)).toBe(false);
+  });
+});
+
+describe("pickAlmostGoodDayQuip", () => {
+  it("returns a quip from the almost-good-day list", () => {
+    expect(ALMOST_GOOD_DAY_QUIPS).toContain(pickAlmostGoodDayQuip());
   });
 });

@@ -237,6 +237,28 @@ export const isGreatDay = (
 
 export const pickGreatDayQuip = (): string => pick([...GREAT_DAY_QUIPS]);
 
+// "Almost good" — a near-miss on temperature specifically: wind and rain
+// both clear the normal good-day bar (reuses the caller's own windMet/
+// rainMet rather than a separate hardcoded threshold, unlike isGreatDay's
+// stricter bar above), and temperature falls short of the seasonal minimum
+// by less than a full degree. Checked ahead of the plain TEMP_ONLY scenario
+// quip so a razor-thin miss reads differently from an ordinary cold day.
+export const isAlmostGoodDay = (
+  temperature: number,
+  minTemp: number,
+  windMet: boolean,
+  rainMet: boolean,
+): boolean => windMet && rainMet && temperature < minTemp && minTemp - temperature < 1;
+
+export const ALMOST_GOOD_DAY_QUIPS = [
+  'To borrow a quote from Maxwell Smart — "Missed it by that much." 🤏',
+  "New Zealand might have two degrees of separation, but we're less than one degree away from a good day today.",
+  "YCBWOAAGD — You can't beat Wellington on an almost good day.",
+  "As Meat Loaf would say — two out of three ain't bad.",
+] as const satisfies readonly string[];
+
+export const pickAlmostGoodDayQuip = (): string => pick([...ALMOST_GOOD_DAY_QUIPS]);
+
 // Priority waterfall, most severe/specific condition first — each check
 // "claims" the day before a less specific one gets a chance, so exactly one
 // tier ever matches. Snow sits at the very top — rarer and more newsworthy
