@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { kv } from '@vercel/kv';
 
 function normalizePem(raw: string): string {
   const pem = raw
@@ -28,16 +29,34 @@ function parseSignatureHeader(header: string): Record<string, string> {
   return result;
 }
 
+// Negative cache for actors that recently failed to resolve (gone, timed
+// out, or malformed) — inbox spam frequently replays the same handful of
+// dead/slow actor URLs, and without this each replay pays the same
+// up-to-10s outbound fetch the first attempt already paid for and failed.
+// Short TTL rather than permanent: a failure could be transient, and an
+// actor that's since recovered shouldn't stay blocked.
+const FAILED_ACTOR_TTL_SECONDS = 60 * 60;
+
 async function fetchActorPublicKey(actorUrl: string): Promise<string> {
-  const res = await fetch(actorUrl, {
-    headers: { Accept: 'application/activity+json, application/ld+json' },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) throw new Error(`Failed to fetch actor at ${actorUrl}: ${res.status}`);
-  const actor = await res.json();
-  const pem = actor?.publicKey?.publicKeyPem;
-  if (!pem) throw new Error(`No publicKeyPem found at ${actorUrl}`);
-  return pem;
+  const cacheKey = `cybw:ap:bad-actor:${actorUrl}`;
+  if (await kv.get(cacheKey)) {
+    throw new Error(`Actor recently failed to resolve (cached): ${actorUrl}`);
+  }
+
+  try {
+    const res = await fetch(actorUrl, {
+      headers: { Accept: 'application/activity+json, application/ld+json' },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`Failed to fetch actor at ${actorUrl}: ${res.status}`);
+    const actor = await res.json();
+    const pem = actor?.publicKey?.publicKeyPem;
+    if (!pem) throw new Error(`No publicKeyPem found at ${actorUrl}`);
+    return pem;
+  } catch (err) {
+    await kv.set(cacheKey, 1, { ex: FAILED_ACTOR_TTL_SECONDS });
+    throw err;
+  }
 }
 
 // Signed Date headers older/newer than this are rejected to limit replay of
