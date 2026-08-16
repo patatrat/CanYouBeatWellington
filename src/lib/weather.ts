@@ -193,7 +193,7 @@ export async function fetchLiveWeather(): Promise<LiveWeather> {
 
   if (
     !data.daily?.time?.[0] ||
-    data.daily?.temperature_2m_max?.[0] === undefined ||
+    data.daily?.temperature_2m_max?.[0] == null ||
     data.daily?.weather_code?.[0] === undefined ||
     data.daily?.snowfall_sum?.[0] === undefined ||
     !Array.isArray(data.hourly?.precipitation) ||
@@ -216,11 +216,17 @@ export async function fetchLiveWeather(): Promise<LiveWeather> {
     timestamp: data.daily.time[0],
     source: "https://open-meteo.com/",
     // Days 1–6 (tomorrow → 6 days out). Day 0 is today, shown separately.
-    forecast: data.daily.time.slice(1).map((date: string, i: number) => ({
-      date,
-      temperature: data.daily.temperature_2m_max[i + 1],
-      windSpeed: calculateDaytimeWind(data.hourly.wind_speed_10m, i + 1),
-      rain: calculateDaytimeRain(data.hourly.precipitation, i + 1),
-    })),
+    // Open-Meteo occasionally returns an explicit null (not just a missing
+    // index) for a given day's max temperature — seen live, crashing
+    // ForecastStrip's .toFixed() calls — so incomplete days are dropped
+    // rather than assumed valid; a 5- or 6-day strip beats a broken page.
+    forecast: (
+      data.daily.time.slice(1).map((date: string, i: number) => ({
+        date,
+        temperature: data.daily.temperature_2m_max[i + 1] as number | null | undefined,
+        windSpeed: calculateDaytimeWind(data.hourly.wind_speed_10m, i + 1),
+        rain: calculateDaytimeRain(data.hourly.precipitation, i + 1),
+      })) as { date: string; temperature: number | null | undefined; windSpeed: number; rain: number }[]
+    ).filter((day): day is ForecastDay => day.temperature != null),
   };
 }

@@ -158,6 +158,25 @@ describe('fetchLiveWeather', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => bad })));
     await expect(fetchLiveWeather()).rejects.toThrow(/incomplete data/);
   });
+
+  it('throws when daily.temperature_2m_max[0] is explicitly null, not just missing', async () => {
+    const bad = validOpenMeteoResponse(7);
+    bad.daily.temperature_2m_max[0] = null as unknown as number;
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => bad })));
+    await expect(fetchLiveWeather()).rejects.toThrow(/incomplete data/);
+  });
+
+  it('drops a forecast day whose temperature_2m_max is null instead of crashing', async () => {
+    const data = validOpenMeteoResponse(7);
+    // Open-Meteo returns this for a day mid-forecast, seen live — day index
+    // 3 in the daily arrays is forecast day 2 (index 1 in the returned array).
+    data.daily.temperature_2m_max[3] = null as unknown as number;
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
+
+    const result = await fetchLiveWeather();
+    expect(result.forecast).toHaveLength(5);
+    expect(result.forecast.every((day) => day.temperature != null)).toBe(true);
+  });
 });
 
 // ── fetchAndStoreBatch (fetch + sql mocked) ──────────────────────────────────
