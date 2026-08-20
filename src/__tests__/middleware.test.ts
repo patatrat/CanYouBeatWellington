@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getRedirectUrl } from "../middleware";
+import { getRedirectUrl, config } from "../middleware";
 
 const OLD = "canyoubeatwellington.radomski.co.nz";
 
@@ -44,5 +44,41 @@ describe("getRedirectUrl", () => {
     expect(getRedirectUrl(OLD, "/quote-authorizationsomething", "")).toBe(
       "https://canyoubeatwellington.nz/quote-authorizationsomething",
     );
+  });
+});
+
+// The matcher decides whether the middleware function runs at all — for the
+// AP-identity paths, getRedirectUrl() above already proves the answer is
+// always null, so excluding them here is a pure invocation-count reduction,
+// not a behaviour change. Directly exercises the compiled pattern the app
+// actually ships, anchored the way Next.js applies path matchers, rather
+// than trusting the regex by inspection alone.
+describe("middleware matcher", () => {
+  const pattern = new RegExp(`^${config.matcher[0]}$`);
+
+  it("excludes AP-identity paths and their sub-paths — matches getRedirectUrl's own exclusions", () => {
+    for (const path of [
+      "/actor",
+      "/actor/inbox",
+      "/actor/outbox",
+      "/actor/followers",
+      "/.well-known/webfinger",
+      "/notes/12345",
+      "/quote-authorizations/abc-123",
+    ]) {
+      expect(pattern.test(path)).toBe(false);
+    }
+  });
+
+  it("still matches ordinary pages, so the old-domain redirect keeps working", () => {
+    for (const path of ["/", "/about", "/history", "/some/other/path"]) {
+      expect(pattern.test(path)).toBe(true);
+    }
+  });
+
+  it("still excludes the pre-existing Next.js static-asset paths", () => {
+    expect(pattern.test("/_next/static/chunk.js")).toBe(false);
+    expect(pattern.test("/_next/image")).toBe(false);
+    expect(pattern.test("/favicon.ico")).toBe(false);
   });
 });

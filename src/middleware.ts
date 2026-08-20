@@ -29,6 +29,19 @@ export function middleware(request: NextRequest) {
   return target ? NextResponse.redirect(target, 308) : NextResponse.next();
 }
 
+// Also excludes the AP-identity path prefixes themselves — getRedirectUrl()
+// already never redirects these (see AP_PATH_PREFIXES above), so invoking
+// the function for them was a guaranteed no-op on every single request.
+// Confirmed via Vercel's own runtime logs this was the dominant source of
+// edge/middleware invocations: /actor/inbox alone (mostly rejected signed
+// spam, unrelated to this app) accounted for ~65% of middleware runs in a
+// 24h sample, none of which could ever produce a redirect. Same
+// simple-prefix style as the existing _next/static/favicon.ico exclusions
+// above — safe because no real route in this app collides as a lookalike
+// prefix (confirmed against src/app's actual route list; see
+// middleware.test.ts for direct coverage of the compiled pattern).
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|actor|\\.well-known/webfinger|notes|quote-authorizations).*)",
+  ],
 };
