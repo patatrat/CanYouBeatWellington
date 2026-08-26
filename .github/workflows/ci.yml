@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main, staging]
 
+# Cancels a run the moment a newer commit on the same branch supersedes it —
+# without this, pushing a few commits in quick succession lets every run
+# finish even after a later one already makes it moot.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: ubuntu-latest
