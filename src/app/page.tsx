@@ -19,10 +19,17 @@ import ForecastStrip from "@/components/ForecastStrip";
 import SpecialDateEffect from "@/components/SpecialDateEffect";
 import SiteNav from "@/components/SiteNav";
 
-// Short enough that the window where a cached page straddles NZ midnight
-// (showing yesterday's date/verdict) stays small — the underlying fetches
-// are cheap, and fetchLiveWeather has its own 1-hour fetch cache anyway.
-export const revalidate = 600;
+// Widened from 600s (10min) to match /history's window — Neon's free tier
+// fixes the compute scale-to-zero delay at 5 minutes (not configurable
+// without upgrading), so a 10-minute revalidate meant most real visits woke
+// the database from a fresh suspend rather than hitting an already-warm
+// compute, paying the ~5-minute idle tail on nearly every regeneration.
+// Confirmed via Neon's own usage data this was the dominant driver of
+// compute-hour consumption, not query cost (the whole DB is under 500KB).
+// Trade-off: a slightly wider window where a cached page could show
+// yesterday's date/verdict right after NZ midnight before refreshing —
+// still self-corrects on the next regeneration, same as before.
+export const revalidate = 3600;
 
 export default async function HomePage() {
   const today = getTodaysNZTDate();
