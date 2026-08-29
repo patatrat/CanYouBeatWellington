@@ -9,6 +9,8 @@ import {
   isAlmostGoodDay,
   pickAlmostGoodDayQuip,
   ALMOST_GOOD_DAY_QUIPS,
+  pickStreakQuip,
+  STREAK_QUIPS,
   type SeverityWeather,
 } from "../quips";
 
@@ -119,6 +121,25 @@ describe("isGreatDay", () => {
 describe("pickGreatDayQuip", () => {
   it("returns a quip from the great-day list", () => {
     expect(GREAT_DAY_QUIPS).toContain(pickGreatDayQuip());
+  });
+});
+
+describe("pickStreakQuip", () => {
+  it("returns null below the 2-day tier", () => {
+    expect(pickStreakQuip(0)).toBeNull();
+    expect(pickStreakQuip(1)).toBeNull();
+  });
+
+  it("returns a quip from the matching tier for 2, 3, 4, and 5", () => {
+    expect(STREAK_QUIPS[2]).toContain(pickStreakQuip(2));
+    expect(STREAK_QUIPS[3]).toContain(pickStreakQuip(3));
+    expect(STREAK_QUIPS[4]).toContain(pickStreakQuip(4));
+    expect(STREAK_QUIPS[5]).toContain(pickStreakQuip(5));
+  });
+
+  it("streaks longer than 5 reuse the 5-day tier", () => {
+    expect(STREAK_QUIPS[5]).toContain(pickStreakQuip(6));
+    expect(STREAK_QUIPS[5]).toContain(pickStreakQuip(30));
   });
 });
 

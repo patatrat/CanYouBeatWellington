@@ -4,6 +4,7 @@
 // which re-exports everything here.
 
 import { isGreatDay } from "@/utils/quips";
+import { isGoodWeatherDay } from "@/utils/rulesStorage";
 
 export type SpecialDateKind = "fixed_rule" | "moveable" | "sporting" | "oneoff";
 export type OccurrenceStatus = "confirmed" | "pending" | "cancelled";
@@ -63,6 +64,31 @@ export function pickPrimarySpecialDate(dates: ActiveSpecialDate[]): ActiveSpecia
 // winning can force a good day regardless of temperature/wind/rain.
 export function resolveVerdict(weatherIsGood: boolean, override: boolean | null): boolean {
   return override ?? weatherIsGood;
+}
+
+// How many consecutive days immediately before today were also good —
+// applies the same weather-plus-override verdict used everywhere else, not
+// a separate weather-only definition, so a special-date-forced good day
+// counts toward the streak exactly as it would have on the day itself.
+// `records` must be ordered most-recent-first (excluding today); counting
+// stops at the first non-good day. `specialDates` covers the same date
+// range as `records` — pickPrimarySpecialDate() resolves which one applies
+// on days where more than one is active.
+export function countRecentGoodDayStreak(
+  records: { date: string; temperature: number; windSpeed: number; rain: number }[],
+  specialDates: ActiveSpecialDate[],
+): number {
+  let streak = 0;
+  for (const record of records) {
+    const weatherIsGood = isGoodWeatherDay(record, record.date);
+    const activeOnDate = specialDates.filter(
+      (d) => d.start_date <= record.date && record.date <= d.end_date,
+    );
+    const override = pickPrimarySpecialDate(activeOnDate)?.verdict_override ?? null;
+    if (!resolveVerdict(weatherIsGood, override)) break;
+    streak++;
+  }
+  return streak;
 }
 
 interface SeasonRules {

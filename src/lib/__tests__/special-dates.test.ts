@@ -12,6 +12,7 @@ const {
   computeFixedRuleDate,
   pickPrimarySpecialDate,
   resolveVerdict,
+  countRecentGoodDayStreak,
   getSpecialDayScenario,
   getSpecialDayQuip,
   getActiveSpecialDates,
@@ -138,6 +139,44 @@ describe('resolveVerdict', () => {
 
   it('forces a bad day even when the weather says otherwise', () => {
     expect(resolveVerdict(true, false)).toBe(false);
+  });
+});
+
+// ── countRecentGoodDayStreak ─────────────────────────────────────────────────
+
+describe('countRecentGoodDayStreak', () => {
+  // Summer thresholds: minTemp 19, maxWind 30, maxRain 0.1.
+  const good = (date: string) => ({ date, temperature: 22, windSpeed: 15, rain: 0 });
+  const bad = (date: string) => ({ date, temperature: 10, windSpeed: 15, rain: 0 });
+
+  it('returns 0 for an empty history', () => {
+    expect(countRecentGoodDayStreak([], [])).toBe(0);
+  });
+
+  it('counts consecutive good days, most-recent-first', () => {
+    const records = [good('2026-01-10'), good('2026-01-09'), good('2026-01-08')];
+    expect(countRecentGoodDayStreak(records, [])).toBe(3);
+  });
+
+  it('stops counting at the first bad day', () => {
+    const records = [good('2026-01-10'), bad('2026-01-09'), good('2026-01-08')];
+    expect(countRecentGoodDayStreak(records, [])).toBe(1);
+  });
+
+  it('a special-date override forcing a good day extends the streak', () => {
+    const records = [good('2026-01-10'), bad('2026-01-09'), good('2026-01-08')];
+    const specials = [
+      stub({ start_date: '2026-01-09', end_date: '2026-01-09', verdict_override: true }),
+    ];
+    expect(countRecentGoodDayStreak(records, specials)).toBe(3);
+  });
+
+  it('a special-date override forcing a bad day breaks the streak', () => {
+    const records = [good('2026-01-10'), good('2026-01-09'), good('2026-01-08')];
+    const specials = [
+      stub({ start_date: '2026-01-09', end_date: '2026-01-09', verdict_override: false }),
+    ];
+    expect(countRecentGoodDayStreak(records, specials)).toBe(1);
   });
 });
 

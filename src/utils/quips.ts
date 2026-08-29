@@ -61,6 +61,8 @@ export const QUIPS = {
     "Full Wellington energy today.",
     "The starter pack. Wind, rain, nothing else.",
     "It's giving Wellington. Very Wellington.",
+    "Someone needs to sacrifice an umbrella to the Welly Weather Gods.",
+    "Breaking news: rubbish bins all over Wellington full of broken umbrellas.",
   ],
 
   // Wind and temperature both fail (rain ✓)
@@ -258,6 +260,36 @@ export const ALMOST_GOOD_DAY_QUIPS = [
 ] as const satisfies readonly string[];
 
 export const pickAlmostGoodDayQuip = (): string => pick([...ALMOST_GOOD_DAY_QUIPS]);
+
+// ── Good-day streak quips ────────────────────────────────────────────────────
+// Checked when today is good and at least one preceding day was too — takes
+// priority over isGreatDay/isAlmostGoodDay, since "N good days in a row" is a
+// more surprising fact than today individually clearing the bar by a wide
+// margin. Longer streaks (6+) reuse the 5-tier pool — there's no way to know
+// in advance how long a streak can realistically run in Wellington, so rather
+// than inventing wording for an arbitrary cutoff, the "mythical working week"
+// framing just keeps applying.
+export const STREAK_QUIPS: Record<number, readonly string[]> = {
+  2: [
+    "Two good days in a row! Eat your heart out!",
+    "Is this déjà vu? Wasn't it a good day yesterday too?",
+  ],
+  3: [
+    "Howzat!! It's a hat trick — three in a row good days!",
+    "Statistically implausible, but it happened — three good days in a row.",
+    "Any more good days in a row and we might start getting bored of them.",
+  ],
+  4: [
+    'To borrow a phrase from Smash Mouth — "the good days start coming and they don\'t stop coming."',
+    "Four in a row! What if it's just good days forever?",
+  ],
+  5: ["It's the mythical good working week — five good days in a row."],
+} as const satisfies Record<number, readonly string[]>;
+
+export const pickStreakQuip = (streak: number): string | null => {
+  const pool = STREAK_QUIPS[Math.min(streak, 5)];
+  return pool ? pick([...pool]) : null;
+};
 
 // Priority waterfall, most severe/specific condition first — each check
 // "claims" the day before a less specific one gets a chance, so exactly one
