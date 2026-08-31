@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Analytics } from '@vercel/analytics/react';
 import { OLD_ACTOR, NEW_ACTOR } from '@/lib/ap-identity';
 import './globals.css';
@@ -33,6 +33,20 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     images: [OG_IMAGE],
   },
+  // iOS Safari's "Add to Home Screen" historically needs these Apple-specific
+  // tags rather than reading display/name from the web manifest — apple-icon.png
+  // (auto-detected by Next.js, no manual <link> needed) supplies the actual icon.
+  appleWebApp: {
+    capable: true,
+    title: 'Beat Wellington',
+    statusBarStyle: 'default',
+  },
+};
+
+// themeColor moved out of `metadata` into its own export as of Next.js 14 —
+// tints the browser/status-bar chrome and the PWA splash background.
+export const viewport: Viewport = {
+  themeColor: '#2563eb',
 };
 
 // Verifies each ActivityPub actor's own "Website" profile field (src/app/actor/route.ts,
