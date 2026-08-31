@@ -9,7 +9,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Can You Beat Wellington?",
-    short_name: "Beat Wellington",
+    short_name: "Can You Beat Wellington",
     description: "Daily verdict on the weather in Wellington, New Zealand.",
     start_url: "/",
     display: "standalone",

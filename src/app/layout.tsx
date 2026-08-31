@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   // (auto-detected by Next.js, no manual <link> needed) supplies the actual icon.
   appleWebApp: {
     capable: true,
-    title: 'Beat Wellington',
+    title: 'Can You Beat Wellington',
     statusBarStyle: 'default',
   },
 };
