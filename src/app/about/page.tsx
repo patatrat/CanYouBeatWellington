@@ -101,6 +101,12 @@ export default function AboutPage() {
             ActivityPub-compatible app) and hit follow.
           </p>
           <FediverseHandle />
+          <p>
+            You can also add this site to your phone&apos;s home screen like an app — see the{" "}
+            <a href="https://radomski.co.nz/blog/can-you-beat-wellington-on-your-mobile" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+              step-by-step guide <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
+            </a>.
+          </p>
 
           <h2 className="text-xl font-bold text-gray-800 pt-4">Share this</h2>
           <p>
