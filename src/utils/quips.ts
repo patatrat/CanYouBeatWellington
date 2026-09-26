@@ -135,7 +135,7 @@ export const SEVERE_QUIPS = {
 
   // Wind ≥ 40 km/h (and < 50) and rain > 5mm — takes priority over plain WIND_40
   WIND_40_RAIN: [
-    "Don't bother with an umbrella today.",
+    "Leave the umbrella, unless you want to end up like Mary Poppins.",
     "Normally rain falls down. Today it falls sideways.",
     "Planning on heading outside today? You're brave.",
     "Today is what Aucklanders think every day is like in Wellington.",
