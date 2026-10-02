@@ -84,6 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script
           src="https://analytics.radomski.co.nz/script.js"
           data-website-id="c5f9b81d-1e6f-4863-98bc-dffa48a21563"
+          data-performance="true"
           strategy="afterInteractive"
         />
       </body>
