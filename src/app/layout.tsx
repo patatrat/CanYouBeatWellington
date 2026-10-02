@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
 import { OLD_ACTOR, NEW_ACTOR } from '@/lib/ap-identity';
 import './globals.css';
@@ -78,6 +79,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <Analytics />
+        {/* Self-hosted Umami — vercel.json's CSP already allows this origin
+            in script-src and connect-src. */}
+        <Script
+          src="https://analytics.radomski.co.nz/script.js"
+          data-website-id="c5f9b81d-1e6f-4863-98bc-dffa48a21563"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
