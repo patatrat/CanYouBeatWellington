@@ -108,7 +108,7 @@ export function buildActorDocument(actor: ActorIdentity): Record<string, unknown
       "<p>You can't beat Wellington on a good day! But - how do you know when it's a good day?</p>" +
       '<p>Can you beat Wellington - judging every breath of wind, every drop of rain and every cloud ' +
       'in the sky to decide if you can beat Wellington today or not.</p>' +
-      '<p><a href="https://canyoubeatwellington.nz" rel="noopener noreferrer" target="_blank">canyoubeatwellington.nz</a></p>',
+      '<p><a href="https://canyoubeatwellington.nz" rel="noopener" target="_blank">canyoubeatwellington.nz</a></p>',
     url: actor.base,
     inbox: `${actor.base}/actor/inbox`,
     outbox: `${actor.base}/actor/outbox`,
@@ -120,7 +120,7 @@ export function buildActorDocument(actor: ActorIdentity): Record<string, unknown
       {
         type: 'PropertyValue',
         name: 'Website',
-        value: `<a href="${actor.base}" rel="me nofollow noopener noreferrer" target="_blank">${actor.domain}</a>`,
+        value: `<a href="${actor.base}" rel="me nofollow noopener" target="_blank">${actor.domain}</a>`,
       },
     ],
     icon: {

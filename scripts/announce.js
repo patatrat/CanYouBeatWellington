@@ -81,7 +81,7 @@ function linkifyOwnDomains(escapedText) {
     const pattern = new RegExp(`(?<!@)\\b${domain.replace(/\./g, '\\.')}\\b`, 'g');
     result = result.replace(
       pattern,
-      `<a href="https://${domain}" rel="noopener noreferrer" target="_blank">${domain}</a>`,
+      `<a href="https://${domain}" rel="noopener" target="_blank">${domain}</a>`,
     );
   }
   return result;

@@ -48,12 +48,12 @@ export default function AboutPage() {
           <p>
             Wellington has six seasons, not four, at least according to the locals. The app uses seasonal
             temperature thresholds based on{" "}
-            <a href="https://adam.nz/realistic-calendar" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+            <a href="https://adam.nz/realistic-calendar" target="_blank" rel="noopener" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               Adam Shand&apos;s Shitsville calendar <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>
             , calibrated against six years of actual Wellington weather data. Read the full story behind
             the rule change on{" "}
-            <a href="https://radomski.co.nz/blog/shitsville" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+            <a href="https://radomski.co.nz/blog/shitsville" target="_blank" rel="noopener" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               the blog <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>.
           </p>
@@ -103,7 +103,7 @@ export default function AboutPage() {
           <FediverseHandle />
           <p>
             You can also add this site to your phone&apos;s home screen like an app — see the{" "}
-            <a href="https://radomski.co.nz/blog/can-you-beat-wellington-on-your-mobile" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+            <a href="https://radomski.co.nz/blog/can-you-beat-wellington-on-your-mobile" target="_blank" rel="noopener" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               step-by-step guide <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>.
           </p>
@@ -116,18 +116,18 @@ export default function AboutPage() {
 
           <p className="pt-4 border-t border-amber-200">
             Built by{" "}
-            <a href="https://www.radomski.co.nz" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+            <a href="https://www.radomski.co.nz" target="_blank" rel="noopener" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               Patrick Radomski <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>
             , with some AI help. The whole build (and rebuild) story is on{" "}
-            <a href="https://radomski.co.nz/blog/tag/can-you-beat-wellington" target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+            <a href="https://radomski.co.nz/blog/tag/can-you-beat-wellington" target="_blank" rel="noopener" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               the blog <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>
             . Say hi on{" "}
             {/* rel="me" so this reciprocates @Pat@mastodon.nz's own "Can you beat
                 Wellington?" profile field, which already links here — needed for
                 Mastodon's rel=me verification to show that field as verified. */}
-            <a href="https://mastodon.nz/@Pat" target="_blank" rel="me noopener noreferrer" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+            <a href="https://mastodon.nz/@Pat" target="_blank" rel="me noopener" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               Mastodon <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
             </a>.
           </p>

@@ -173,7 +173,7 @@ export default async function HomePage() {
                 <a
                   href={special.link_url}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener"
                   className={`underline underline-offset-2 ${mutedHover}`}
                 >
                   {special.link_label ?? "More"}
@@ -253,7 +253,7 @@ export default async function HomePage() {
           <a
             href={liveWeather.source}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="noopener"
             className={`${mutedHover} underline underline-offset-2`}
           >
             open-meteo.com <ExternalLink className="inline-block w-3 h-3 ml-0.5" />

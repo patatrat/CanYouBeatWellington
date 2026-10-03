@@ -19,11 +19,11 @@ const ShareButtons = () => {
   const [copied, setCopied] = useState(false);
 
   const shareToBluesky = () => {
-    window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent(SHARE_TEXT)}`, "_blank", "noopener,noreferrer");
+    window.open(`https://bsky.app/intent/compose?text=${encodeURIComponent(SHARE_TEXT)}`, "_blank", "noopener");
   };
 
   const openMastodonShare = (instance: string) => {
-    window.open(`https://${instance}/share?text=${encodeURIComponent(SHARE_TEXT)}`, "_blank", "noopener,noreferrer");
+    window.open(`https://${instance}/share?text=${encodeURIComponent(SHARE_TEXT)}`, "_blank", "noopener");
   };
 
   const handleMastodonClick = () => {
