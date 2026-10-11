@@ -7,6 +7,24 @@ import { canViewWrapped, isWrappedReleased } from "@/lib/wrapped-release";
 import { computeWrapped, type Streak, type VoteReason, type VotedDay } from "@/utils/wrappedStats";
 import SiteNav from "@/components/SiteNav";
 import WrappedBarChart from "@/components/WrappedBarChart";
+import {
+  CloudRain,
+  Equal,
+  Feather,
+  Leaf,
+  Repeat,
+  Scale,
+  Snowflake,
+  Sun,
+  ThermometerSnowflake,
+  ThermometerSun,
+  ThumbsDown,
+  ThumbsUp,
+  Vote,
+  Wind,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 
 // Same window as /history — the year's numbers only move once a day.
 export const revalidate = 3600;
@@ -72,19 +90,46 @@ const REASON_QUIP: Record<VoteReason, string> = {
 const describeWeather = (d: Pick<VotedDay, "temperature" | "windSpeed" | "rain">) =>
   `${d.temperature.toFixed(1)}°C, ${Math.round(d.windSpeed)} km/h wind, ${d.rain > 0.1 ? `${d.rain.toFixed(1)}mm rain` : "dry"}`;
 
-const Card = ({ className, kicker, children }: { className: string; kicker: string; children: React.ReactNode }) => (
-  <section className={`rounded-3xl px-7 py-10 sm:px-10 sm:py-12 shadow-lg ${className}`}>
-    <p className="text-xs font-bold uppercase tracking-[0.2em] opacity-80 mb-4">{kicker}</p>
+// Icons are decorative throughout: every one sits beside text that already
+// says the same thing, so they're aria-hidden.
+const Card = ({
+  className,
+  kicker,
+  icon: Icon,
+  children,
+}: {
+  className: string;
+  kicker: string;
+  icon?: LucideIcon;
+  children: React.ReactNode;
+}) => (
+  <section className={`relative rounded-3xl px-7 py-10 sm:px-10 sm:py-12 shadow-lg ${className}`}>
+    {Icon ? <Icon className="absolute top-8 right-7 sm:top-10 sm:right-10 h-9 w-9 opacity-80" strokeWidth={1.75} aria-hidden /> : null}
+    <p className="text-xs font-bold uppercase tracking-[0.2em] opacity-80 mb-4 pr-12">{kicker}</p>
     {children}
   </section>
 );
 
-const Extreme = ({ value, label, date, note }: { value: string; label: string; date: string; note?: string }) => (
+const Votes = ({ agree, disagree }: { agree: number; disagree: number }) => (
+  <span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1">
+    <span className="inline-flex items-center gap-1.5">
+      <ThumbsUp className="h-[1em] w-[1em]" aria-hidden />
+      {agree.toLocaleString("en-NZ")} agreed
+    </span>
+    <span className="inline-flex items-center gap-1.5">
+      <ThumbsDown className="h-[1em] w-[1em]" aria-hidden />
+      {disagree.toLocaleString("en-NZ")} didn&apos;t
+    </span>
+  </span>
+);
+
+const Extreme = ({ icon: Icon, value, children }: { icon: LucideIcon; value: string; children: React.ReactNode }) => (
   <div>
-    <p className="font-black text-3xl">{value}</p>
-    <p className="text-orange-50">
-      {label}, {day(date)}.{note ? ` ${note}` : null}
+    <p className="flex items-center gap-2 font-black text-3xl">
+      <Icon className="h-7 w-7 shrink-0" strokeWidth={2} aria-hidden />
+      {value}
     </p>
+    <p className="text-orange-50 mt-1">{children}</p>
   </div>
 );
 
@@ -142,7 +187,7 @@ export default async function WrappedPage({ params }: Params) {
           </Card>
         ) : (
           <>
-            <Card className="bg-gradient-to-br from-amber-400 to-yellow-300 text-gray-900" kicker="Good days">
+            <Card className="bg-gradient-to-br from-amber-400 to-yellow-300 text-gray-900" kicker="Good days" icon={Sun}>
               <p className="text-xl font-semibold mb-2">You couldn&apos;t beat Wellington</p>
               <Big>{plural(s.goodDays, "time")}.</Big>
               <p className="text-gray-800">
@@ -152,7 +197,7 @@ export default async function WrappedPage({ params }: Params) {
             </Card>
 
             {s.longestGoodStreak || s.longestBadStreak || s.longestRainStreak ? (
-              <Card className="bg-gradient-to-br from-indigo-600 to-violet-700" kicker="Streaks">
+              <Card className="bg-gradient-to-br from-indigo-600 to-violet-700" kicker="Streaks" icon={Repeat}>
                 {s.longestGoodStreak ? (
                   <div className="mb-8">
                     <Big>{s.longestGoodStreak.length}</Big>
@@ -180,7 +225,7 @@ export default async function WrappedPage({ params }: Params) {
             ) : null}
 
             {topSeason ? (
-              <Card className="bg-gradient-to-br from-emerald-500 to-teal-700" kicker="Season of the year">
+              <Card className="bg-gradient-to-br from-emerald-500 to-teal-700" kicker="Season of the year" icon={Leaf}>
                 <Big>{topSeason.label}</Big>
                 <p className="text-xl font-semibold mb-8">
                   had the best odds: {pct(topSeason.pct)} of its days were good ({topSeason.good} of {topSeason.total}).
@@ -197,12 +242,12 @@ export default async function WrappedPage({ params }: Params) {
               </Card>
             ) : null}
 
-            <Card className="bg-gradient-to-br from-sky-500 to-blue-700" kicker="Rain">
+            <Card className="bg-gradient-to-br from-sky-500 to-blue-700" kicker="Rain" icon={CloudRain}>
               <Big>{s.rainDays}</Big>
               <p className="text-xl font-semibold">days with rain, {pct(s.rainPct)} of {s.isPartialYear ? "the year so far" : "the year"}.</p>
             </Card>
 
-            <Card className="bg-gradient-to-br from-slate-600 to-slate-800" kicker="Wind">
+            <Card className="bg-gradient-to-br from-slate-600 to-slate-800" kicker="Wind" icon={Wind}>
               <p className="text-3xl sm:text-4xl font-black leading-tight mb-2">The windy city, in numbers.</p>
               <p className="text-slate-200 mb-8">
                 Days by average daytime wind speed, in km/h. Anything from 30 up rules out a good day.
@@ -221,10 +266,11 @@ export default async function WrappedPage({ params }: Params) {
             </Card>
 
             {totalVotes > 0 ? (
-              <Card className="bg-gradient-to-br from-rose-500 to-pink-700" kicker="You voted">
+              <Card className="bg-gradient-to-br from-rose-500 to-pink-700" kicker="You voted" icon={Vote}>
                 <Big>{totalVotes.toLocaleString("en-NZ")}</Big>
-                <p className="text-xl font-semibold mb-2">
-                  votes: {s.votes.agree.toLocaleString("en-NZ")} agreed, {s.votes.disagree.toLocaleString("en-NZ")} didn&apos;t.
+                <p className="text-xl font-semibold mb-3">votes cast.</p>
+                <p className="text-2xl font-bold mb-3">
+                  <Votes agree={s.votes.agree} disagree={s.votes.disagree} />
                 </p>
                 {s.votes.firstVoteDate && s.votes.firstVoteDate > `${year}-01-01` ? (
                   <p className="text-rose-100 text-sm">Counting from the first vote, on {day(s.votes.firstVoteDate)}.</p>
@@ -251,7 +297,7 @@ export default async function WrappedPage({ params }: Params) {
             ) : null}
 
             {topReason || s.votes.mostContested || s.votes.mostUnanimous ? (
-              <Card className="bg-gradient-to-br from-cyan-600 to-indigo-800" kicker="Where you drew the line">
+              <Card className="bg-gradient-to-br from-cyan-600 to-indigo-800" kicker="Where you drew the line" icon={Scale}>
                 {topReason?.disagreeRate != null ? (
                   <>
                     <Big>{pct(topReason.disagreeRate * 100)}</Big>
@@ -283,7 +329,8 @@ export default async function WrappedPage({ params }: Params) {
                     <div>
                       <p className="text-xs font-bold uppercase tracking-widest text-cyan-100 mb-1">Most contested day</p>
                       <p className="text-lg font-semibold">
-                        {day(s.votes.mostContested.date)}: {s.votes.mostContested.agree} agreed, {s.votes.mostContested.disagree} didn&apos;t.
+                        {day(s.votes.mostContested.date)}:{" "}
+                        <Votes agree={s.votes.mostContested.agree} disagree={s.votes.mostContested.disagree} />
                       </p>
                       <p className="text-cyan-50">
                         {describeWeather(s.votes.mostContested)}, ruled {s.votes.mostContested.good ? "good" : "bad"}.
@@ -297,7 +344,7 @@ export default async function WrappedPage({ params }: Params) {
                         {day(s.votes.mostUnanimous.date)}:{" "}
                         {s.votes.mostUnanimous.disagree === 0
                           ? `${plural(s.votes.mostUnanimous.agree, "vote")}, not one disagreed.`
-                          : `${s.votes.mostUnanimous.agree} agreed, ${s.votes.mostUnanimous.disagree} didn't.`}
+                          : <Votes agree={s.votes.mostUnanimous.agree} disagree={s.votes.mostUnanimous.disagree} />}
                       </p>
                       <p className="text-cyan-50">
                         {describeWeather(s.votes.mostUnanimous)}, ruled {s.votes.mostUnanimous.good ? "good" : "bad"}.
@@ -308,59 +355,47 @@ export default async function WrappedPage({ params }: Params) {
               </Card>
             ) : null}
 
-            <Card className="bg-gradient-to-br from-orange-500 to-red-600" kicker="A year of extremes">
+            <Card className="bg-gradient-to-br from-orange-500 to-red-600" kicker="A year of extremes" icon={Zap}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                 {s.hottestDay ? (
-                  <Extreme value={`${s.hottestDay.temperature.toFixed(1)}°C`} label="Hottest day" date={s.hottestDay.date} />
+                  <Extreme icon={ThermometerSun} value={`${s.hottestDay.temperature.toFixed(1)}°C`}>
+                    Hottest day, {day(s.hottestDay.date)}.
+                  </Extreme>
                 ) : null}
                 {s.coldestDay ? (
-                  <Extreme
-                    value={`${s.coldestDay.temperature.toFixed(1)}°C`}
-                    label="Coldest day"
-                    note="That was the high. We don't record the low. Some things you are better off not knowing."
-                    date={s.coldestDay.date}
-                  />
+                  <Extreme icon={ThermometerSnowflake} value={`${s.coldestDay.temperature.toFixed(1)}°C`}>
+                    Coldest day, {day(s.coldestDay.date)}. That was the high. We don&apos;t record the low. Some things
+                    you are better off not knowing.
+                  </Extreme>
                 ) : null}
                 {s.windiestDay ? (
-                  <Extreme
-                    value={`${Math.round(s.windiestDay.windSpeed)} km/h`}
-                    label="Windiest day"
-                    note="Averaged over daylight hours."
-                    date={s.windiestDay.date}
-                  />
+                  <Extreme icon={Wind} value={`${Math.round(s.windiestDay.windSpeed)} km/h`}>
+                    Windiest day, {day(s.windiestDay.date)}. Averaged over daylight hours.
+                  </Extreme>
                 ) : null}
                 {s.stillestDay ? (
-                  <Extreme
-                    value={`${Math.round(s.stillestDay.windSpeed)} km/h`}
-                    label="Stillest day"
-                    note="Yes, really."
-                    date={s.stillestDay.date}
-                  />
+                  <Extreme icon={Feather} value={`${Math.round(s.stillestDay.windSpeed)} km/h`}>
+                    Stillest day, {day(s.stillestDay.date)}. Yes, really.
+                  </Extreme>
                 ) : null}
                 {s.rainiestDay ? (
-                  <Extreme
-                    value={`${s.rainiestDay.rain.toFixed(1)}mm`}
-                    label="Wettest day"
-                    date={s.rainiestDay.date}
-                  />
+                  <Extreme icon={CloudRain} value={`${s.rainiestDay.rain.toFixed(1)}mm`}>
+                    Wettest day, {day(s.rainiestDay.date)}.
+                  </Extreme>
                 ) : null}
-                <div>
-                  <p className="font-black text-3xl">
-                    {s.snowDays.length > 0
-                      ? `${s.snowDays.reduce((sum, d) => sum + d.snowfall, 0).toFixed(1)}cm`
-                      : "0cm"}
-                  </p>
-                  <p className="text-orange-50">
-                    {s.snowDays.length > 0
-                      ? `Snow, on ${s.snowDays.map((d) => day(d.date)).join(", ")}. In Wellington.`
-                      : "Snow. Not even a flake."}
-                  </p>
-                </div>
+                <Extreme
+                  icon={Snowflake}
+                  value={`${s.snowDays.reduce((sum, d) => sum + d.snowfall, 0).toFixed(1)}cm`}
+                >
+                  {s.snowDays.length > 0
+                    ? `Snow, on ${s.snowDays.map((d) => day(d.date)).join(", ")}. In Wellington.`
+                    : "Snow. Not even a flake."}
+                </Extreme>
               </div>
             </Card>
 
             {s.mostAverageDay && s.averages ? (
-              <Card className="bg-gradient-to-br from-stone-200 to-stone-400 text-gray-900" kicker="The most average day">
+              <Card className="bg-gradient-to-br from-stone-200 to-stone-400 text-gray-900" kicker="The most average day" icon={Equal}>
                 <Big>{day(s.mostAverageDay.date)}</Big>
                 <p className="text-xl font-semibold mb-2">
                   {describeWeather(s.mostAverageDay)}. About as Wellington as Wellington gets.
