@@ -96,6 +96,50 @@ export async function upsertWeatherRecord(record: WeatherUpsert): Promise<void> 
   `;
 }
 
+// Open-Meteo's daily/hourly response shape, as far as the batch upsert needs.
+// Both the forecast API (with past_days) and the historical archive API
+// return this same shape, so the cron and scripts/backfill-weather.ts share it.
+export interface OpenMeteoBatchResponse {
+  daily: {
+    time: string[];
+    weather_code: (number | null)[];
+    temperature_2m_max: (number | null)[];
+    snowfall_sum: (number | null)[];
+  };
+  hourly: {
+    precipitation: (number | null)[];
+    wind_speed_10m: (number | null)[];
+    apparent_temperature: (number | null)[];
+  };
+}
+
+// Turns an Open-Meteo batch response into upsertable rows, up to and
+// including `today`. Days whose max temperature or daytime wind is null are
+// SKIPPED, not stored as zero: the forecast API returns explicit nulls for
+// the oldest part of its past_days window (confirmed 2026-10-11 — the oldest
+// 18 of 92 days came back null), and the old `?? 0` fallback meant every
+// daily cron run overwrote real history with 0°C / 0 km/h / 0 mm rows.
+// Skipping leaves whatever was stored when that day was recent untouched.
+export function buildDailyRecords(data: OpenMeteoBatchResponse, today: string): WeatherUpsert[] {
+  const records: WeatherUpsert[] = [];
+  for (let i = 0; i < data.daily.time.length; i++) {
+    if (data.daily.time[i] > today) break;
+    const temperature = data.daily.temperature_2m_max[i];
+    const windSlice = daytimeSlice(data.hourly.wind_speed_10m, i);
+    if (temperature == null || windSlice.every((w) => w == null)) continue;
+    records.push({
+      date: data.daily.time[i],
+      temperature,
+      wind_speed: parseFloat(calculateDaytimeWind(data.hourly.wind_speed_10m as number[], i).toFixed(2)),
+      sunniness: calculateSunniness(data.daily.weather_code[i] ?? 0),
+      rain: parseFloat(calculateDaytimeRain(data.hourly.precipitation as number[], i).toFixed(2)),
+      snowfall: data.daily.snowfall_sum[i] ?? 0,
+      feels_like: parseFloat(calculateDaytimeFeelsLike(data.hourly.apparent_temperature as number[], i).toFixed(2)),
+    });
+  }
+  return records;
+}
+
 // Fetch the last `pastDays` of Wellington weather from Open-Meteo, upsert
 // all past records into Neon, and return the count + today's record.
 // Used by the daily cron route (/api/cron/daily-weather).
@@ -135,19 +179,7 @@ export async function fetchAndStoreBatch(
     throw new Error("Open-Meteo API returned incomplete data");
   }
 
-  const records: WeatherUpsert[] = [];
-  for (let i = 0; i < data.daily.time.length; i++) {
-    if (data.daily.time[i] > today) break;
-    records.push({
-      date: data.daily.time[i],
-      temperature: data.daily.temperature_2m_max[i] ?? 0,
-      wind_speed: parseFloat(calculateDaytimeWind(data.hourly.wind_speed_10m, i).toFixed(2)),
-      sunniness: calculateSunniness(data.daily.weather_code[i] ?? 0),
-      rain: parseFloat(calculateDaytimeRain(data.hourly.precipitation, i).toFixed(2)),
-      snowfall: data.daily.snowfall_sum[i] ?? 0,
-      feels_like: parseFloat(calculateDaytimeFeelsLike(data.hourly.apparent_temperature, i).toFixed(2)),
-    });
-  }
+  const records = buildDailyRecords(data, today);
 
   await Promise.all(records.map(r => upsertWeatherRecord(r)));
 

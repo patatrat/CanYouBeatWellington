@@ -201,6 +201,24 @@ describe('fetchAndStoreBatch', () => {
     expect(result.todayRecord?.snowfall).toBe(1.4);
   });
 
+  it('skips days Open-Meteo returns as null instead of storing zeros', async () => {
+    // Regression: the forecast API returns explicit nulls for the oldest part
+    // of the past_days window, and the old `?? 0` fallback overwrote real
+    // history with 0°C / 0 km/h rows on every cron run.
+    const data = validOpenMeteoResponse(3);
+    data.daily.time = ['2026-06-27', '2026-06-28', '2026-06-29'];
+    data.daily.temperature_2m_max[0] = null as unknown as number;
+    for (let h = 24; h < 48; h++) data.hourly.wind_speed_10m[h] = null as unknown as number;
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
+    mockSql.mockClear();
+    mockSql.mockResolvedValue([]);
+
+    const result = await fetchAndStoreBatch(3);
+    expect(result.stored).toBe(1);
+    expect(result.todayRecord?.date).toBe('2026-06-29');
+    expect(mockSql).toHaveBeenCalledTimes(1);
+  });
+
   it('excludes future days from the response (defensive against API drift)', async () => {
     const data = validOpenMeteoResponse(3);
     data.daily.time = ['2026-06-28', '2026-06-29', '2026-06-30'];
