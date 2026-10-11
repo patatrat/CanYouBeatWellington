@@ -317,7 +317,7 @@ export default async function WrappedPage({ params }: Params) {
                   <Extreme
                     value={`${s.coldestDay.temperature.toFixed(1)}°C`}
                     label="Coldest day"
-                    note="That was the high."
+                    note="That was the high. We don't record the low. Some things you are better off not knowing."
                     date={s.coldestDay.date}
                   />
                 ) : null}
