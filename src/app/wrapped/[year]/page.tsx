@@ -41,6 +41,13 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString
 
 const streakRange = (s: Streak) => (s.length === 1 ? day(s.start) : `${day(s.start)} to ${day(s.end)}`);
 
+// Hand-written context for days whose vote counts have a story behind
+// them. Shown under the busiest-day line when that day matches.
+const VOTE_DAY_NOTES: Record<string, string> = {
+  "2026-07-21":
+    "The day Reddit discovered You Can't Beat Wellington on a good day, after it was posted to r/newzealand.",
+};
+
 // Short labels for the chart, and the phrase used in sentences.
 const REASON_LABEL: Record<VoteReason, string> = {
   good: "Ruled good",
@@ -70,6 +77,15 @@ const Card = ({ className, kicker, children }: { className: string; kicker: stri
     <p className="text-xs font-bold uppercase tracking-[0.2em] opacity-80 mb-4">{kicker}</p>
     {children}
   </section>
+);
+
+const Extreme = ({ value, label, date }: { value: string; label: string; date: string }) => (
+  <div>
+    <p className="font-black text-3xl">{value}</p>
+    <p className="text-orange-50">
+      {label}, {day(date)}.
+    </p>
+  </div>
 );
 
 const Big = ({ children }: { children: React.ReactNode }) => (
@@ -127,17 +143,15 @@ export default async function WrappedPage({ params }: Params) {
         ) : (
           <>
             <Card className="bg-gradient-to-br from-amber-400 to-yellow-300 text-gray-900" kicker="Good days">
-              <Big>{s.goodDays}</Big>
-              <p className="text-xl font-semibold mb-2">
-                days you genuinely couldn&apos;t beat Wellington.
-              </p>
+              <p className="text-xl font-semibold mb-2">You couldn&apos;t beat Wellington</p>
+              <Big>{plural(s.goodDays, "time")}.</Big>
               <p className="text-gray-800">
                 That&apos;s {pct(s.goodPct)} of the {plural(s.recordedDays, "day")} on record. The other{" "}
                 {plural(s.badDays, "day")}? Well. Wellington.
               </p>
             </Card>
 
-            {s.longestGoodStreak || s.longestBadStreak ? (
+            {s.longestGoodStreak || s.longestBadStreak || s.longestRainStreak ? (
               <Card className="bg-gradient-to-br from-indigo-600 to-violet-700" kicker="Streaks">
                 {s.longestGoodStreak ? (
                   <div className="mb-8">
@@ -149,10 +163,17 @@ export default async function WrappedPage({ params }: Params) {
                   </div>
                 ) : null}
                 {s.longestBadStreak ? (
-                  <div>
+                  <div className="mb-8">
                     <p className="text-4xl font-black mb-2">{s.longestBadStreak.length}</p>
                     <p className="text-lg font-semibold">bad days in a row, the longest drought.</p>
                     <p className="text-indigo-100">{streakRange(s.longestBadStreak)}.</p>
+                  </div>
+                ) : null}
+                {s.longestRainStreak && s.longestRainStreak.length > 1 ? (
+                  <div>
+                    <p className="text-4xl font-black mb-2">{s.longestRainStreak.length}</p>
+                    <p className="text-lg font-semibold">days of rain in a row. Pack the brolly.</p>
+                    <p className="text-indigo-100">{streakRange(s.longestRainStreak)}.</p>
                   </div>
                 ) : null}
               </Card>
@@ -178,12 +199,7 @@ export default async function WrappedPage({ params }: Params) {
 
             <Card className="bg-gradient-to-br from-sky-500 to-blue-700" kicker="Rain">
               <Big>{s.rainDays}</Big>
-              <p className="text-xl font-semibold mb-2">days with rain, {pct(s.rainPct)} of {s.isPartialYear ? "the year so far" : "the year"}.</p>
-              {s.rainiestDay ? (
-                <p className="text-sky-50">
-                  The wettest was {day(s.rainiestDay.date)}, with {s.rainiestDay.rain.toFixed(1)}mm during daylight hours.
-                </p>
-              ) : null}
+              <p className="text-xl font-semibold">days with rain, {pct(s.rainPct)} of {s.isPartialYear ? "the year so far" : "the year"}.</p>
             </Card>
 
             <Card className="bg-gradient-to-br from-slate-600 to-slate-800" kicker="Wind">
@@ -202,11 +218,6 @@ export default async function WrappedPage({ params }: Params) {
                   muted: bin.min >= 30,
                 }))}
               />
-              {s.windiestDay ? (
-                <p className="text-slate-200 mt-6">
-                  Windiest: {day(s.windiestDay.date)}, averaging {Math.round(s.windiestDay.windSpeed)} km/h.
-                </p>
-              ) : null}
             </Card>
 
             {totalVotes > 0 ? (
@@ -222,6 +233,9 @@ export default async function WrappedPage({ params }: Params) {
                   <p className="text-rose-50 mt-4">
                     Your busiest day was {day(s.votes.busiest.date)}, with{" "}
                     {plural(s.votes.busiest.agree + s.votes.busiest.disagree, "vote")}.
+                    {VOTE_DAY_NOTES[s.votes.busiest.date] ? (
+                      <span className="block mt-2 font-semibold text-white">{VOTE_DAY_NOTES[s.votes.busiest.date]}</span>
+                    ) : null}
                   </p>
                 ) : null}
                 {goodDisagree !== null && badDisagree !== null ? (
@@ -294,49 +308,52 @@ export default async function WrappedPage({ params }: Params) {
               </Card>
             ) : null}
 
-            {s.savedBySpecialDates.length > 0 || s.ruinedBySpecialDates.length > 0 ? (
-              <Card className="bg-gradient-to-br from-fuchsia-600 to-purple-800" kicker="Vibes over weather">
-                {s.savedBySpecialDates.length > 0 ? (
-                  <>
-                    <Big>{s.savedBySpecialDates.length}</Big>
-                    <p className="text-xl font-semibold mb-4">
-                      {s.savedBySpecialDates.length === 1 ? "day was" : "days were"} saved by something bigger than the weather.
-                    </p>
-                    <ul className="space-y-1 text-fuchsia-50">
-                      {s.savedBySpecialDates.map((d) => (
-                        <li key={d.date}>
-                          {day(d.date)}: {d.title}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-                {s.ruinedBySpecialDates.length > 0 ? (
-                  <p className="text-fuchsia-50 mt-6">
-                    And {plural(s.ruinedBySpecialDates.length, "perfectly good day")} ruined anyway:{" "}
-                    {s.ruinedBySpecialDates.map((d) => `${d.title} (${day(d.date)})`).join(", ")}.
-                  </p>
-                ) : null}
-              </Card>
-            ) : null}
-
-            <Card className="bg-gradient-to-br from-orange-500 to-red-600" kicker="Also this year">
-              <ul className="space-y-4 text-lg">
+            <Card className="bg-gradient-to-br from-orange-500 to-red-600" kicker="A year of extremes">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                 {s.hottestDay ? (
-                  <li>
-                    <span className="font-black text-3xl">{s.hottestDay.temperature.toFixed(1)}°C</span>
-                    <br />
-                    Hottest day, on {day(s.hottestDay.date)}.
-                  </li>
+                  <Extreme value={`${s.hottestDay.temperature.toFixed(1)}°C`} label="Hottest day" date={s.hottestDay.date} />
                 ) : null}
-                <li>
-                  <span className="font-black text-3xl">{s.snowDays}</span>
-                  <br />
-                  {s.snowDays === 0
-                    ? "Days of snow. Not even a flake."
-                    : `${s.snowDays === 1 ? "Day" : "Days"} of snow. In Wellington.`}
-                </li>
-              </ul>
+                {s.coldestDay ? (
+                  <Extreme
+                    value={`${s.coldestDay.temperature.toFixed(1)}°C`}
+                    label="Coldest day, and that was the high"
+                    date={s.coldestDay.date}
+                  />
+                ) : null}
+                {s.windiestDay ? (
+                  <Extreme
+                    value={`${Math.round(s.windiestDay.windSpeed)} km/h`}
+                    label="Windiest day, on average"
+                    date={s.windiestDay.date}
+                  />
+                ) : null}
+                {s.stillestDay ? (
+                  <Extreme
+                    value={`${Math.round(s.stillestDay.windSpeed)} km/h`}
+                    label="Stillest day. Yes, really"
+                    date={s.stillestDay.date}
+                  />
+                ) : null}
+                {s.rainiestDay ? (
+                  <Extreme
+                    value={`${s.rainiestDay.rain.toFixed(1)}mm`}
+                    label="Wettest day, in daylight hours"
+                    date={s.rainiestDay.date}
+                  />
+                ) : null}
+                <div>
+                  <p className="font-black text-3xl">
+                    {s.snowDays.length > 0
+                      ? `${s.snowDays.reduce((sum, d) => sum + d.snowfall, 0).toFixed(1)}cm`
+                      : "0cm"}
+                  </p>
+                  <p className="text-orange-50">
+                    {s.snowDays.length > 0
+                      ? `Snow, on ${s.snowDays.map((d) => day(d.date)).join(", ")}. In Wellington.`
+                      : "Snow. Not even a flake."}
+                  </p>
+                </div>
+              </div>
             </Card>
           </>
         )}

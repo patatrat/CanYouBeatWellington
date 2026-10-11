@@ -111,14 +111,18 @@ export interface WrappedStats {
   rainDays: number;
   rainPct: number;
   rainiestDay: { date: string; rain: number } | null;
+  // `temperature` is each day's maximum, so the coldest day is the one
+  // with the lowest high.
   hottestDay: { date: string; temperature: number } | null;
+  coldestDay: { date: string; temperature: number } | null;
+  // Average daytime wind, same measure the good-day rule uses.
   windiestDay: { date: string; windSpeed: number } | null;
-  snowDays: number;
+  stillestDay: { date: string; windSpeed: number } | null;
+  snowDays: { date: string; snowfall: number }[];
   longestGoodStreak: Streak | null;
   longestBadStreak: Streak | null;
-  // Days a special date's verdict_override changed the outcome.
-  savedBySpecialDates: { date: string; title: string }[];
-  ruinedBySpecialDates: { date: string; title: string }[];
+  // Consecutive days with any daytime rain (> 0mm, same bar as rainDays).
+  longestRainStreak: Streak | null;
   windBins: WindBin[];
 }
 
@@ -178,6 +182,8 @@ const longestStreak = (days: WrappedDay[], predicate: (d: WrappedDay) => boolean
 
 const maxBy = <T>(items: T[], key: (t: T) => number): T | null =>
   items.reduce<T | null>((best, item) => (best === null || key(item) > key(best) ? item : best), null);
+
+const minBy = <T>(items: T[], key: (t: T) => number): T | null => maxBy(items, (t) => -key(t));
 
 const toVotedDay = (d: WrappedDay): VotedDay => ({
   date: d.date,
@@ -319,7 +325,9 @@ export function computeWrapped(
   const rainy = days.filter((d) => d.rain > 0);
   const rainiest = maxBy(rainy, (d) => d.rain);
   const hottest = maxBy(days, (d) => d.temperature);
+  const coldest = minBy(days, (d) => d.temperature);
   const windiest = maxBy(days, (d) => d.windSpeed);
+  const stillest = minBy(days, (d) => d.windSpeed);
 
   return {
     year,
@@ -344,16 +352,15 @@ export function computeWrapped(
     rainPct: pct(rainy.length),
     rainiestDay: rainiest ? { date: rainiest.date, rain: rainiest.rain } : null,
     hottestDay: hottest ? { date: hottest.date, temperature: hottest.temperature } : null,
+    coldestDay: coldest ? { date: coldest.date, temperature: coldest.temperature } : null,
     windiestDay: windiest ? { date: windiest.date, windSpeed: windiest.windSpeed } : null,
-    snowDays: days.filter((d) => (d.snowfall ?? 0) > 0).length,
+    stillestDay: stillest ? { date: stillest.date, windSpeed: stillest.windSpeed } : null,
+    snowDays: days
+      .filter((d) => (d.snowfall ?? 0) > 0)
+      .map((d) => ({ date: d.date, snowfall: d.snowfall ?? 0 })),
     longestGoodStreak: longestStreak(days, (d) => d.good),
     longestBadStreak: longestStreak(days, (d) => !d.good),
-    savedBySpecialDates: days
-      .filter((d) => d.good && !d.weatherGood)
-      .map((d) => ({ date: d.date, title: d.specialTitle ?? "" })),
-    ruinedBySpecialDates: days
-      .filter((d) => !d.good && d.weatherGood)
-      .map((d) => ({ date: d.date, title: d.specialTitle ?? "" })),
+    longestRainStreak: longestStreak(days, (d) => d.rain > 0),
     windBins: WIND_BINS.map((bin) => ({
       ...bin,
       count: days.filter((d) => d.windSpeed >= bin.min && (bin.max === null || d.windSpeed < bin.max)).length,

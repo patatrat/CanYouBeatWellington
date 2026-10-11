@@ -53,6 +53,17 @@ describe('computeWrapped', () => {
     expect(s.badDays).toBe(3);
   });
 
+  it('finds the longest run of rainy days', () => {
+    const s = computeWrapped(2026, records, [], '2026-01-08');
+    // BAD days have rain; 01-04 is cut off from 01-06 by the missing 01-05,
+    // and 01-07 is a placeholder, so no run is longer than one day.
+    expect(s.longestRainStreak?.length).toBe(1);
+    const wet = computeWrapped(2026, [
+      rec('2026-03-01', BAD), rec('2026-03-02', { ...BAD, rain: 0.2 }), rec('2026-03-03', BAD), rec('2026-03-04', GOOD),
+    ], [], '2026-12-31');
+    expect(wet.longestRainStreak).toEqual({ length: 3, start: '2026-03-01', end: '2026-03-03' });
+  });
+
   it('breaks streaks across missing days', () => {
     const s = computeWrapped(2026, records, [], '2026-01-08');
     expect(s.longestGoodStreak).toEqual({ length: 3, start: '2026-01-01', end: '2026-01-03' });
@@ -69,12 +80,11 @@ describe('computeWrapped', () => {
     expect(s.votes.onBadDays.disagreeRate).toBeCloseTo(3 / 4);
   });
 
-  it('applies special-date verdict overrides and reports them', () => {
+  it('applies special-date verdict overrides', () => {
     const s = computeWrapped(2026, records, [
       special({ start_date: '2026-01-04', end_date: '2026-01-04', verdict_override: true, title: 'Hurricanes win' }),
     ], '2026-01-08');
     expect(s.goodDays).toBe(4);
-    expect(s.savedBySpecialDates).toEqual([{ date: '2026-01-04', title: 'Hurricanes win' }]);
     expect(s.longestGoodStreak?.length).toBe(4);
   });
 
@@ -99,8 +109,12 @@ describe('computeWrapped', () => {
     // Summer 1 of 1 (100%) beats Winter 2 of 3 (67%) despite fewer good days.
     expect(s.seasons.map((x) => x.label)).toEqual(['Summer', 'Winter']);
     expect(s.rainiestDay).toEqual({ date: '2026-07-12', rain: 22 });
-    expect(s.snowDays).toBe(1);
+    expect(s.snowDays).toEqual([{ date: '2026-07-12', snowfall: 0.7 }]);
     expect(s.rainDays).toBe(1);
+    expect(s.hottestDay).toEqual({ date: '2026-01-10', temperature: 22 });
+    expect(s.coldestDay).toEqual({ date: '2026-07-12', temperature: 9 });
+    expect(s.windiestDay).toEqual({ date: '2026-07-12', windSpeed: 50 });
+    expect(s.stillestDay).toEqual({ date: '2026-07-10', windSpeed: 5 });
   });
 });
 
