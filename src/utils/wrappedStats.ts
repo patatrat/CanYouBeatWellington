@@ -119,6 +119,10 @@ export interface WrappedStats {
   windiestDay: { date: string; windSpeed: number } | null;
   stillestDay: { date: string; windSpeed: number } | null;
   snowDays: { date: string; snowfall: number }[];
+  // The year's mean temperature (daily high), daytime wind and daytime rain.
+  averages: { temperature: number; windSpeed: number; rain: number } | null;
+  // The day closest to all three averages at once. See mostAverage().
+  mostAverageDay: { date: string; temperature: number; windSpeed: number; rain: number; good: boolean } | null;
   longestGoodStreak: Streak | null;
   longestBadStreak: Streak | null;
   // Consecutive days with any daytime rain (> 0mm, same bar as rainDays).
@@ -182,6 +186,34 @@ const longestStreak = (days: WrappedDay[], predicate: (d: WrappedDay) => boolean
 
 const maxBy = <T>(items: T[], key: (t: T) => number): T | null =>
   items.reduce<T | null>((best, item) => (best === null || key(item) > key(best) ? item : best), null);
+
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+const stdDev = (xs: number[], m: number) => Math.sqrt(mean(xs.map((x) => (x - m) ** 2)));
+
+// The day nearest the year's mean on temperature, wind and rain together.
+// Each measure's distance is divided by that measure's standard deviation,
+// so a degree of temperature and a millimetre of rain aren't treated as the
+// same size: rain swings far more day to day, so it counts for less per
+// millimetre. Ties go to the earliest day.
+const mostAverage = (days: WrappedDay[]) => {
+  if (days.length === 0) return { averages: null, day: null };
+  const measures = [
+    (d: WrappedDay) => d.temperature,
+    (d: WrappedDay) => d.windSpeed,
+    (d: WrappedDay) => d.rain,
+  ];
+  const stats = measures.map((get) => {
+    const values = days.map(get);
+    const m = mean(values);
+    return { get, mean: m, sd: stdDev(values, m) || 1 };
+  });
+  const distance = (d: WrappedDay) =>
+    Math.sqrt(stats.reduce((sum, { get, mean: m, sd }) => sum + ((get(d) - m) / sd) ** 2, 0));
+  return {
+    averages: { temperature: stats[0].mean, windSpeed: stats[1].mean, rain: stats[2].mean },
+    day: minBy(days, distance),
+  };
+};
 
 const minBy = <T>(items: T[], key: (t: T) => number): T | null => maxBy(items, (t) => -key(t));
 
@@ -328,6 +360,7 @@ export function computeWrapped(
   const coldest = minBy(days, (d) => d.temperature);
   const windiest = maxBy(days, (d) => d.windSpeed);
   const stillest = minBy(days, (d) => d.windSpeed);
+  const average = mostAverage(days);
 
   return {
     year,
@@ -358,6 +391,16 @@ export function computeWrapped(
     snowDays: days
       .filter((d) => (d.snowfall ?? 0) > 0)
       .map((d) => ({ date: d.date, snowfall: d.snowfall ?? 0 })),
+    averages: average.averages,
+    mostAverageDay: average.day
+      ? {
+          date: average.day.date,
+          temperature: average.day.temperature,
+          windSpeed: average.day.windSpeed,
+          rain: average.day.rain,
+          good: average.day.good,
+        }
+      : null,
     longestGoodStreak: longestStreak(days, (d) => d.good),
     longestBadStreak: longestStreak(days, (d) => !d.good),
     longestRainStreak: longestStreak(days, (d) => d.rain > 0),

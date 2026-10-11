@@ -64,6 +64,24 @@ describe('computeWrapped', () => {
     expect(wet.longestRainStreak).toEqual({ length: 3, start: '2026-03-01', end: '2026-03-03' });
   });
 
+  it('finds the day closest to the yearly averages on all three measures', () => {
+    const s = computeWrapped(2026, [
+      rec('2026-03-01', { temperature: 10, wind_speed: 10, rain: 0 }),
+      rec('2026-03-02', { temperature: 30, wind_speed: 50, rain: 20 }),
+      rec('2026-03-03', { temperature: 20, wind_speed: 30, rain: 10 }), // exactly the mean
+      rec('2026-03-04', { temperature: 20, wind_speed: 10, rain: 10 }), // average temp and rain only
+    ], [], '2026-12-31');
+    expect(s.averages).toEqual({ temperature: 20, windSpeed: 25, rain: 10 });
+    expect(s.mostAverageDay?.date).toBe('2026-03-03');
+    expect(s.mostAverageDay?.good).toBe(false);
+  });
+
+  it('has no most average day without data', () => {
+    const s = computeWrapped(2026, [], [], '2026-12-31');
+    expect(s.averages).toBeNull();
+    expect(s.mostAverageDay).toBeNull();
+  });
+
   it('breaks streaks across missing days', () => {
     const s = computeWrapped(2026, records, [], '2026-01-08');
     expect(s.longestGoodStreak).toEqual({ length: 3, start: '2026-01-01', end: '2026-01-03' });

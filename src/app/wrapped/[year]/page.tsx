@@ -69,7 +69,7 @@ const REASON_QUIP: Record<VoteReason, string> = {
 };
 
 // Rain at or under the good-day tolerance reads as dry, matching the rules.
-const describeWeather = (d: VotedDay) =>
+const describeWeather = (d: Pick<VotedDay, "temperature" | "windSpeed" | "rain">) =>
   `${d.temperature.toFixed(1)}°C, ${Math.round(d.windSpeed)} km/h wind, ${d.rain > 0.1 ? `${d.rain.toFixed(1)}mm rain` : "dry"}`;
 
 const Card = ({ className, kicker, children }: { className: string; kicker: string; children: React.ReactNode }) => (
@@ -358,6 +358,24 @@ export default async function WrappedPage({ params }: Params) {
                 </div>
               </div>
             </Card>
+
+            {s.mostAverageDay && s.averages ? (
+              <Card className="bg-gradient-to-br from-stone-200 to-stone-400 text-gray-900" kicker="The most average day">
+                <Big>{day(s.mostAverageDay.date)}</Big>
+                <p className="text-xl font-semibold mb-2">
+                  {describeWeather(s.mostAverageDay)}. About as Wellington as Wellington gets.
+                </p>
+                <p className="text-gray-800 mb-4">
+                  {s.mostAverageDay.good
+                    ? "And it was a good day. On an average day, you still couldn't beat it."
+                    : "It was ruled a bad day, which is about right for an average Wellington day."}
+                </p>
+                <p className="text-sm text-gray-700">
+                  The year&apos;s averages: {s.averages.temperature.toFixed(1)}°C high, {Math.round(s.averages.windSpeed)} km/h
+                  wind and {s.averages.rain.toFixed(1)}mm of daytime rain. This was the closest day to all three at once.
+                </p>
+              </Card>
+            ) : null}
           </>
         )}
 
