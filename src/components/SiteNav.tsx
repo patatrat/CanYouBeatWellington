@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Home, HelpCircle, History as HistoryIcon } from "lucide-react";
 
-type Page = "home" | "about" | "history";
+// "wrapped" isn't in LINKS on purpose: Wrapped pages show the normal nav
+// but nothing links *to* them until a year is released.
+type Page = "home" | "about" | "history" | "wrapped";
 
 interface SiteNavProps {
   current: Page;
