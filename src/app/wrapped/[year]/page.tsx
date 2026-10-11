@@ -79,11 +79,11 @@ const Card = ({ className, kicker, children }: { className: string; kicker: stri
   </section>
 );
 
-const Extreme = ({ value, label, date }: { value: string; label: string; date: string }) => (
+const Extreme = ({ value, label, date, note }: { value: string; label: string; date: string; note?: string }) => (
   <div>
     <p className="font-black text-3xl">{value}</p>
     <p className="text-orange-50">
-      {label}, {day(date)}.
+      {label}, {day(date)}.{note ? ` ${note}` : null}
     </p>
   </div>
 );
@@ -316,28 +316,31 @@ export default async function WrappedPage({ params }: Params) {
                 {s.coldestDay ? (
                   <Extreme
                     value={`${s.coldestDay.temperature.toFixed(1)}°C`}
-                    label="Coldest day, and that was the high"
+                    label="Coldest day"
+                    note="That was the high."
                     date={s.coldestDay.date}
                   />
                 ) : null}
                 {s.windiestDay ? (
                   <Extreme
                     value={`${Math.round(s.windiestDay.windSpeed)} km/h`}
-                    label="Windiest day, on average"
+                    label="Windiest day"
+                    note="Averaged over daylight hours."
                     date={s.windiestDay.date}
                   />
                 ) : null}
                 {s.stillestDay ? (
                   <Extreme
                     value={`${Math.round(s.stillestDay.windSpeed)} km/h`}
-                    label="Stillest day. Yes, really"
+                    label="Stillest day"
+                    note="Yes, really."
                     date={s.stillestDay.date}
                   />
                 ) : null}
                 {s.rainiestDay ? (
                   <Extreme
                     value={`${s.rainiestDay.rain.toFixed(1)}mm`}
-                    label="Wettest day, in daylight hours"
+                    label="Wettest day"
                     date={s.rainiestDay.date}
                   />
                 ) : null}
