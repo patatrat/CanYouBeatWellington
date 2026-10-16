@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { format, parseISO, subDays } from "date-fns";
 import { getThresholds, getSeasonLabel, isGoodWeatherDay } from "@/utils/rulesStorage";
@@ -184,13 +185,14 @@ export default async function HomePage() {
         )}
 
         {/* Season badge */}
-        <span
-          className={`text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-6 ${
-            isShitsville ? "bg-slate-700 text-slate-100" : "bg-amber-200 text-amber-800"
+        <Link
+          href="/seasons"
+          className={`text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-6 transition-colors ${
+            isShitsville ? "bg-slate-700 text-slate-100 hover:bg-slate-600" : "bg-amber-200 text-amber-800 hover:bg-amber-300"
           }`}
         >
           {seasonLabel} season
-        </span>
+        </Link>
 
         {/* Question */}
         <h1 className={`text-sm font-medium ${faintText} uppercase tracking-widest mb-2`}>
