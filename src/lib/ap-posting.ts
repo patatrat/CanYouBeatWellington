@@ -77,7 +77,7 @@ export async function deliverToFollowers(
   return { delivered, failed: followers.length - delivered, total: followers.length };
 }
 
-async function getInboxUrl(actorUrl: string): Promise<string> {
+export async function getInboxUrl(actorUrl: string): Promise<string> {
   const cacheKey = `cybw:ap:inbox:${actorUrl}`;
   const cached = await kv.get<string>(cacheKey);
   if (cached?.startsWith("https://")) return cached;

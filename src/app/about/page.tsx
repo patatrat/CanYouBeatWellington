@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
 import FediverseHandle from "@/components/FediverseHandle";
@@ -55,7 +56,10 @@ export default function AboutPage() {
             the rule change on{" "}
             <a href="https://radomski.co.nz/blog/shitsville" target="_blank" rel="noopener" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
               the blog <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
-            </a>.
+            </a>. To see where we are in the year right now, check the{" "}
+            <Link href="/seasons" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+              seasons clock
+            </Link>.
           </p>
 
           <div className="overflow-x-auto">
