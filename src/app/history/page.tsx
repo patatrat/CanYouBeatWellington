@@ -10,6 +10,8 @@ import SiteNav from "@/components/SiteNav";
 
 export const metadata: Metadata = {
   title: "The Record — Can You Beat Wellington?",
+  description: "Every Wellington day since 2020, judged good or bad: good days by month and season, monthly weather averages, and a full calendar.",
+  alternates: { canonical: "/history" },
 };
 
 export const revalidate = 3600;

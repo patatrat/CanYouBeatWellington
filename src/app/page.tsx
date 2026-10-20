@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { format, parseISO, subDays } from "date-fns";
@@ -45,6 +46,20 @@ import SiteNav from "@/components/SiteNav";
 // yesterday's date/verdict right after NZ midnight before refreshing —
 // still self-corrects on the next regeneration, same as before.
 export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
+// Tells search engines the site's name and the other names people search
+// for it by (Search Console shows all of these as real queries).
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Can You Beat Wellington?",
+  alternateName: ["You can't beat Wellington on a good day", "Can't beat Welly on a good day", "YCBWOAGD"],
+  url: "https://canyoubeatwellington.nz/",
+};
 
 export default async function HomePage() {
   const today = getTodaysNZTDate();
@@ -158,6 +173,7 @@ export default async function HomePage() {
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-700 ${bgClass}`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSON_LD) }} />
       <SpecialDateEffect effect={special?.effect ?? "none"} />
 
       <SiteNav current="home" onDark={onDark} />

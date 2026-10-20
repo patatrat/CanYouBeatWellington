@@ -6,7 +6,9 @@ import FediverseHandle from "@/components/FediverseHandle";
 import SiteNav from "@/components/SiteNav";
 
 export const metadata: Metadata = {
-  title: "Why though? | Can You Beat Wellington?",
+  title: "Why Though? Can You Really Beat Wellington on a Good Day?",
+  description: "How a good day in Wellington is judged: temperature, wind and rain rules for each of the six Wellington seasons, including Shitsville.",
+  alternates: { canonical: "/about" },
 };
 
 const SEASONS = [
@@ -37,7 +39,7 @@ export default function AboutPage() {
 
         <div className="prose prose-gray max-w-none space-y-6 text-gray-700">
           <p>
-            {`"You can't beat Wellington on a good day." Wellington's most famous weather saying.
+            {`"You can't beat Wellington on a good day" (or Welly, if you're local). Wellington's most famous weather saying.
             But how often is it actually true?`}
           </p>
           <p>

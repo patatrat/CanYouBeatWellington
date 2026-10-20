@@ -9,7 +9,7 @@ const TITLE = "You Can't Beat Wellington on a Good Day — Can You Beat Wellingt
 // display the HTML-escaped &#x27; literally instead of decoding it back to
 // an apostrophe, and this string is what most platforms fall back to for
 // share-preview text when no explicit og:description is read correctly.
-const DESCRIPTION = "Daily verdict on the weather in Wellington, New Zealand.";
+const DESCRIPTION = "Can you beat Wellington today? A daily verdict on Wellington, New Zealand weather, judged against the six local seasons, including Shitsville.";
 // Human-facing canonical URL for Open Graph/Twitter cards — distinct from
 // the rel="me" links below, which are about ActivityPub actor identity
 // verification, not social-preview metadata.
@@ -17,6 +17,10 @@ const CANONICAL_URL = 'https://canyoubeatwellington.nz';
 const OG_IMAGE = `${CANONICAL_URL}/canyoubeatwellington_og_image.jpg`;
 
 export const metadata: Metadata = {
+  // Resolves each page's relative alternates.canonical. Every page sets its
+  // own canonical rather than inheriting one from here, since an inherited
+  // "/" would tell Google every page is a duplicate of the home page.
+  metadataBase: new URL(CANONICAL_URL),
   title: TITLE,
   description: DESCRIPTION,
   openGraph: {

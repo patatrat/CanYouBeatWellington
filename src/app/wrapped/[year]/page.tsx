@@ -48,6 +48,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: `Wellington Wrapped ${year} | Can You Beat Wellington?`,
     description: `A year of Wellington weather, judged: every good day, bad day and windy day of ${year}.`,
+    alternates: { canonical: `/wrapped/${year}` },
     // Drafts are never indexed, wherever they're viewed.
     robots: isWrappedReleased(year) ? undefined : { index: false, follow: false },
   };
