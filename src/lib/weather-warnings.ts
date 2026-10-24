@@ -24,6 +24,10 @@ export interface WeatherWarning {
   colour: string;
   colourName: string;
   web: string;
+  // Identifiers of the earlier alerts this one replaces. MetService reissues
+  // each warning roughly every 12 hours under a new identifier, pointing
+  // back at the one it updates.
+  references: string[];
 }
 
 const tag = (xml: string, name: string): string | null => {
@@ -83,6 +87,11 @@ export function parseWellingtonAlert(xml: string, now: Date): WeatherWarning | n
     colour: parameter(xml, "ColourCodeHex") ?? "#FFD400",
     colourName: parameter(xml, "ColourCode") ?? "Yellow",
     web: tag(xml, "web") ?? "https://www.metservice.com/warnings/home",
+    // CAP references are space-separated "sender,identifier,sent" triples.
+    references: (tag(xml, "references") ?? "")
+      .split(/\s+/)
+      .map((ref) => ref.split(",")[1])
+      .filter((id): id is string => Boolean(id)),
   };
 }
 
@@ -134,9 +143,9 @@ export function formatNZTime(iso: string): string {
   return `${parts.hour}${minutes}${parts.dayPeriod.toLowerCase().replace(/\./g, "")} ${parts.weekday} ${parts.day} ${parts.month}`;
 }
 
-const fetchText = async (url: string) => {
+const fetchText = async (url: string, fresh: boolean) => {
   const res = await fetch(url, {
-    next: { revalidate: REVALIDATE_SECONDS },
+    ...(fresh ? { cache: "no-store" as const } : { next: { revalidate: REVALIDATE_SECONDS } }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
@@ -144,14 +153,15 @@ const fetchText = async (url: string) => {
 };
 
 // Never throws: a MetService outage must not take the home page down with
-// it, so any failure just means no banner.
-export async function getWellingtonWarnings(now = new Date()): Promise<WeatherWarning[]> {
+// it, so any failure just means no banner. `fresh` skips the fetch cache,
+// for the warning-posting cron, which shouldn't act on hour-old data.
+export async function getWellingtonWarnings(now = new Date(), { fresh = false } = {}): Promise<WeatherWarning[]> {
   try {
-    const rss = await fetchText(FEED_URL);
+    const rss = await fetchText(FEED_URL, fresh);
     const links = [...rss.matchAll(/<link>(https:\/\/alerts\.metservice\.com\/cap\/alert\?id=[^<]+)<\/link>/g)].map(
       (m) => decodeEntities(m[1]),
     );
-    const alerts = await Promise.allSettled(links.map(fetchText));
+    const alerts = await Promise.allSettled(links.map((link) => fetchText(link, fresh)));
     const warnings = alerts
       .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
       .map((r) => parseWellingtonAlert(r.value, now))

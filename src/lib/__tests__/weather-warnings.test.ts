@@ -31,6 +31,15 @@ describe("parseWellingtonAlert", () => {
     expect(warning?.instruction).toMatch(/^Action: Prepare your property/);
   });
 
+  it("reads the identifiers of the alerts a reissue replaces", () => {
+    expect(parseWellingtonAlert(WELLINGTON_WIND, BEFORE_EXPIRY)?.references).toEqual([]);
+    const reissue = WELLINGTON_WIND.replace(
+      "<scope>Public</scope>",
+      "<scope>Public</scope><references>https://www.metservice.com,old.1,2026-10-24T20:24:28+13:00 https://www.metservice.com,old.2,2026-10-24T21:00:00+13:00</references>",
+    );
+    expect(parseWellingtonAlert(reissue, BEFORE_EXPIRY)?.references).toEqual(["old.1", "old.2"]);
+  });
+
   it("ignores alerts for other regions", () => {
     expect(parseWellingtonAlert(OTAGO_WIND, BEFORE_EXPIRY)).toBeNull();
   });

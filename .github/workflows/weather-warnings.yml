@@ -1,0 +1,22 @@
+name: Post weather warnings
+
+# Checks MetService for new orange/red warnings covering Wellington and
+# posts them to fediverse followers. Runs here rather than as a Vercel Cron
+# because Vercel's Hobby plan only allows daily crons, and warnings can be
+# issued at any hour. GitHub may delay scheduled runs by a few minutes.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for new warnings
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://canyoubeatwellington.nz/api/cron/weather-warnings
