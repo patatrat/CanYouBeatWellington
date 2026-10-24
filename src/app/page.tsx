@@ -268,7 +268,7 @@ export default async function HomePage() {
         )}
 
         {/* Forecast */}
-        <ForecastStrip forecast={liveWeather.forecast} onDark={onDark} />
+        <ForecastStrip forecast={liveWeather.forecast} onDark={onDark} warnings={warnings} />
 
         {/* Attribution */}
         <p className={`text-xs ${faintText} text-center mt-5`}>

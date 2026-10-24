@@ -1,6 +1,8 @@
+import { AlertTriangle } from "lucide-react";
 import { getThresholds } from "@/utils/rulesStorage";
 import { pickForecastSummary } from "@/utils/quips";
 import type { ForecastDay } from "@/lib/weather";
+import { warningForDay, type WeatherWarning } from "@/lib/weather-warnings";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -10,9 +12,12 @@ interface ForecastStripProps {
   // gray-on-light text for light variants. Day cells keep their own
   // backgrounds, so only the strip's header/summary text needs it.
   onDark?: boolean;
+  // MetService warnings — a day any of them touches gets outlined in the
+  // most severe one's colour.
+  warnings?: WeatherWarning[];
 }
 
-const ForecastStrip = ({ forecast, onDark = false }: ForecastStripProps) => {
+const ForecastStrip = ({ forecast, onDark = false, warnings = [] }: ForecastStripProps) => {
   if (!forecast?.length) return null;
   const faintText = onDark ? "text-slate-400" : "text-gray-400";
 
@@ -35,6 +40,7 @@ const ForecastStrip = ({ forecast, onDark = false }: ForecastStripProps) => {
       temp: day.temperature.toFixed(0),
       good,
       failures,
+      warning: warningForDay(day.date, warnings),
     };
   });
 
@@ -53,7 +59,10 @@ const ForecastStrip = ({ forecast, onDark = false }: ForecastStripProps) => {
             className={`flex flex-col items-center rounded-lg py-2 px-1 text-center transition-colors ${
               day.good ? "bg-green-100/70 text-green-800" : "bg-gray-200/60 text-gray-500"
             }`}
-            title={day.good ? "Good day!" : `Fails: ${day.failures.join(", ")}`}
+            style={day.warning ? { boxShadow: `inset 0 0 0 2px ${day.warning.colour}` } : undefined}
+            title={[day.good ? "Good day!" : `Fails: ${day.failures.join(", ")}`, day.warning?.headline]
+              .filter(Boolean)
+              .join(" · ")}
           >
             <span className="text-[10px] font-semibold uppercase tracking-wide leading-none mb-1">
               {day.dayName}
@@ -62,6 +71,13 @@ const ForecastStrip = ({ forecast, onDark = false }: ForecastStripProps) => {
               {day.good ? "✓" : "✗"}
             </span>
             <span className="text-[10px] mt-1 leading-none">{day.temp}°</span>
+            {day.warning && (
+              <AlertTriangle
+                className="h-3 w-3 mt-1"
+                style={{ color: day.warning.colour }}
+                aria-label={day.warning.headline}
+              />
+            )}
           </div>
         ))}
       </div>

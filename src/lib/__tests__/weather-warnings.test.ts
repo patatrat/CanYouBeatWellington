@@ -5,6 +5,7 @@ import {
   parseWellingtonAlert,
   polygonContains,
   sortWarnings,
+  warningForDay,
   formatNZTime,
   type WeatherWarning,
 } from "../weather-warnings";
@@ -68,6 +69,35 @@ describe("sortWarnings", () => {
       "Orange 27T06",
       "Yellow 26T06",
     ]);
+  });
+});
+
+describe("warningForDay", () => {
+  const warning = (colourName: string, onset: string | null, expires: string) =>
+    ({ colourName, onset, expires }) as WeatherWarning;
+  // 6pm Mon 26 Oct – 10am Tue 27 Oct NZDT, the real Wellington wind warning.
+  const wind = warning("Orange", "2026-10-26T18:00:00+13:00", "2026-10-27T10:00:00+13:00");
+
+  it("covers every NZ day the warning touches", () => {
+    expect(warningForDay("2026-10-25", [wind])).toBeNull();
+    expect(warningForDay("2026-10-26", [wind])).toBe(wind);
+    expect(warningForDay("2026-10-27", [wind])).toBe(wind);
+    expect(warningForDay("2026-10-28", [wind])).toBeNull();
+  });
+
+  it("doesn't spill into the next day when it ends at midnight", () => {
+    const toMidnight = warning("Yellow", "2026-10-26T06:00:00+13:00", "2026-10-27T00:00:00+13:00");
+    expect(warningForDay("2026-10-27", [toMidnight])).toBeNull();
+  });
+
+  it("treats a warning without an onset as already in force", () => {
+    const now = warning("Yellow", null, "2026-10-27T10:00:00+13:00");
+    expect(warningForDay("2026-10-26", [now])).toBe(now);
+  });
+
+  it("picks the first (most severe) of overlapping warnings", () => {
+    const red = warning("Red", "2026-10-27T00:00:00+13:00", "2026-10-27T06:00:00+13:00");
+    expect(warningForDay("2026-10-27", sortWarnings([wind, red]))).toBe(red);
   });
 });
 

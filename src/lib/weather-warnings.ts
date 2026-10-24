@@ -97,6 +97,23 @@ export function sortWarnings(warnings: WeatherWarning[]): WeatherWarning[] {
   );
 }
 
+const nzDate = (iso: string | number) =>
+  new Date(iso).toLocaleDateString("en-CA", { timeZone: "Pacific/Auckland" });
+
+// The most severe warning in force at any point during an NZ calendar day
+// (YYYY-MM-DD), or null. Expects sortWarnings() order. A warning with no
+// onset is already in force, so it covers every day up to its expiry.
+export function warningForDay(date: string, warnings: WeatherWarning[]): WeatherWarning | null {
+  return (
+    warnings.find(
+      (w) =>
+        (w.onset === null || nzDate(w.onset) <= date) &&
+        // A warning ending exactly at midnight doesn't touch the next day.
+        nzDate(new Date(w.expires).getTime() - 1) >= date,
+    ) ?? null
+  );
+}
+
 // "6pm Mon 26 Oct" in NZ time. The server runs in UTC, so this can't use
 // date-fns' local-time formatting.
 export function formatNZTime(iso: string): string {
