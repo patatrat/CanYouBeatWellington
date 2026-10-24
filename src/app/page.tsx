@@ -20,6 +20,7 @@ import {
   getTodaysNZTDate,
   getHistoricalRecords,
 } from "@/lib/weather";
+import { getWellingtonWarnings } from "@/lib/weather-warnings";
 import {
   getActiveSpecialDates,
   getSpecialDatesForRange,
@@ -34,6 +35,7 @@ import VotingButtons from "@/components/VotingButtons";
 import ForecastStrip from "@/components/ForecastStrip";
 import SpecialDateEffect from "@/components/SpecialDateEffect";
 import SiteNav from "@/components/SiteNav";
+import WeatherWarnings from "@/components/WeatherWarnings";
 
 // Widened from 600s (10min) to match /history's window — Neon's free tier
 // fixes the compute scale-to-zero delay at 5 minutes (not configurable
@@ -67,13 +69,14 @@ export default async function HomePage() {
   // tier plus one extra day to confirm the streak actually stops there.
   const streakFrom = format(subDays(parseISO(today), 6), "yyyy-MM-dd");
   const streakTo = format(subDays(parseISO(today), 1), "yyyy-MM-dd");
-  const [todaysRecord, liveWeather, activeSpecialDates, precedingRecords, precedingSpecialDates] =
+  const [todaysRecord, liveWeather, activeSpecialDates, precedingRecords, precedingSpecialDates, warnings] =
     await Promise.all([
       getTodaysRecord(),
       fetchLiveWeather(),
       getActiveSpecialDates(today),
       getHistoricalRecords(streakFrom, streakTo),
       getSpecialDatesForRange(streakFrom, streakTo),
+      getWellingtonWarnings(),
     ]);
   const special = pickPrimarySpecialDate(activeSpecialDates);
 
@@ -179,6 +182,8 @@ export default async function HomePage() {
       <SiteNav current="home" onDark={onDark} />
 
       <div className="flex flex-col items-center justify-center flex-1 px-6 py-6">
+        <WeatherWarnings warnings={warnings} />
+
         {/* Special-date banner */}
         {special && (special.title || special.link_url) && (
           <p className={`text-xs ${mutedText} text-center mb-3`}>
