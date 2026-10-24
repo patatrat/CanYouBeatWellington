@@ -123,6 +123,24 @@ export function warningForDay(date: string, warnings: WeatherWarning[]): Weather
   );
 }
 
+// For the History calendar: each NZ day any warning touched → the most
+// severe one that day. Days are walked with UTC dates, which is safe for
+// plain YYYY-MM-DD stepping.
+export type WarningDay = Pick<WeatherWarning, "headline" | "colour" | "colourName">;
+
+export function warningsByDay(warnings: WeatherWarning[]): Record<string, WarningDay> {
+  const days: Record<string, WarningDay> = {};
+  for (const w of sortWarnings(warnings)) {
+    const last = nzDate(new Date(w.expires).getTime() - 1);
+    const start = new Date(`${nzDate(w.onset ?? w.expires)}T00:00:00Z`);
+    for (let d = start; d.toISOString().slice(0, 10) <= last; d = new Date(d.getTime() + 86_400_000)) {
+      const key = d.toISOString().slice(0, 10);
+      days[key] ??= { headline: w.headline, colour: w.colour, colourName: w.colourName };
+    }
+  }
+  return days;
+}
+
 // "6pm Mon 26 Oct" in NZ time. The server runs in UTC, so this can't use
 // date-fns' local-time formatting.
 export function formatNZTime(iso: string): string {

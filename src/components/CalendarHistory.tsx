@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Check, X, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { Check, X, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, Sparkles, AlertTriangle } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { isGoodWeatherDay } from "@/utils/rulesStorage";
@@ -11,6 +11,7 @@ import {
   resolveVerdict,
   type ActiveSpecialDate,
 } from "@/lib/special-dates-logic";
+import type { WarningDay } from "@/lib/weather-warnings";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -24,6 +25,9 @@ const getFirstDayOfWeek = (year: number, month: number) => new Date(year, month,
 interface CalendarHistoryProps {
   history: DailyWeatherRecord[];
   specialDates?: ActiveSpecialDate[];
+  // NZ day → most severe MetService warning that day, precomputed on the
+  // server (see warningsByDay()). Recorded since 2026-10-25 only.
+  warningDays?: Record<string, WarningDay>;
   initialYear: number;
   initialMonth: number;
 }
@@ -37,7 +41,7 @@ const isGoodDay = (r: DailyWeatherRecord, special: ActiveSpecialDate | null) =>
     special?.verdict_override ?? null,
   );
 
-const CalendarHistory = ({ history, specialDates, initialYear, initialMonth }: CalendarHistoryProps) => {
+const CalendarHistory = ({ history, specialDates, warningDays = {}, initialYear, initialMonth }: CalendarHistoryProps) => {
   // Initial state comes from the server component (NZT date) so SSR and client
   // see the same value — no hydration mismatch from new Date() on client.
   const [current, setCurrent] = useState({ year: initialYear, month: initialMonth });
@@ -87,6 +91,7 @@ const CalendarHistory = ({ history, specialDates, initialYear, initialMonth }: C
         <span className="flex items-center gap-1"><ThumbsUp className="w-4 h-4 text-green-600" /> Most Agree</span>
         <span className="flex items-center gap-1"><ThumbsDown className="w-4 h-4 text-red-600" /> Most Disagree</span>
         <span className="flex items-center gap-1"><Sparkles className="w-4 h-4 text-purple-500" /> Special date</span>
+        <span className="flex items-center gap-1"><AlertTriangle className="w-4 h-4 text-orange-500" /> Weather warning</span>
         <span className="text-gray-500">No symbol = No data</span>
       </div>
 
@@ -114,6 +119,7 @@ const CalendarHistory = ({ history, specialDates, initialYear, initialMonth }: C
           const dateStr = `${year}-${mm}-${dd}`;
           const record = historyMap.get(dateStr);
           const special = specialMap.get(dateStr) ?? null;
+          const warning = warningDays[dateStr];
           const good = record ? isGoodDay(record, special) : null;
           const agreeCount = record?.agree_count ?? 0;
           const disagreeCount = record?.disagree_count ?? 0;
@@ -131,9 +137,13 @@ const CalendarHistory = ({ history, specialDates, initialYear, initialMonth }: C
             : undefined;
 
           return (
-            <div key={dateStr} className={cn("relative h-12 w-full flex items-center justify-center rounded text-sm", record && "hover:bg-gray-50")}>
+            <div
+              key={dateStr}
+              className={cn("relative h-12 w-full flex items-center justify-center rounded text-sm", record && "hover:bg-gray-50")}
+              style={warning ? { boxShadow: `inset 0 0 0 2px ${warning.colour}` } : undefined}
+            >
               <span>{day}</span>
-              {(record || special) && (
+              {(record || special || warning) && (
                 <div className="absolute top-0.5 right-0.5 flex flex-col items-center gap-0.5">
                   {record && (
                     <span title={weatherTitle}>
@@ -152,6 +162,11 @@ const CalendarHistory = ({ history, specialDates, initialYear, initialMonth }: C
                   {special && (
                     <span title={specialTitle}>
                       <Sparkles className="w-2.5 h-2.5 text-purple-500" />
+                    </span>
+                  )}
+                  {warning && (
+                    <span title={warning.headline}>
+                      <AlertTriangle className="w-2.5 h-2.5" style={{ color: warning.colour }} />
                     </span>
                   )}
                 </div>

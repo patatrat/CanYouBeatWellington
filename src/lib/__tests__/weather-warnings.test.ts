@@ -6,6 +6,7 @@ import {
   polygonContains,
   sortWarnings,
   warningForDay,
+  warningsByDay,
   formatNZTime,
   type WeatherWarning,
 } from "../weather-warnings";
@@ -107,6 +108,34 @@ describe("warningForDay", () => {
   it("picks the first (most severe) of overlapping warnings", () => {
     const red = warning("Red", "2026-10-27T00:00:00+13:00", "2026-10-27T06:00:00+13:00");
     expect(warningForDay("2026-10-27", sortWarnings([wind, red]))).toBe(red);
+  });
+});
+
+describe("warningsByDay", () => {
+  const warning = (colourName: string, onset: string | null, expires: string, headline = colourName) =>
+    ({ colourName, colour: colourName, headline, onset, expires }) as WeatherWarning;
+
+  it("maps every NZ day a warning touches to it", () => {
+    const wind = warning("Orange", "2026-10-26T18:00:00+13:00", "2026-10-27T10:00:00+13:00");
+    expect(Object.keys(warningsByDay([wind]))).toEqual(["2026-10-26", "2026-10-27"]);
+  });
+
+  it("keeps the most severe warning on days that overlap", () => {
+    const days = warningsByDay([
+      warning("Yellow", "2026-10-25T06:00:00+13:00", "2026-10-28T06:00:00+13:00"),
+      warning("Red", "2026-10-26T12:00:00+13:00", "2026-10-26T20:00:00+13:00"),
+    ]);
+    expect(Object.fromEntries(Object.entries(days).map(([d, w]) => [d, w.colourName]))).toEqual({
+      "2026-10-25": "Yellow",
+      "2026-10-26": "Red",
+      "2026-10-27": "Yellow",
+      "2026-10-28": "Yellow",
+    });
+  });
+
+  it("crosses a month boundary", () => {
+    const w = warning("Orange", "2026-10-31T20:00:00+13:00", "2026-11-01T08:00:00+13:00");
+    expect(Object.keys(warningsByDay([w]))).toEqual(["2026-10-31", "2026-11-01"]);
   });
 });
 

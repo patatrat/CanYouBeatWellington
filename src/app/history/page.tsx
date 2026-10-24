@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { getAllHistoricalRecords, getTodaysNZTDate } from "@/lib/weather";
 import { getSpecialDatesForRange } from "@/lib/special-dates";
+import { getRecordedWarnings } from "@/lib/warning-history";
+import { warningsByDay } from "@/lib/weather-warnings";
 import FunFacts from "@/components/FunFacts";
 import MonthlyGoodDaysChart from "@/components/MonthlyGoodDaysChart";
 import SeasonBreakdown from "@/components/SeasonBreakdown";
@@ -32,7 +34,11 @@ export default async function HistoryPage() {
   // as getAllHistoricalRecords() above.
   const today = getTodaysNZTDate();
   const earliestDate = history.at(-1)?.date ?? today;
-  const specialDates = await getSpecialDatesForRange(earliestDate, today);
+  const [specialDates, recordedWarnings] = await Promise.all([
+    getSpecialDatesForRange(earliestDate, today),
+    getRecordedWarnings(),
+  ]);
+  const warningDays = warningsByDay(recordedWarnings);
 
   // Compute NZT date server-side and pass to CalendarHistory so the client
   // initialises state with the same year/month as the SSR output, avoiding
@@ -71,6 +77,7 @@ export default async function HistoryPage() {
           <CalendarHistory
             history={history}
             specialDates={specialDates}
+            warningDays={warningDays}
             initialYear={todayYear}
             initialMonth={todayMonth}
           />

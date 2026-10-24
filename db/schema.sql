@@ -92,3 +92,20 @@ CREATE INDEX idx_occurrences_date_range ON special_date_occurrences (start_date,
 -- Guards ensureUpcomingOccurrences() against double-inserting the same
 -- occurrence if the cron ever runs concurrently.
 CREATE UNIQUE INDEX special_date_occurrences_def_start_key ON special_date_occurrences (def_id, start_date);
+
+-- Every MetService watch/warning that has covered Wellington, recorded by the
+-- weather-warnings cron while it was in force (MetService keeps no public
+-- archive, so history starts 2026-10-25). One row per CAP alert: a warning
+-- reissued under a new identifier gets a new row, with refs pointing at the
+-- identifiers it replaces. Read by the History calendar.
+CREATE TABLE weather_warnings (
+  id          text PRIMARY KEY,
+  headline    text NOT NULL,
+  colour_name text NOT NULL,
+  colour      text NOT NULL,
+  onset       timestamptz,
+  expires     timestamptz NOT NULL,
+  description text NOT NULL,
+  refs        text[] NOT NULL DEFAULT '{}',
+  first_seen  timestamptz NOT NULL DEFAULT now()
+);

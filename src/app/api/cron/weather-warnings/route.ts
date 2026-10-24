@@ -3,6 +3,7 @@ import { kv } from '@vercel/kv';
 import { isBearerAuthorized } from '@/lib/auth';
 import { postToFollowers } from '@/lib/ap-posting';
 import { getWellingtonWarnings } from '@/lib/weather-warnings';
+import { recordWarnings } from '@/lib/warning-history';
 import {
   planWarningPosts,
   buildWarningPostHtml,
@@ -30,6 +31,16 @@ export async function GET(req: NextRequest) {
   const ids = [...new Set(warnings.flatMap((w) => [w.id, ...w.references]))];
   const colours = ids.length ? await kv.mget<(string | null)[]>(...ids.map(postedKey)) : [];
   const posted = Object.fromEntries(ids.flatMap((id, i) => (colours[i] ? [[id, colours[i]]] : [])));
+
+  // Keep the History calendar's record. A failure here mustn't stop the
+  // posting below.
+  let recorded: number | string;
+  try {
+    recorded = await recordWarnings(warnings);
+  } catch (err) {
+    console.error('Recording warnings failed:', err);
+    recorded = `failed: ${(err as Error).message}`;
+  }
 
   const plan = planWarningPosts(warnings, posted);
 
@@ -60,6 +71,7 @@ export async function GET(req: NextRequest) {
     ok: true,
     warnings: warnings.map((w) => w.headline),
     posted: results,
-    recorded: plan.record.map((w) => w.headline),
+    reissues: plan.record.map((w) => w.headline),
+    recorded,
   });
 }
