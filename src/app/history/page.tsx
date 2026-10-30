@@ -4,6 +4,7 @@ import { getSpecialDatesForRange } from "@/lib/special-dates";
 import { getRecordedWarnings } from "@/lib/warning-history";
 import { warningsByDay } from "@/lib/weather-warnings";
 import FunFacts from "@/components/FunFacts";
+import { calculateFunFacts } from "@/utils/weatherFunFacts";
 import MonthlyGoodDaysChart from "@/components/MonthlyGoodDaysChart";
 import SeasonBreakdown from "@/components/SeasonBreakdown";
 import MonthlyAveragesChart from "@/components/MonthlyAveragesChart";
@@ -58,7 +59,7 @@ export default async function HistoryPage() {
         </header>
 
         <Section title="Did you know">
-          <FunFacts history={history} />
+          <FunFacts facts={calculateFunFacts(history, today)} />
         </Section>
 
         <Section title="Last 12 months" subtitle="Good days per month. Navigate with the arrows to go further back.">
