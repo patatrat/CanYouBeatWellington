@@ -16,6 +16,12 @@ export const maxDuration = 60;
 // Long enough to outlast any warning and the reissues that chain back to it.
 const POSTED_TTL_SECONDS = 60 * 60 * 24 * 14;
 const postedKey = (id: string) => `cybw:warning-posted:${id}`;
+// Per event type ("wind", "rain"), expiring when the posted warning does.
+// The fallback for when a missed reissue breaks the reference chain.
+const eventKey = (event: string) => `cybw:warning-posted-event:${event}`;
+const secondsUntil = (iso: string) => Math.max(60, Math.ceil((new Date(iso).getTime() - Date.now()) / 1000));
+const markEvent = (w: { event: string; colourName: string; expires: string }) =>
+  kv.set(eventKey(w.event), w.colourName, { ex: secondsUntil(w.expires) });
 
 // Posts orange and red MetService warnings for Wellington to fediverse
 // followers, once each (plus once more if one is upgraded to red). Called
@@ -42,10 +48,16 @@ export async function GET(req: NextRequest) {
     recorded = `failed: ${(err as Error).message}`;
   }
 
-  const plan = planWarningPosts(warnings, posted);
+  const events = [...new Set(warnings.map((w) => w.event))];
+  const eventColours = events.length ? await kv.mget<(string | null)[]>(...events.map(eventKey)) : [];
+  const activeEvents = Object.fromEntries(events.flatMap((e, i) => (eventColours[i] ? [[e, eventColours[i]]] : [])));
+
+  const plan = planWarningPosts(warnings, posted, activeEvents);
 
   for (const warning of plan.record) {
     await kv.set(postedKey(warning.id), warning.colourName, { ex: POSTED_TTL_SECONDS });
+    // Reissues can move the expiry, so keep the event marker in step.
+    await markEvent(warning);
   }
 
   const results = [];
@@ -63,6 +75,8 @@ export async function GET(req: NextRequest) {
     // followers" isn't a failure worth retrying.
     if (!result.posted && result.reason !== 'no followers') {
       await kv.del(postedKey(warning.id));
+    } else {
+      await markEvent(warning);
     }
     results.push({ headline: warning.headline, kind, ...result });
   }

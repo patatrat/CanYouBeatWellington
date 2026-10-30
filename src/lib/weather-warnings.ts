@@ -16,6 +16,8 @@ const TIMEOUT_MS = 5000;
 
 export interface WeatherWarning {
   id: string;
+  // CAP event type: "wind", "rain", "snow", ...
+  event: string;
   headline: string;
   description: string;
   instruction: string | null;
@@ -79,6 +81,7 @@ export function parseWellingtonAlert(xml: string, now: Date): WeatherWarning | n
 
   return {
     id: tag(xml, "identifier") ?? expires,
+    event: tag(xml, "event") ?? "unknown",
     headline: tag(xml, "headline") ?? "Severe weather alert",
     description: tag(xml, "description") ?? "",
     instruction: tag(xml, "instruction"),

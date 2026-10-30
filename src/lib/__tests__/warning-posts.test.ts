@@ -5,7 +5,7 @@ import { planWarningPosts, buildWarningPostHtml, warningNoteSuffix } from "../wa
 import { parseWellingtonAlert, type WeatherWarning } from "../weather-warnings";
 
 const warningForTest = (id: string, colourName: string, references: string[] = []) =>
-  ({ id, colourName, references }) as WeatherWarning;
+  ({ id, colourName, references, event: "wind" }) as WeatherWarning;
 
 const REAL = parseWellingtonAlert(
   readFileSync(join(__dirname, "fixtures", "cap-wellington-wind.xml"), "utf8"),
@@ -34,6 +34,19 @@ describe("planWarningPosts", () => {
   it("posts a watch upgraded to orange, since the watch was never posted", () => {
     const upgraded = warningForTest("b", "Orange", ["watch"]);
     expect(planWarningPosts([upgraded], {}).post).toEqual([{ warning: upgraded, kind: "new" }]);
+  });
+
+  it("treats a broken chain as the same warning while that event type's post is in force", () => {
+    // 26 Oct 2026: the reissue it references was replaced within minutes and never seen.
+    const orphan = warningForTest("c", "Orange", ["never-seen"]);
+    expect(planWarningPosts([orphan], {}, { wind: "Orange" })).toEqual({ post: [], record: [orphan] });
+  });
+
+  it("still posts a different event type, or an upgrade to red, despite an active post", () => {
+    const rain = { ...warningForTest("r", "Orange"), event: "rain" } as WeatherWarning;
+    expect(planWarningPosts([rain], {}, { wind: "Orange" }).post).toEqual([{ warning: rain, kind: "new" }]);
+    const red = warningForTest("d", "Red", ["never-seen"]);
+    expect(planWarningPosts([red], {}, { wind: "Orange" }).post).toEqual([{ warning: red, kind: "upgrade" }]);
   });
 
   it("posts again when an orange warning is upgraded to red, but only once", () => {

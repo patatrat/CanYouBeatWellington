@@ -39,6 +39,8 @@ export async function getRecordedWarnings(): Promise<WeatherWarning[]> {
     `;
     return rows.map((r) => ({
       id: r.id,
+      // Not stored: only the posting cron uses it, and it reads live alerts.
+      event: "unknown",
       headline: r.headline,
       description: r.description,
       instruction: null,

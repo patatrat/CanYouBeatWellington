@@ -7,6 +7,13 @@ import { formatNZTime, type WeatherWarning } from "./weather-warnings";
 // identifier, with <references> pointing at the one it replaces. So a
 // warning counts as already posted if any alert it references was posted.
 // The exception is an upgrade to red, which is posted again.
+//
+// References only name the immediate predecessor, so the chain breaks if a
+// reissue is missed. That happens: on 26 Oct 2026 MetService replaced a
+// reissue 2.5 minutes after sending it, and the correction referenced only
+// the short-lived one. So there's a fallback: a warning of an event type
+// (wind, rain, ...) we've already posted, and that hasn't expired yet,
+// counts as the same warning.
 
 export const POSTABLE = ["Orange", "Red"];
 
@@ -19,12 +26,17 @@ export interface WarningPlan {
 }
 
 // posted maps alert identifier → colour it was posted (or recorded) at.
-export function planWarningPosts(warnings: WeatherWarning[], posted: Record<string, string>): WarningPlan {
+// activeEvents maps event type → colour, for posted warnings still in force.
+export function planWarningPosts(
+  warnings: WeatherWarning[],
+  posted: Record<string, string>,
+  activeEvents: Record<string, string> = {},
+): WarningPlan {
   const plan: WarningPlan = { post: [], record: [] };
   for (const warning of warnings) {
     if (!POSTABLE.includes(warning.colourName) || posted[warning.id]) continue;
 
-    const earlier = warning.references.map((id) => posted[id]).filter(Boolean);
+    const earlier = [...warning.references.map((id) => posted[id]), activeEvents[warning.event]].filter(Boolean);
     if (earlier.length === 0) {
       plan.post.push({ warning, kind: "new" });
     } else if (warning.colourName === "Red" && !earlier.includes("Red")) {
