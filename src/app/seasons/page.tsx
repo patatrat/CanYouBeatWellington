@@ -9,7 +9,7 @@ import SiteNav from "@/components/SiteNav";
 
 export const metadata: Metadata = {
   title: "Wellington's Six Seasons, Including Shitsville — Can You Beat Wellington?",
-  description: "Where are we in the Wellington year? A seasons clock for Summer, Autumn, Winter, Spring 1, Shitsville and Spring 2 that moves every day.",
+  description: "Where are we in the Wellington year? A seasons clock for Summer, Autumn, Winter, Spring 1, Shitsville and Spring 2, with a hand that moves every single day.",
   alternates: { canonical: "/seasons" },
 };
 

@@ -9,7 +9,7 @@ const TITLE = "You Can't Beat Wellington on a Good Day — Can You Beat Wellingt
 // display the HTML-escaped &#x27; literally instead of decoding it back to
 // an apostrophe, and this string is what most platforms fall back to for
 // share-preview text when no explicit og:description is read correctly.
-const DESCRIPTION = "Can you beat Wellington today? A daily verdict on Wellington, New Zealand weather, judged against the six local seasons, including Shitsville.";
+const DESCRIPTION = "Can you beat Wellington today? A daily verdict on the weather in Wellington, New Zealand, judged against the six Wellington seasons, including Shitsville.";
 // Human-facing canonical URL for Open Graph/Twitter cards — distinct from
 // the rel="me" links below, which are about ActivityPub actor identity
 // verification, not social-preview metadata.

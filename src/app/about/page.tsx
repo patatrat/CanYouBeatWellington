@@ -7,7 +7,7 @@ import SiteNav from "@/components/SiteNav";
 
 export const metadata: Metadata = {
   title: "Why Though? Can You Really Beat Wellington on a Good Day?",
-  description: "How a good day in Wellington is judged: temperature, wind and rain rules for each of the six Wellington seasons, including Shitsville.",
+  description: "How a good day in Wellington is judged: the temperature, wind and rain rules for each of the six Wellington seasons, from Summer through to Shitsville.",
   alternates: { canonical: "/about" },
 };
 
