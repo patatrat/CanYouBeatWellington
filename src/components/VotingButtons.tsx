@@ -22,9 +22,20 @@ interface VotingButtonsProps {
   date: string;
   agreeCount: number;
   disagreeCount: number;
+  // The verdict and season the voter saw, recorded with the Umami event.
+  verdict: "good" | "bad";
+  season: string;
 }
 
-const VotingButtons = ({ date, agreeCount, disagreeCount }: VotingButtonsProps) => {
+// Umami's tracker script is loaded in layout.tsx. Optional because ad
+// blockers often stop it from loading, and that must never affect voting.
+declare global {
+  interface Window {
+    umami?: { track: (event: string, data?: Record<string, string>) => void };
+  }
+}
+
+const VotingButtons = ({ date, agreeCount, disagreeCount, verdict, season }: VotingButtonsProps) => {
   const [counts, setCounts] = useState({ agree: agreeCount, disagree: disagreeCount });
   const [hasVoted, setHasVoted] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -48,6 +59,9 @@ const VotingButtons = ({ date, agreeCount, disagreeCount }: VotingButtonsProps) 
       setHasVoted(true);
       if (!result.alreadyVoted) {
         track("vote", { type: voteType, date });
+        // Umami adds the country, region and city from its own session, so
+        // the event carries no location or voter identity of its own.
+        window.umami?.track("vote", { choice: voteType, verdict, season });
         setCounts((prev) => ({ ...prev, [voteType]: prev[voteType] + 1 }));
       }
     } catch (error) {

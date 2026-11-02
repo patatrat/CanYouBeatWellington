@@ -264,6 +264,8 @@ export default async function HomePage() {
             date={record.date}
             agreeCount={record.agree_count}
             disagreeCount={record.disagree_count}
+            verdict={isGood ? "good" : "bad"}
+            season={seasonLabel}
           />
         )}
 
