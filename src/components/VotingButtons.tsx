@@ -49,6 +49,12 @@ const VotingButtons = ({ date, agreeCount, disagreeCount, verdict, season }: Vot
     setHasVoted(localStorage.getItem(`voted_${date}`) === "true");
   }, [date]);
 
+  // Voting re-renders the page with fresh props, while the local state holds
+  // the older count plus this vote. Those can arrive in either order, and both
+  // counts only ever grow, so the higher one is always the current one.
+  const agree = Math.max(counts.agree, agreeCount);
+  const disagree = Math.max(counts.disagree, disagreeCount);
+
   const handleVote = async (voteType: VoteType) => {
     if (hasVoted || isPending) return;
     setVoteError(false);
@@ -85,7 +91,7 @@ const VotingButtons = ({ date, agreeCount, disagreeCount, verdict, season }: Vot
         >
           <ThumbsUp className="h-6 w-6 text-green-600" />
         </Button>
-        <span className="text-sm font-medium text-green-600">{counts.agree}</span>
+        <span className="text-sm font-medium text-green-600">{agree}</span>
       </div>
 
       <div className="flex flex-col items-center">
@@ -99,7 +105,7 @@ const VotingButtons = ({ date, agreeCount, disagreeCount, verdict, season }: Vot
         >
           <ThumbsDown className="h-6 w-6 text-red-600" />
         </Button>
-        <span className="text-sm font-medium text-red-600">{counts.disagree}</span>
+        <span className="text-sm font-medium text-red-600">{disagree}</span>
       </div>
 
       {voteError && (
