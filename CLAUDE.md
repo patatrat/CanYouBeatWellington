@@ -58,6 +58,7 @@ Current catalogue (`special_date_defs` — occurrence dates live in Neon, not he
 | `cuba-dupa` | moveable | usually late March | confetti | — |
 | `wow` | moveable | World of WearableArt, usually Sep–Oct | confetti | — |
 | `beervana` | moveable | usually August | confetti | — |
+| `nz-election-2026` | oneoff | 7 Nov 2026, "go vote" `scenario_quips` for every scenario, links to vote.nz | none | — |
 | `hurricanes-grand-final-2026` | sporting | won 2026-06-20 vs Chiefs — `verdict_override=true`, `confirmed` | confetti | rugby |
 | `all-blacks-v-italy-2026-07-11` | sporting | 2026-07-11, Sky Stadium — `pending`, awaiting resolution | confetti | rugby |
 
@@ -75,6 +76,10 @@ Solemn/civic holidays (ANZAC Day, Waitangi Day, Good Friday, King's Birthday, La
 | Secrets | GitHub repo secrets + Vercel env vars — `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `CRON_SECRET`, `ADMIN_SECRET`, `AP_PUBLIC_KEY`/`AP_PRIVATE_KEY` (old actor), `AP_PUBLIC_KEY_NEW`/`AP_PRIVATE_KEY_NEW` (new actor), `KV_REST_API_URL`, `KV_REST_API_TOKEN` |
 | DNS | Two domains, two registrars/DNS setups: `canyoubeatwellington.radomski.co.nz` via Cloudflare (DNS-only, grey cloud) → Vercel (kept live solely for the *old* ActivityPub actor identity — see below); `canyoubeatwellington.nz` via its own AWS Route 53 hosted zone → Vercel, the human-facing canonical domain **and** the new actor's identity. The bare apex is canonical (not `www`) — Vercel's own domain redirect was flipped to `www → apex` (was the reverse originally); `middleware.ts` 308-redirects the old domain straight to the apex for every path except `/actor`, `/.well-known/webfinger`, `/notes`, `/quote-authorizations`. IRPO (NZ's WHOIS privacy option) not yet enabled on the new domain — pending. |
 | **Legacy (pending removal)** | Supabase project still exists as an archived snapshot; `VITE_SUPABASE_*`/`SUPABASE_*` env vars already removed from Vercel/GitHub |
+
+## Analytics (Umami)
+Use the `umami` MCP tools with websiteId `c5f9b81d-1e6f-4863-98bc-dffa48a21563`.
+`list_websites` returns nothing for this view-only login. That's expected, not an error.
 
 ---
 
@@ -149,6 +154,7 @@ Brainstormed while adding the feels-like/snow tiers, no quip text written yet �
 
 ## Changelog
 
+- **2026-11-06** — Added the NZ election on 7 Nov 2026 as a `oneoff` special date (`nz-election-2026`, def 22, occurrence 36), with a per-scenario "go vote" quip and a "Find where to vote" link to vote.nz. It was written straight to Neon; no code was needed for the date itself. Fixed `getSpecialDayScenario()` alongside it: a warm, calm day with rain over the 0.1mm rule but under the 5mm "notable" bar returned `good`, so a special date could show its good-day quip next to a "No" verdict. Such days now return `rain` (wind still outranks light rain). The old test asserting a light shower is never `rain` predated the 0.1mm rule and was replaced.
 - **2026-11-04** — `castVoteAction` now calls `revalidatePath("/")` after a new vote, because the hour-long home page cache left displayed counts behind the database (Umami showed 3 votes while the page showed 1; Neon had all 3). From a Server Action this also re-renders the voter's page straight away, so a new random quip can appear when someone votes. `VotingButtons` shows the higher of its local count and the fresh prop, so the voter's own vote can't be doubled or dropped. Not yet verified on a deployment: vote latency, and what the voter sees if the re-render fails (e.g. Open-Meteo down), since the app has no `error.tsx`.
 - **2026-11-03** — Lengthened the home, `/about`, `/history` and `/seasons` meta descriptions to 151–156 characters, after Bing Webmaster Tools flagged `/about` as too short against its 150–160 target.
 - **2026-11-02** — Votes now also send a `vote` event to Umami (`window.umami?.track`) from `VotingButtons.tsx`, with `choice`, `verdict` and `season` properties, to learn who votes and from where. Location comes from Umami's own session geolocation, so the event carries no location or voter token. It fires only after the vote saves, and the optional call means an ad-blocked tracker can't affect voting, though it does make Umami's count lower than the database's. The existing Vercel Analytics `track("vote")` call is unchanged.

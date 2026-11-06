@@ -198,8 +198,18 @@ describe('getSpecialDayScenario', () => {
     expect(getSpecialDayScenario({ temperature: 20, windSpeed: 10, rain: 5.1 }, SEASON_RULES)).toBe('rain');
   });
 
-  it('does not fire "rain" for a light shower at or under 5mm', () => {
-    expect(getSpecialDayScenario({ temperature: 20, windSpeed: 10, rain: 5 }, SEASON_RULES)).not.toBe('rain');
+  it('calls a light shower that fails the rain rule "rain", never a good day', () => {
+    expect(getSpecialDayScenario({ temperature: 20, windSpeed: 10, rain: 5 }, SEASON_RULES)).toBe('rain');
+    expect(getSpecialDayScenario({ temperature: 20, windSpeed: 10, rain: 0.3 }, SEASON_RULES)).toBe('rain');
+  });
+
+  it('still calls a day good when the rain is within the rule', () => {
+    expect(getSpecialDayScenario({ temperature: 19, windSpeed: 25, rain: SEASON_RULES.maxRain }, SEASON_RULES)).toBe('good');
+  });
+
+  it('lets wind outrank a light shower, but not a notable one', () => {
+    expect(getSpecialDayScenario({ temperature: 20, windSpeed: 35, rain: 2 }, SEASON_RULES)).toBe('wind');
+    expect(getSpecialDayScenario({ temperature: 20, windSpeed: 35, rain: 6 }, SEASON_RULES)).toBe('rain');
   });
 
   it('wind when wind fails alone (temp and rain fine, rain not notable)', () => {

@@ -97,10 +97,10 @@ interface SeasonRules {
   maxRain: number;
 }
 
-// Rain amount from which it's "worth mentioning" in a special-day quip —
-// matches the same 5mm bar used for the WIND_40_RAIN severity tier in
-// quips.ts, rather than the strict >0mm the season rules use for the
-// pass/fail verdict (a token drizzle isn't what "Xmas day, rainy" means).
+// Rain amount from which rain outranks wind in a special-day quip — matches
+// the same 5mm bar used for the WIND_40_RAIN severity tier in quips.ts. A
+// lighter shower that still fails the season rule is reported as "rain" too,
+// but only once wind has been ruled out.
 const NOTABLE_RAIN_MM = 5;
 
 // Priority waterfall, most comprehensive/specific condition first — mirrors
@@ -121,6 +121,10 @@ export function getSpecialDayScenario(
   if (!tempMet) return "cold";
   if (weather.rain > NOTABLE_RAIN_MM) return "rain";
   if (!windMet) return "wind";
+  // A light shower over the rule's limit means the verdict is "no", so it
+  // mustn't get a good-day quip (the season rule allows up to 0.1mm since
+  // 2026-08-10, so this is no longer just a token drizzle).
+  if (!rainMet) return "rain";
   if (isGreatDay(weather, rules.minTemp)) return "great";
   return "good";
 }
