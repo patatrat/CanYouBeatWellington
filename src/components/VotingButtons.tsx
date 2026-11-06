@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { track } from "@vercel/analytics";
 import { Button } from "@/components/ui/button";
-import { castVoteAction } from "@/app/actions/vote";
+import { castDisagreeReasonAction, castVoteAction } from "@/app/actions/vote";
 import type { VoteType } from "@/lib/votes";
+import { DISAGREE_REASONS, type Verdict } from "@/lib/disagree-reasons";
 
 // Returns a persistent UUID for this browser, creating one if needed.
 // Used server-side to enforce one vote per browser identity per day.
@@ -40,6 +41,10 @@ const VotingButtons = ({ date, agreeCount, disagreeCount, verdict, season }: Vot
   const [hasVoted, setHasVoted] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [voteError, setVoteError] = useState(false);
+  // After a fresh disagree vote: ask why, with the verdict as it was when they
+  // voted (the page re-renders after voting and could, rarely, flip it).
+  const [reasonPrompt, setReasonPrompt] = useState<Verdict | null>(null);
+  const [reasonSent, setReasonSent] = useState(false);
 
   useEffect(() => {
     // Read after mount, not during render — localStorage doesn't exist on the
@@ -69,6 +74,7 @@ const VotingButtons = ({ date, agreeCount, disagreeCount, verdict, season }: Vot
         // the event carries no location or voter identity of its own.
         window.umami?.track("vote", { choice: voteType, verdict, season });
         setCounts((prev) => ({ ...prev, [voteType]: prev[voteType] + 1 }));
+        if (voteType === "disagree") setReasonPrompt(verdict);
       }
     } catch (error) {
       console.error("Error updating vote:", error);
@@ -78,40 +84,81 @@ const VotingButtons = ({ date, agreeCount, disagreeCount, verdict, season }: Vot
     }
   };
 
-  return (
-    <div className="flex justify-center space-x-8 mt-6">
-      <div className="flex flex-col items-center">
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => handleVote("agree")}
-          disabled={hasVoted || isPending}
-          className="mb-2 hover:bg-green-50 hover:border-green-300"
-          title="I agree with this assessment"
-        >
-          <ThumbsUp className="h-6 w-6 text-green-600" />
-        </Button>
-        <span className="text-sm font-medium text-green-600">{agree}</span>
-      </div>
+  // Optional and one tap. Thanks is shown straight away whatever happens, since
+  // the vote is already saved and a lost reason isn't worth bothering anyone.
+  const sendReason = (promptVerdict: Verdict, reason: string) => {
+    setReasonSent(true);
+    window.umami?.track("disagree_reason", { verdict: promptVerdict, reason, season });
+    castDisagreeReasonAction(date, promptVerdict, reason, getVoterToken()).catch((error) =>
+      console.error("Error recording reason:", error),
+    );
+  };
 
-      <div className="flex flex-col items-center">
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={() => handleVote("disagree")}
-          disabled={hasVoted || isPending}
-          className="mb-2 hover:bg-red-50 hover:border-red-300"
-          title="I disagree with this assessment"
-        >
-          <ThumbsDown className="h-6 w-6 text-red-600" />
-        </Button>
-        <span className="text-sm font-medium text-red-600">{disagree}</span>
+  return (
+    <div className="flex flex-col items-center mt-6">
+      <div className="flex justify-center space-x-8">
+        <div className="flex flex-col items-center">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => handleVote("agree")}
+            disabled={hasVoted || isPending}
+            className="mb-2 hover:bg-green-50 hover:border-green-300"
+            title="I agree with this assessment"
+          >
+            <ThumbsUp className="h-6 w-6 text-green-600" />
+          </Button>
+          <span className="text-sm font-medium text-green-600">{agree}</span>
+        </div>
+
+        <div className="flex flex-col items-center">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => handleVote("disagree")}
+            disabled={hasVoted || isPending}
+            className="mb-2 hover:bg-red-50 hover:border-red-300"
+            title="I disagree with this assessment"
+          >
+            <ThumbsDown className="h-6 w-6 text-red-600" />
+          </Button>
+          <span className="text-sm font-medium text-red-600">{disagree}</span>
+        </div>
       </div>
 
       {voteError && (
         <p className="text-xs text-red-500 text-center mt-3">
           Couldn&apos;t record your vote — please try again.
         </p>
+      )}
+
+      {reasonPrompt && (
+        // Its own light card, so it reads on every home page background,
+        // including the dark special-date ones.
+        <div className="mt-4 max-w-md rounded-xl bg-white/85 px-4 py-3 text-center text-gray-700 shadow-sm">
+          {reasonSent ? (
+            <p className="text-sm font-medium" role="status">Thanks, noted.</p>
+          ) : (
+            <>
+              <p className="text-sm font-medium mb-2">
+                {DISAGREE_REASONS[reasonPrompt].question}{" "}
+                <span className="font-normal text-gray-500">(optional)</span>
+              </p>
+              <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Reason for disagreeing">
+                {DISAGREE_REASONS[reasonPrompt].options.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => sendReason(reasonPrompt, key)}
+                    className="rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

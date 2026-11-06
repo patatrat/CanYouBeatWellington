@@ -109,3 +109,17 @@ CREATE TABLE weather_warnings (
   refs        text[] NOT NULL DEFAULT '{}',
   first_seen  timestamptz NOT NULL DEFAULT now()
 );
+
+-- Optional reason given after a "disagree" vote (see src/lib/disagree-reasons.ts
+-- for the fixed list). One per browser token per day, and only accepted from a
+-- token that actually voted that day (checked in recordDisagreeReason()), so
+-- reason counts can't outnumber real votes. verdict is what the site said:
+-- 'good' reasons explain why it wasn't, 'bad' reasons why it was.
+CREATE TABLE vote_reasons (
+  date       date NOT NULL,
+  token      text NOT NULL,
+  verdict    text NOT NULL CHECK (verdict IN ('good', 'bad')),
+  reason     text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (token, date)
+);
