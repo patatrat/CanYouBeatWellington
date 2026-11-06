@@ -84,10 +84,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <Analytics />
         {/* Self-hosted Umami — vercel.json's CSP already allows this origin
-            in script-src and connect-src. */}
+            in script-src and connect-src. data-domains limits tracking to the
+            real site, so staging/preview deployments and localhost don't get
+            counted. www and the old radomski.co.nz address redirect here
+            before the page loads, so they're still covered. */}
         <Script
           src="https://analytics.radomski.co.nz/script.js"
           data-website-id="c5f9b81d-1e6f-4863-98bc-dffa48a21563"
+          data-domains="canyoubeatwellington.nz"
           data-performance="true"
           strategy="afterInteractive"
         />
