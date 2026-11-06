@@ -41,6 +41,19 @@ const isGoodDay = (r: DailyWeatherRecord, special: ActiveSpecialDate | null) =>
     special?.verdict_override ?? null,
   );
 
+// Tailwind green-500, matching the good-day tick.
+const GOOD_RING = "#22c55e";
+
+// A good day gets a green border and a warning day one in the warning's
+// colour. A good day under a warning gets both: warning outside, green inside.
+const ringStyle = (good: boolean, warningColour?: string) => {
+  const rings = [
+    warningColour && `inset 0 0 0 2px ${warningColour}`,
+    good && `inset 0 0 0 ${warningColour ? 4 : 2}px ${GOOD_RING}`,
+  ].filter(Boolean);
+  return rings.length ? { boxShadow: rings.join(", ") } : undefined;
+};
+
 const CalendarHistory = ({ history, specialDates, warningDays = {}, initialYear, initialMonth }: CalendarHistoryProps) => {
   // Initial state comes from the server component (NZT date) so SSR and client
   // see the same value — no hydration mismatch from new Date() on client.
@@ -86,7 +99,12 @@ const CalendarHistory = ({ history, specialDates, warningDays = {}, initialYear,
     <div className="flex flex-col items-center space-y-4 text-gray-800">
       {/* Legend */}
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
-        <span className="flex items-center gap-1"><Check className="w-4 h-4 text-green-500" /> Good Day</span>
+        <span className="flex items-center gap-1">
+          <span className="inline-flex h-4 w-4 items-center justify-center rounded" style={{ boxShadow: `inset 0 0 0 2px ${GOOD_RING}` }}>
+            <Check className="w-3 h-3 text-green-500" />
+          </span>
+          Good Day
+        </span>
         <span className="flex items-center gap-1"><X className="w-4 h-4 text-red-500" /> Not a Good Day</span>
         <span className="flex items-center gap-1"><ThumbsUp className="w-4 h-4 text-green-600" /> Most Agree</span>
         <span className="flex items-center gap-1"><ThumbsDown className="w-4 h-4 text-red-600" /> Most Disagree</span>
@@ -140,7 +158,7 @@ const CalendarHistory = ({ history, specialDates, warningDays = {}, initialYear,
             <div
               key={dateStr}
               className={cn("relative h-12 w-full flex items-center justify-center rounded text-sm", record && "hover:bg-gray-50")}
-              style={warning ? { boxShadow: `inset 0 0 0 2px ${warning.colour}` } : undefined}
+              style={ringStyle(good === true, warning?.colour)}
             >
               <span>{day}</span>
               {(record || special || warning) && (
