@@ -58,10 +58,10 @@
       }
     },
     "minimatch@3.1.5": {
-      "brace-expansion": "1.1.16"
+      "brace-expansion": "1.1.21"
     },
     "minimatch@10.2.5": {
-      "brace-expansion": "5.0.8"
+      "brace-expansion": "5.0.12"
     }
   }
 }
