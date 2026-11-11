@@ -1,5 +1,5 @@
 import { kv } from "@vercel/kv";
-import { signAndDeliver } from "./http-signatures";
+import { signAndDeliver, fetchActivityJson } from "./http-signatures";
 import { NEW_ACTOR, type ActorIdentity } from "./ap-identity";
 
 // Daily posting now targets the new actor — switched over once the Move
@@ -82,10 +82,7 @@ export async function getInboxUrl(actorUrl: string): Promise<string> {
   const cached = await kv.get<string>(cacheKey);
   if (cached?.startsWith("https://")) return cached;
 
-  const res = await fetch(actorUrl, {
-    headers: { Accept: "application/activity+json" },
-    signal: AbortSignal.timeout(10_000),
-  });
+  const res = await fetchActivityJson(actorUrl);
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${actorUrl}`);
   const actor = await res.json();
   const inbox = actor.inbox as string | undefined;

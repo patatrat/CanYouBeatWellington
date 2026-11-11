@@ -5,7 +5,7 @@ import { isBearerAuthorized } from '@/lib/auth';
 import { deliverToFollowers, getInboxUrl } from '@/lib/ap-posting';
 import { NEW_ACTOR } from '@/lib/ap-identity';
 import { parseBoostTarget, buildAnnounceActivity } from '@/lib/ap-boost';
-import { signAndDeliver } from '@/lib/http-signatures';
+import { signAndDeliver, fetchActivityJson } from '@/lib/http-signatures';
 
 // Boosts someone else's public post as the new actor: a signed Announce to
 // our followers, plus the post author's inbox so they're notified and the
@@ -45,10 +45,7 @@ export async function POST(req: NextRequest) {
   // too, given the right Accept header.
   let object: unknown;
   try {
-    const res = await fetch(body.url, {
-      headers: { Accept: 'application/activity+json' },
-      signal: AbortSignal.timeout(10_000),
-    });
+    const res = await fetchActivityJson(body.url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     object = await res.json();
   } catch (err) {

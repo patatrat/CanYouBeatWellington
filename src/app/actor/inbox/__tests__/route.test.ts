@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { noteSuffixFromUrl, instrumentUrl, followSuffixFromUrl } from "../route";
+import { noteSuffixFromUrl, instrumentUrl, followSuffixFromUrl, selfDeletedActor } from "../route";
 import { OLD_ACTOR, NEW_ACTOR } from "../../../../lib/ap-identity";
 
 describe("noteSuffixFromUrl", () => {
@@ -69,5 +69,26 @@ describe("instrumentUrl", () => {
     expect(instrumentUrl({})).toBeNull();
     expect(instrumentUrl({ id: 123 })).toBeNull();
     expect(instrumentUrl(42)).toBeNull();
+  });
+});
+
+describe("selfDeletedActor", () => {
+  const actor = "https://example.social/users/gone";
+
+  it("recognises an account deleting itself, with a bare or embedded object", () => {
+    expect(selfDeletedActor({ type: "Delete", actor, object: actor })).toBe(actor);
+    expect(selfDeletedActor({ type: "Delete", actor, object: { id: actor } })).toBe(actor);
+  });
+
+  it("ignores a Delete of something else, such as a post", () => {
+    expect(selfDeletedActor({ type: "Delete", actor, object: `${actor}/statuses/1` })).toBeNull();
+    expect(selfDeletedActor({ type: "Delete", actor, object: { id: `${actor}/statuses/1`, type: "Tombstone" } })).toBeNull();
+  });
+
+  it("ignores other activity types and non-objects", () => {
+    expect(selfDeletedActor({ type: "Follow", actor, object: actor })).toBeNull();
+    expect(selfDeletedActor(null)).toBeNull();
+    expect(selfDeletedActor("Delete")).toBeNull();
+    expect(selfDeletedActor({ type: "Delete" })).toBeNull();
   });
 });

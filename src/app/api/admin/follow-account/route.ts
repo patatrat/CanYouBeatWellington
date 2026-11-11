@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { isBearerAuthorized } from '@/lib/auth';
-import { signAndDeliver } from '@/lib/http-signatures';
+import { signAndDeliver, fetchActivityJson } from '@/lib/http-signatures';
 import { NEW_ACTOR } from '@/lib/ap-identity';
 
 // Sends a Follow from the new actor to a target account. The relationship
@@ -42,10 +42,7 @@ export async function POST(req: NextRequest) {
 
   let inbox: string;
   try {
-    const res = await fetch(targetActorUrl, {
-      headers: { Accept: 'application/activity+json' },
-      signal: AbortSignal.timeout(10_000),
-    });
+    const res = await fetchActivityJson(targetActorUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const targetActor = await res.json();
     if (typeof targetActor.inbox !== 'string' || !targetActor.inbox.startsWith('https://')) {

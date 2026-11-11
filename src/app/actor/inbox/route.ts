@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { kv } from '@vercel/kv';
-import { verifySignature, signAndDeliver } from '@/lib/http-signatures';
+import { verifySignature, signAndDeliver, fetchActivityJson } from '@/lib/http-signatures';
+import { getInboxUrl } from '@/lib/ap-posting';
 import { actorForHost, type ActorIdentity } from '@/lib/ap-identity';
 
 const ACCEPT_QUOTE_CONTEXT = { QuoteRequest: 'https://w3id.org/fep/044f#QuoteRequest' };
@@ -12,27 +13,11 @@ const QUOTE_AUTH_CONTEXT = {
   interactionTarget: { '@id': 'gts:interactionTarget', '@type': '@id' },
 };
 
-async function resolveInboxUrl(actorUrl: string): Promise<string> {
-  const cacheKey = `cybw:ap:inbox:${actorUrl}`;
-  const cached = await kv.get<string>(cacheKey);
-  if (cached?.startsWith('https://')) return cached;
-
-  const res = await fetch(actorUrl, {
-    headers: { Accept: 'application/activity+json' },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) throw new Error(`Could not fetch actor (${res.status}): ${actorUrl}`);
-  const actor = await res.json();
-  if (!actor.inbox) throw new Error(`Actor has no inbox: ${actorUrl}`);
-  await kv.set(cacheKey, actor.inbox);
-  return actor.inbox;
-}
-
 async function sendAccept(us: ActorIdentity, followActivity: unknown, followerActorUrl: string) {
   const privateKeyPem = process.env[us.privateKeyEnvVar]?.replace(/\\n/g, '\n');
   if (!privateKeyPem) throw new Error(`${us.privateKeyEnvVar} not configured`);
 
-  const inbox = await resolveInboxUrl(followerActorUrl);
+  const inbox = await getInboxUrl(followerActorUrl);
 
   const accept = {
     '@context': 'https://www.w3.org/ns/activitystreams',
@@ -136,7 +121,7 @@ async function handleQuoteRequest(us: ActorIdentity, activity: Record<string, un
     result: authId,
   };
 
-  const inbox = await resolveInboxUrl(signerActorUrl);
+  const inbox = await getInboxUrl(signerActorUrl);
   await signAndDeliver(inbox, accept, us.keyId, privateKeyPem);
   console.log(`Inbox: approved QuoteRequest — ${quoterPostUrl} quoting ${objectUrl}`);
 }
@@ -217,10 +202,56 @@ async function handleAnnounce(us: ActorIdentity, activity: Record<string, unknow
   console.log(`Inbox: boost recorded — ${signerActorUrl} announced ${objectUrl} (${us.domain})`);
 }
 
+// When an account is deleted, its server sends a Delete of the actor itself
+// to every inbox it has ever heard of. Returns that actor's URL if the
+// activity is one of those, else null. Exported for unit testing.
+export function selfDeletedActor(activity: unknown): string | null {
+  if (!activity || typeof activity !== 'object') return null;
+  const { type, actor, object } = activity as Record<string, unknown>;
+  if (type !== 'Delete') return null;
+  const actorUrl = instrumentUrl(actor);
+  return actorUrl && actorUrl === instrumentUrl(object) ? actorUrl : null;
+}
+
+// These Deletes can't be signature-checked the normal way: the account is
+// gone, so its key no longer resolves (410). Rejecting them cost an
+// outbound fetch each, and the 401 made the sender try a second time. They
+// were nearly all of this inbox's traffic. Nothing here is trusted from the
+// unverified body: for a stranger there's nothing to do, and for a follower
+// we ask the actor's own server whether it's really gone before removing it.
+async function handleSelfDelete(us: ActorIdentity, actorUrl: string) {
+  if (!actorUrl.startsWith('https://')) return;
+  if (!(await kv.sismember(us.followersKey, actorUrl))) return;
+
+  const res = await fetchActivityJson(actorUrl);
+  if (res.status !== 404 && res.status !== 410) return;
+
+  await kv.srem(us.followersKey, actorUrl);
+  await kv.del(`cybw:ap:inbox:${actorUrl}`);
+  console.log(`Inbox: removed deleted follower ${actorUrl} (${us.domain})`);
+}
+
 export async function POST(req: NextRequest) {
   const us = actorForHost(req.headers.get('host'));
   const rawBody = await req.text();
   const headers = Object.fromEntries(req.headers.entries());
+
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(rawBody);
+  } catch {
+    // Reported as 400 below, but only to a sender with a valid signature.
+  }
+
+  const deletedActor = selfDeletedActor(parsed);
+  if (deletedActor) {
+    try {
+      await handleSelfDelete(us, deletedActor);
+    } catch (err) {
+      console.error('Inbox: error handling account deletion:', (err as Error).message);
+    }
+    return new NextResponse(null, { status: 202 });
+  }
 
   let signerActorUrl: string;
   try {
@@ -230,16 +261,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
-  let activity: Record<string, unknown> & {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+  const activity = parsed as Record<string, unknown> & {
     type: string;
     actor: string | { id?: string };
     object?: unknown;
   };
-  try {
-    activity = JSON.parse(rawBody);
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
 
   // The body is attacker-supplied even when the signature is valid — only act
   // on Follow/Undo when the claimed actor is the actor that signed the
