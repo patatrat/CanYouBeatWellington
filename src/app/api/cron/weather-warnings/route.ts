@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { isBearerAuthorized } from '@/lib/auth';
-import { postToFollowers } from '@/lib/ap-posting';
+import { postToFollowers, retryFailedDeliveries } from '@/lib/ap-posting';
 import { getWellingtonWarnings } from '@/lib/weather-warnings';
 import { recordWarnings } from '@/lib/warning-history';
 import {
@@ -32,6 +32,13 @@ export async function GET(req: NextRequest) {
   if (!isBearerAuthorized(req.headers.get('authorization'), process.env.CRON_SECRET)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  // Retry any fediverse deliveries that failed earlier (daily posts
+  // included: this runs far more often than the daily cron).
+  const retries = await retryFailedDeliveries().catch((err) => {
+    console.error('Delivery retries failed:', err);
+    return `failed: ${(err as Error).message}`;
+  });
 
   const warnings = await getWellingtonWarnings(new Date(), { fresh: true });
   const ids = [...new Set(warnings.flatMap((w) => [w.id, ...w.references]))];
@@ -87,5 +94,6 @@ export async function GET(req: NextRequest) {
     posted: results,
     reissues: plan.record.map((w) => w.headline),
     recorded,
+    retries,
   });
 }

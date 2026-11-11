@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isBearerAuthorized } from '@/lib/auth';
 import { fetchAndStoreBatch, getTodaysNZTDate } from '@/lib/weather';
 import { isGoodWeatherDay } from '@/utils/rulesStorage';
-import { postToFollowers } from '@/lib/ap-posting';
+import { postToFollowers, retryFailedDeliveries } from '@/lib/ap-posting';
 import {
   ensureUpcomingOccurrences,
   getActiveSpecialDates,
@@ -27,6 +27,13 @@ export async function GET(req: NextRequest) {
 
   const today = getTodaysNZTDate();
 
+  // Retry any fediverse deliveries that failed earlier. Never blocks the
+  // weather work below.
+  const retries = await retryFailedDeliveries().catch((err) => {
+    console.error('Delivery retries failed:', err);
+    return `failed: ${(err as Error).message}`;
+  });
+
   // Cheap once-a-day side effect: regenerate this year's/next year's
   // occurrences for any fixed-rule special date (e.g. Wellington
   // Anniversary Day) that doesn't have one yet. Self-healing, no separate
@@ -37,7 +44,7 @@ export async function GET(req: NextRequest) {
   const { stored, todayRecord } = await fetchAndStoreBatch();
 
   if (!todayRecord) {
-    return NextResponse.json({ ok: true, stored, fanout: 'skipped — no record for today' });
+    return NextResponse.json({ ok: true, stored, retries, fanout: 'skipped — no record for today' });
   }
 
   // Evaluate today's weather verdict against seasonal rules, then let an
@@ -59,6 +66,7 @@ export async function GET(req: NextRequest) {
       stored,
       today: { temperature: todayRecord.temperature, wind_speed: todayRecord.wind_speed, rain: todayRecord.rain },
       fanout: 'skipped — not a good day',
+      retries,
     });
   }
 
@@ -83,7 +91,14 @@ export async function GET(req: NextRequest) {
     today: { temperature: todayRecord.temperature, wind_speed: todayRecord.wind_speed, rain: todayRecord.rain },
     special: special ? { slug: special.slug, title: special.title } : null,
     fanout: result.posted
-      ? { delivered: result.delivered, failed: result.failed, total: result.total }
+      ? {
+          delivered: result.delivered,
+          failed: result.failed,
+          total: result.total,
+          removed: result.removed,
+          queued: result.queued,
+        }
       : `skipped — ${result.reason}`,
+    retries,
   });
 }

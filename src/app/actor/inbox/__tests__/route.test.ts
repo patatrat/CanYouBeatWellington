@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { noteSuffixFromUrl, instrumentUrl, followSuffixFromUrl, selfDeletedActor } from "../route";
+import { noteSuffixFromUrl, instrumentUrl, followSuffixFromUrl, selfDeletedActor, followDecision } from "../route";
 import { OLD_ACTOR, NEW_ACTOR } from "../../../../lib/ap-identity";
 
 describe("noteSuffixFromUrl", () => {
@@ -90,5 +90,23 @@ describe("selfDeletedActor", () => {
     expect(selfDeletedActor(null)).toBeNull();
     expect(selfDeletedActor("Delete")).toBeNull();
     expect(selfDeletedActor({ type: "Delete" })).toBeNull();
+  });
+});
+
+describe("followDecision", () => {
+  it("accepts a Follow aimed at the live actor, bare or embedded", () => {
+    expect(followDecision(NEW_ACTOR, NEW_ACTOR.actorId)).toBe("accept");
+    expect(followDecision(NEW_ACTOR, { id: NEW_ACTOR.actorId, type: "Service" })).toBe("accept");
+  });
+
+  it("rejects a Follow of the old actor, which has moved and no longer posts", () => {
+    expect(followDecision(OLD_ACTOR, OLD_ACTOR.actorId)).toBe("reject");
+  });
+
+  it("ignores a Follow aimed at anyone else", () => {
+    expect(followDecision(NEW_ACTOR, "https://example.social/users/bob")).toBe("ignore");
+    expect(followDecision(NEW_ACTOR, OLD_ACTOR.actorId)).toBe("ignore");
+    expect(followDecision(OLD_ACTOR, NEW_ACTOR.actorId)).toBe("ignore");
+    expect(followDecision(NEW_ACTOR, undefined)).toBe("ignore");
   });
 });

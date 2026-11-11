@@ -1,6 +1,6 @@
 import { kv } from "@vercel/kv";
 import { signAndDeliver, fetchActivityJson } from "./http-signatures";
-import { NEW_ACTOR, type ActorIdentity } from "./ap-identity";
+import { NEW_ACTOR, OLD_ACTOR, type ActorIdentity } from "./ap-identity";
 
 // Daily posting now targets the new actor — switched over once the Move
 // completed and the old actor's followers had migrated (see CLAUDE.md's
@@ -50,31 +50,208 @@ export interface PostResult {
   delivered?: number;
   failed?: number;
   total?: number;
+  removed?: number;
+  queued?: number;
   reason?: string;
 }
 
-// Delivers an already-built, signed-per-recipient activity to every current
-// follower's inbox in parallel, with per-request timeouts so one hung remote
-// server can't stall the caller's function-execution budget. Shared by
-// postToFollowers() (new actor) and the admin refresh-note route (old actor,
-// backfilling historical posts still attributed to it) — takes the actor
-// explicitly rather than assuming one, since the two callers need different
-// identities/keys.
+export type DeliveryOutcome = "delivered" | "gone" | "retry" | "failed";
+
+// What an inbox's HTTP answer means for a delivery. 404/410 suggests the
+// account is gone (confirmed against the actor itself before anything is
+// removed). Timeouts, rate limits and server errors are worth another go.
+// Any other 4xx is the server refusing this activity, which a retry won't
+// change. Exported for unit testing.
+export function classifyDeliveryStatus(status: number): DeliveryOutcome {
+  if (status >= 200 && status < 300) return "delivered";
+  if (status === 404 || status === 410) return "gone";
+  if (status === 408 || status === 429 || status >= 500) return "retry";
+  return "failed";
+}
+
+class HttpStatusError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+// Removes a follower, but only once their own server says the account no
+// longer exists (404/410 on the actor itself). Returns whether it did.
+// Shared by delivery (a dead inbox) and the inbox route (an account-deletion
+// notice, which can't be signature-checked because the key is gone too).
+export async function removeFollowerIfGone(actor: ActorIdentity, followerUrl: string): Promise<boolean> {
+  const res = await fetchActivityJson(followerUrl);
+  if (res.status !== 404 && res.status !== 410) return false;
+  await kv.srem(actor.followersKey, followerUrl);
+  await kv.del(`cybw:ap:inbox:${followerUrl}`);
+  console.log(`Removed deleted follower ${followerUrl} (${actor.domain})`);
+  return true;
+}
+
+async function deliverOnce(
+  followerUrl: string,
+  activity: object,
+  privateKeyPem: string,
+  actor: ActorIdentity,
+): Promise<DeliveryOutcome> {
+  let status: number;
+  try {
+    const inboxUrl = await getInboxUrl(followerUrl);
+    status = await signAndDeliver(inboxUrl, activity, actor.keyId, privateKeyPem);
+  } catch (err) {
+    // Looking up the inbox fetches the actor, so a 404/410 there already is
+    // the actor's own server saying it's gone.
+    if (err instanceof HttpStatusError && classifyDeliveryStatus(err.status) === "gone") {
+      await kv.srem(actor.followersKey, followerUrl);
+      console.log(`Removed deleted follower ${followerUrl} (${actor.domain})`);
+      return "gone";
+    }
+    return "retry";
+  }
+
+  const outcome = classifyDeliveryStatus(status);
+  if (outcome !== "gone") return outcome;
+  try {
+    if (await removeFollowerIfGone(actor, followerUrl)) return "gone";
+  } catch {
+    // Couldn't check — treat like any other temporary failure.
+  }
+  // The account exists but its inbox doesn't: the cached inbox URL is stale.
+  await kv.del(`cybw:ap:inbox:${followerUrl}`);
+  return "retry";
+}
+
+// Deliveries that failed for a reason that might pass (server down, timeout,
+// rate limit) wait here and are retried by retryFailedDeliveries(), which
+// both crons call. Mastodon does the same with a backoff queue; without it a
+// follower whose server was down for a minute missed that post for good.
+const RETRY_QUEUE_KEY = "cybw:ap:delivery-retries";
+export const MAX_DELIVERY_ATTEMPTS = 6;
+export const MAX_RETRY_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+const MAX_RETRY_QUEUE = 500;
+
+export interface RetryEntry {
+  actor: "old" | "new";
+  follower: string;
+  activity: object;
+  /** Deliveries attempted so far, including the original. */
+  attempts: number;
+  queuedAt: number;
+}
+
+// Whether a queued delivery is still worth another attempt. Exported for
+// unit testing.
+export function isRetryable(entry: RetryEntry, now: number): boolean {
+  return entry.attempts < MAX_DELIVERY_ATTEMPTS && now - entry.queuedAt < MAX_RETRY_AGE_MS;
+}
+
+async function queueRetries(entries: RetryEntry[]) {
+  if (entries.length === 0) return;
+  await kv.rpush(RETRY_QUEUE_KEY, ...entries);
+  // Keep the newest if something is persistently failing at volume.
+  await kv.ltrim(RETRY_QUEUE_KEY, -MAX_RETRY_QUEUE, -1);
+}
+
+export interface DeliveryResult {
+  delivered: number;
+  failed: number;
+  total: number;
+  /** Followers removed because their account no longer exists. */
+  removed: number;
+  /** Failed deliveries queued for another attempt on a later cron run. */
+  queued: number;
+}
+
+// Delivers an already-built activity to every current follower's inbox in
+// parallel, with per-request timeouts so one hung remote server can't stall
+// the caller's function-execution budget. Takes the actor explicitly rather
+// than assuming one, since callers need different identities/keys (the new
+// actor for posts, either for refresh-note/refresh-actor, the old one for
+// send-move). `failed` counts everything that didn't arrive this time,
+// including followers removed as gone and deliveries queued for retry.
 export async function deliverToFollowers(
   activity: object,
   privateKeyPem: string,
   actor: ActorIdentity,
-): Promise<{ delivered: number; failed: number; total: number }> {
+): Promise<DeliveryResult> {
   const followers: string[] = (await kv.smembers(actor.followersKey)) ?? [];
-  const results = await Promise.allSettled(
-    followers.map(async (followerUrl) => {
-      const inboxUrl = await getInboxUrl(followerUrl);
-      const status = await signAndDeliver(inboxUrl, activity, actor.keyId, privateKeyPem);
-      if (status < 200 || status >= 300) throw new Error(`HTTP ${status} delivering to ${inboxUrl}`);
+  const outcomes = await Promise.all(
+    followers.map((followerUrl) =>
+      deliverOnce(followerUrl, activity, privateKeyPem, actor).catch((): DeliveryOutcome => "retry"),
+    ),
+  );
+
+  const now = Date.now();
+  const retries: RetryEntry[] = followers.flatMap((follower, i) =>
+    outcomes[i] === "retry"
+      ? [{ actor: actor === NEW_ACTOR ? ("new" as const) : ("old" as const), follower, activity, attempts: 1, queuedAt: now }]
+      : [],
+  );
+  let queued = retries.length;
+  try {
+    await queueRetries(retries);
+  } catch (err) {
+    console.error("Could not queue delivery retries:", (err as Error).message);
+    queued = 0;
+  }
+
+  const delivered = outcomes.filter((o) => o === "delivered").length;
+  return {
+    delivered,
+    failed: followers.length - delivered,
+    total: followers.length,
+    removed: outcomes.filter((o) => o === "gone").length,
+    queued,
+  };
+}
+
+export interface RetryResult {
+  retried: number;
+  delivered: number;
+  requeued: number;
+  dropped: number;
+}
+
+// Takes the deliveries waiting in the retry queue and tries each once more.
+// Ones that fail again go back on the queue until they run out of attempts
+// or age. Skips anyone who has since unfollowed. Only pops what was queued
+// when it started, so entries it re-queues aren't retried in the same run.
+export async function retryFailedDeliveries(): Promise<RetryResult> {
+  const result: RetryResult = { retried: 0, delivered: 0, requeued: 0, dropped: 0 };
+  const waiting = await kv.llen(RETRY_QUEUE_KEY);
+  if (!waiting) return result;
+
+  const entries = (await kv.lpop<RetryEntry[]>(RETRY_QUEUE_KEY, waiting)) ?? [];
+  const now = Date.now();
+
+  const requeue: RetryEntry[] = [];
+  await Promise.all(
+    entries.map(async (entry) => {
+      const actor = entry.actor === "new" ? NEW_ACTOR : OLD_ACTOR;
+      const privateKeyPem = process.env[actor.privateKeyEnvVar];
+      let outcome: DeliveryOutcome | "skip" = "skip";
+      try {
+        if (privateKeyPem && isRetryable(entry, now) && (await kv.sismember(actor.followersKey, entry.follower))) {
+          result.retried++;
+          outcome = await deliverOnce(entry.follower, entry.activity, privateKeyPem, actor);
+        }
+      } catch {
+        outcome = "retry";
+      }
+
+      const next = { ...entry, attempts: entry.attempts + 1 };
+      if (outcome === "delivered") result.delivered++;
+      else if (outcome === "retry" && isRetryable(next, now)) requeue.push(next);
+      else result.dropped++;
     }),
   );
-  const delivered = results.filter((r) => r.status === "fulfilled").length;
-  return { delivered, failed: followers.length - delivered, total: followers.length };
+
+  result.requeued = requeue.length;
+  await queueRetries(requeue);
+  return result;
 }
 
 export async function getInboxUrl(actorUrl: string): Promise<string> {
@@ -83,7 +260,7 @@ export async function getInboxUrl(actorUrl: string): Promise<string> {
   if (cached?.startsWith("https://")) return cached;
 
   const res = await fetchActivityJson(actorUrl);
-  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${actorUrl}`);
+  if (!res.ok) throw new HttpStatusError(`HTTP ${res.status} fetching ${actorUrl}`, res.status);
   const actor = await res.json();
   const inbox = actor.inbox as string | undefined;
   if (!inbox?.startsWith("https://")) throw new Error(`No https inbox at ${actorUrl}`);
@@ -154,9 +331,11 @@ export async function postToFollowers(
   // entries below, so without a TTL the trimmed cybw:post:* keys would
   // accumulate in KV forever.
   await kv.set(`cybw:post:${noteIdSuffix}`, activity, { ex: NOTE_TTL_SECONDS });
+  // Drop any earlier entry first, so re-posting the same note (a cron
+  // re-run) doesn't list it in the outbox twice.
+  await kv.lrem(NEW_ACTOR.postsListKey, 0, noteIdSuffix);
   await kv.lpush(NEW_ACTOR.postsListKey, noteIdSuffix);
   await kv.ltrim(NEW_ACTOR.postsListKey, 0, 49);
 
-  const { delivered, failed, total } = await deliverToFollowers(activity, privateKeyPem, NEW_ACTOR);
-  return { posted: true, delivered, failed, total };
+  return { posted: true, ...(await deliverToFollowers(activity, privateKeyPem, NEW_ACTOR)) };
 }

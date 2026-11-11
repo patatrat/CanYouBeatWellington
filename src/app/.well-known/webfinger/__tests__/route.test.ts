@@ -27,4 +27,20 @@ describe("resolveWebfingerResource", () => {
     expect(resolveWebfingerResource("")).toBeNull();
     expect(resolveWebfingerResource("not-an-acct-uri")).toBeNull();
   });
+
+  it("resolves a lookup by the actor's id or profile URL", () => {
+    expect(resolveWebfingerResource(NEW_ACTOR.actorId)).toBe(NEW_ACTOR);
+    expect(resolveWebfingerResource(NEW_ACTOR.base)).toBe(NEW_ACTOR);
+    expect(resolveWebfingerResource(`${NEW_ACTOR.base}/`)).toBe(NEW_ACTOR);
+    expect(resolveWebfingerResource(OLD_ACTOR.actorId)).toBe(OLD_ACTOR);
+  });
+
+  it("resolves regardless of the domain's case", () => {
+    expect(resolveWebfingerResource("acct:CanYouBeat@CanYouBeatWellington.NZ")).toBe(NEW_ACTOR);
+  });
+
+  it("returns null for some other URL on our domain", () => {
+    expect(resolveWebfingerResource(`${NEW_ACTOR.base}/about`)).toBeNull();
+    expect(resolveWebfingerResource("https://example.com/actor")).toBeNull();
+  });
 });

@@ -19,6 +19,8 @@ export interface ActorIdentity {
   boostsKey: string;
   publicKeyEnvVar: string;
   privateKeyEnvVar: string;
+  /** When the actor was created, shown as its "joined" date. */
+  published?: string;
 }
 
 const OLD_DOMAIN = "canyoubeatwellington.radomski.co.nz";
@@ -56,6 +58,7 @@ export const NEW_ACTOR: ActorIdentity = {
   boostsKey: "cybw:ap:boosts:new",
   publicKeyEnvVar: "AP_PUBLIC_KEY_NEW",
   privateKeyEnvVar: "AP_PRIVATE_KEY_NEW",
+  published: "2026-08-09T00:00:00Z",
 };
 
 // The new actor claims succession from the old one — Mastodon cross-checks
@@ -81,8 +84,9 @@ export function actorForHost(host: string | null): ActorIdentity {
 // queries for either acct domain regardless of which hostname the HTTP
 // request itself arrived on.
 export function actorForWebfingerDomain(domain: string): ActorIdentity | null {
-  if (domain === OLD_ACTOR.domain) return OLD_ACTOR;
-  if (domain === NEW_ACTOR.domain) return NEW_ACTOR;
+  const d = domain.toLowerCase();
+  if (d === OLD_ACTOR.domain) return OLD_ACTOR;
+  if (d === NEW_ACTOR.domain) return NEW_ACTOR;
   return null;
 }
 
@@ -99,6 +103,16 @@ export function buildActorDocument(actor: ActorIdentity): Record<string, unknown
     '@context': [
       'https://www.w3.org/ns/activitystreams',
       'https://w3id.org/security/v1',
+      // The same term definitions Mastodon publishes for these fields.
+      {
+        manuallyApprovesFollowers: 'as:manuallyApprovesFollowers',
+        toot: 'http://joinmastodon.org/ns#',
+        discoverable: 'toot:discoverable',
+        indexable: 'toot:indexable',
+        schema: 'http://schema.org#',
+        PropertyValue: 'schema:PropertyValue',
+        value: 'schema:value',
+      },
     ],
     id: actor.actorId,
     type: 'Service',
@@ -114,6 +128,13 @@ export function buildActorDocument(actor: ActorIdentity): Record<string, unknown
     outbox: `${actor.base}/actor/outbox`,
     followers: `${actor.base}/actor/followers`,
     following: `${actor.base}/actor/following`,
+    // Follows are accepted automatically, never held for approval.
+    manuallyApprovesFollowers: false,
+    // Opt in to profile directories/suggestions and full-text post search.
+    // Only for the live actor: the old one has moved and shouldn't be found.
+    discoverable: actor === NEW_ACTOR,
+    indexable: actor === NEW_ACTOR,
+    ...(actor.published ? { published: actor.published } : {}),
     ...(actor === NEW_ACTOR ? { alsoKnownAs: NEW_ACTOR_ALSO_KNOWN_AS } : {}),
     ...(actor === OLD_ACTOR ? { movedTo: OLD_ACTOR_MOVED_TO } : {}),
     attachment: [

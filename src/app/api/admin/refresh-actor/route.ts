@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     object: document,
   };
 
-  const { delivered, failed, total } = await deliverToFollowers(updateActivity, privateKeyPem, target);
+  const delivery = await deliverToFollowers(updateActivity, privateKeyPem, target);
 
-  return NextResponse.json({ ok: true, actor: body.actor, delivered, failed, total });
+  return NextResponse.json({ ok: true, actor: body.actor, ...delivery });
 }

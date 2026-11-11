@@ -86,4 +86,15 @@ describe("buildActorDocument", () => {
     expect(doc?.movedTo).toBe(OLD_ACTOR_MOVED_TO);
     expect(doc?.alsoKnownAs).toBeUndefined();
   });
+
+  it("advertises the live actor as discoverable, and the moved one as not", () => {
+    vi.stubEnv(NEW_ACTOR.publicKeyEnvVar, "fake-pem");
+    vi.stubEnv(OLD_ACTOR.publicKeyEnvVar, "fake-pem");
+    const live = buildActorDocument(NEW_ACTOR);
+    const moved = buildActorDocument(OLD_ACTOR);
+    expect(live).toMatchObject({ discoverable: true, indexable: true, manuallyApprovesFollowers: false });
+    expect(live?.published).toBe(NEW_ACTOR.published);
+    expect(moved).toMatchObject({ discoverable: false, indexable: false, manuallyApprovesFollowers: false });
+    expect(moved?.published).toBeUndefined();
+  });
 });

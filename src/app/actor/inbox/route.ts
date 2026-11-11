@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { kv } from '@vercel/kv';
-import { verifySignature, signAndDeliver, fetchActivityJson } from '@/lib/http-signatures';
-import { getInboxUrl } from '@/lib/ap-posting';
-import { actorForHost, type ActorIdentity } from '@/lib/ap-identity';
+import { verifySignature, signAndDeliver } from '@/lib/http-signatures';
+import { getInboxUrl, removeFollowerIfGone } from '@/lib/ap-posting';
+import { actorForHost, OLD_ACTOR, type ActorIdentity } from '@/lib/ap-identity';
 
 const ACCEPT_QUOTE_CONTEXT = { QuoteRequest: 'https://w3id.org/fep/044f#QuoteRequest' };
 const QUOTE_AUTH_CONTEXT = {
@@ -13,21 +13,37 @@ const QUOTE_AUTH_CONTEXT = {
   interactionTarget: { '@id': 'gts:interactionTarget', '@type': '@id' },
 };
 
-async function sendAccept(us: ActorIdentity, followActivity: unknown, followerActorUrl: string) {
+// Answers a Follow with an Accept or a Reject.
+async function answerFollow(
+  us: ActorIdentity,
+  type: 'Accept' | 'Reject',
+  followActivity: unknown,
+  followerActorUrl: string,
+) {
   const privateKeyPem = process.env[us.privateKeyEnvVar]?.replace(/\\n/g, '\n');
   if (!privateKeyPem) throw new Error(`${us.privateKeyEnvVar} not configured`);
 
   const inbox = await getInboxUrl(followerActorUrl);
 
-  const accept = {
+  const answer = {
     '@context': 'https://www.w3.org/ns/activitystreams',
-    id: `${us.base}/actor/accepts/${Date.now()}`,
-    type: 'Accept',
+    id: `${us.base}/actor/${type.toLowerCase()}s/${Date.now()}`,
+    type,
     actor: us.actorId,
     object: followActivity,
   };
 
-  await signAndDeliver(inbox, accept, us.keyId, privateKeyPem);
+  await signAndDeliver(inbox, answer, us.keyId, privateKeyPem);
+}
+
+// What to do with a verified Follow. It must actually be aimed at this
+// actor (a Follow of someone else, delivered here, isn't ours to accept).
+// The old actor has moved and no longer posts, so a new follower there
+// would hear nothing: those are rejected, which also clears the "pending"
+// state on the follower's side. Exported for unit testing.
+export function followDecision(us: ActorIdentity, followObject: unknown): 'accept' | 'reject' | 'ignore' {
+  if (instrumentUrl(followObject) !== us.actorId) return 'ignore';
+  return us === OLD_ACTOR ? 'reject' : 'accept';
 }
 
 // Extracts the noteIdSuffix from one of our own note URLs (used as the
@@ -156,13 +172,24 @@ async function handleFollowAccept(us: ActorIdentity, activity: Record<string, un
   console.log(`Inbox: now following ${signerActorUrl} (${us.domain})`);
 }
 
+// A Reject of a Follow we sent: either our request was declined, or (later)
+// the account removed us as a follower. Either way we're not following them.
+// Only the signer's own relationship with us is touched, so a Reject can't
+// affect anyone else's.
 async function handleFollowReject(us: ActorIdentity, activity: Record<string, unknown>, signerActorUrl: string) {
+  if (instrumentUrl(activity.actor) !== signerActorUrl) {
+    console.error(`Inbox: Reject actor mismatch — signed by ${signerActorUrl}`);
+    return;
+  }
+
   const followId = instrumentUrl(activity.object);
   const suffix = followId ? followSuffixFromUrl(followId, us.base) : null;
   if (!suffix) return;
 
-  await kv.del(`cybw:ap:pending-follow:${suffix}`);
-  console.log(`Inbox: follow request to ${signerActorUrl} rejected (${us.domain})`);
+  const pendingKey = `cybw:ap:pending-follow:${suffix}`;
+  if ((await kv.get<string>(pendingKey)) === signerActorUrl) await kv.del(pendingKey);
+  await kv.srem(us.followingKey, signerActorUrl);
+  console.log(`Inbox: follow of ${signerActorUrl} rejected or removed (${us.domain})`);
 }
 
 // Records an incoming boost (Announce) of one of our own posts, for our own
@@ -222,13 +249,7 @@ export function selfDeletedActor(activity: unknown): string | null {
 async function handleSelfDelete(us: ActorIdentity, actorUrl: string) {
   if (!actorUrl.startsWith('https://')) return;
   if (!(await kv.sismember(us.followersKey, actorUrl))) return;
-
-  const res = await fetchActivityJson(actorUrl);
-  if (res.status !== 404 && res.status !== 410) return;
-
-  await kv.srem(us.followersKey, actorUrl);
-  await kv.del(`cybw:ap:inbox:${actorUrl}`);
-  console.log(`Inbox: removed deleted follower ${actorUrl} (${us.domain})`);
+  await removeFollowerIfGone(us, actorUrl);
 }
 
 export async function POST(req: NextRequest) {
@@ -287,10 +308,16 @@ export async function POST(req: NextRequest) {
 
   try {
     if (activity.type === 'Follow') {
-      if (followerUrl) {
+      const decision = followerUrl ? followDecision(us, activity.object) : 'ignore';
+      if (followerUrl && decision === 'accept') {
         await kv.sadd(us.followersKey, followerUrl);
-        await sendAccept(us, activity, followerUrl);
+        await answerFollow(us, 'Accept', activity, followerUrl);
         console.log(`Inbox: new follower ${followerUrl} (${us.domain})`);
+      } else if (followerUrl && decision === 'reject') {
+        await answerFollow(us, 'Reject', activity, followerUrl);
+        console.log(`Inbox: rejected follow of moved actor from ${followerUrl} (${us.domain})`);
+      } else if (followerUrl) {
+        console.log(`Inbox: ignored Follow from ${followerUrl} aimed at ${instrumentUrl(activity.object)}`);
       }
     } else if (activity.type === 'Undo' && objectType === 'Follow') {
       if (followerUrl) {
