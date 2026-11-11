@@ -155,7 +155,9 @@ const MAX_CLOCK_SKEW_MS = 60 * 60 * 1000;
 // the body or replay old requests behind a valid signature.
 const REQUIRED_SIGNED_HEADERS = ['(request-target)', 'host', 'date', 'digest'];
 
-// Verifies an inbound HTTP signature and that the signed digest matches
+// Verifies an inbound HTTP signature (either scheme: the draft-cavage
+// `Signature` header nearly everything sends today, or RFC 9421's
+// `Signature-Input` pair) and that the signed digest matches
 // `rawBody`, and returns the verified signer's actor URL (the owner of the
 // signing key) — callers must check it against whatever actor the payload
 // claims to be from, since the body itself is attacker-supplied.
@@ -165,6 +167,8 @@ export async function verifySignature(
   headers: Record<string, string>,
   rawBody: string,
 ): Promise<string> {
+  if (headers['signature-input']) return verifyMessageSignature(method, pathname, headers, rawBody);
+
   const sigHeader = headers['signature'];
   if (!sigHeader) throw new Error('Missing Signature header');
 
@@ -202,14 +206,19 @@ export async function verifySignature(
     return `${name}: ${val}`;
   }).join('\n');
 
+  return ownerOfValidSignature(keyId, Buffer.from(signingString, 'utf8'), Buffer.from(signature, 'base64'));
+}
+
+// Checks `signature` over `data` against the key at `keyId` and returns the
+// key's owner. RSA keys use RSASSA-PKCS1-v1_5 with SHA-256 (what the
+// fediverse signs with); Ed25519 keys are accepted too.
+async function ownerOfValidSignature(keyId: string, data: Buffer, signature: Buffer): Promise<string> {
   const verifies = (pem: string): boolean => {
     try {
-      return crypto.verify(
-        'sha256',
-        Buffer.from(signingString, 'utf8'),
-        { key: crypto.createPublicKey(pem), padding: crypto.constants.RSA_PKCS1_PADDING },
-        Buffer.from(signature, 'base64'),
-      );
+      const key = crypto.createPublicKey(pem);
+      return key.asymmetricKeyType === 'ed25519'
+        ? crypto.verify(null, data, key, signature)
+        : crypto.verify('sha256', data, { key, padding: crypto.constants.RSA_PKCS1_PADDING }, signature);
     } catch {
       return false;
     }
@@ -225,6 +234,126 @@ export async function verifySignature(
   if (!isValid) throw new Error('Signature verification failed');
 
   return key.owner;
+}
+
+export interface MessageSignature {
+  /** Covered components, in signing order, e.g. `@method`, `content-digest`. */
+  components: string[];
+  /** The signature parameters exactly as sent: they are signed verbatim. */
+  params: string;
+  keyId: string;
+  created: number;
+  expires?: number;
+  alg?: string;
+  signature: Buffer;
+}
+
+const SF_TOKEN = '[A-Za-z0-9_*.-]+';
+
+// Parses RFC 9421's `Signature-Input` / `Signature` header pair, e.g.
+//   Signature-Input: sig1=("@method" "@target-uri" "content-digest");created=1748341414;keyid="https://…#main-key"
+//   Signature: sig1=:BASE64:
+// Only a single signature is supported, the same limit Mastodon applies.
+// Exported for unit testing.
+export function parseMessageSignature(signatureInput: string, signatureHeader: string): MessageSignature {
+  const match = signatureInput.match(
+    new RegExp(`^\\s*(${SF_TOKEN})=(\\(([^)]*)\\)((?:;${SF_TOKEN}(?:=(?:"[^"]*"|[^;,\\s]+))?)*))\\s*$`),
+  );
+  if (!match) throw new Error('Malformed Signature-Input header');
+  const [, label, params, list, paramList] = match;
+
+  const components = list.trim().split(/\s+/).filter(Boolean).map((item) => {
+    const name = item.match(/^"([^"]+)"$/)?.[1];
+    if (!name) throw new Error(`Unsupported signature component: ${item}`);
+    return name.toLowerCase();
+  });
+
+  const values: Record<string, string> = {};
+  for (const [, name, raw] of paramList.matchAll(new RegExp(`;(${SF_TOKEN})(?:=("[^"]*"|[^;,\\s]+))?`, 'g'))) {
+    values[name] = (raw ?? '').replace(/^"(.*)"$/, '$1');
+  }
+
+  const sig = signatureHeader.match(
+    new RegExp(`(?:^|,)\\s*${label.replace(/[.*]/g, '\\$&')}=:([A-Za-z0-9+/=]+):`),
+  )?.[1];
+  if (!sig) throw new Error('Malformed Signature header');
+
+  const created = Number(values.created);
+  if (!values.keyid || !Number.isFinite(created) || !values.created) {
+    throw new Error('Signature-Input must include keyid and created');
+  }
+
+  return {
+    components,
+    params,
+    keyId: values.keyid,
+    created,
+    ...(values.expires ? { expires: Number(values.expires) } : {}),
+    ...(values.alg ? { alg: values.alg } : {}),
+    signature: Buffer.from(sig, 'base64'),
+  };
+}
+
+// The same protection the older scheme's required headers give: method and
+// full URL (so a signature can't be replayed at another endpoint or host)
+// and the body digest. Mastodon requires the same three.
+const REQUIRED_COMPONENTS = ['@method', '@target-uri', 'content-digest'];
+const SUPPORTED_ALGS = ['rsa-v1_5-sha256', 'ed25519'];
+
+// RFC 9421 HTTP Message Signatures, the standard replacing the draft
+// scheme above. Mastodon already retries with it when the draft signature
+// is refused, and newer software may send nothing else.
+async function verifyMessageSignature(
+  method: string,
+  pathname: string,
+  headers: Record<string, string>,
+  rawBody: string,
+): Promise<string> {
+  const sig = parseMessageSignature(headers['signature-input'], headers['signature'] ?? '');
+  if (!sig.keyId.startsWith('https://')) throw new Error(`keyid must be an https URL: ${sig.keyId}`);
+  if (sig.alg && !SUPPORTED_ALGS.includes(sig.alg)) throw new Error(`Unsupported signature algorithm: ${sig.alg}`);
+  for (const required of REQUIRED_COMPONENTS) {
+    if (!sig.components.includes(required)) throw new Error(`Signature must cover ${required}`);
+  }
+
+  const now = Date.now();
+  if (Math.abs(now - sig.created * 1000) > MAX_CLOCK_SKEW_MS) {
+    throw new Error(`Signature created outside acceptance window: ${sig.created}`);
+  }
+  if (sig.expires !== undefined && !(sig.expires * 1000 > now)) throw new Error('Signature has expired');
+
+  // Content-Digest (RFC 9530): `sha-256=:<base64>:`, possibly alongside
+  // other algorithms.
+  const contentDigest = headers['content-digest'] ?? '';
+  const digestMatch = contentDigest.match(/(?:^|,)\s*(sha-256|sha-512)=:([A-Za-z0-9+/=]+):/i);
+  const expectedDigest =
+    digestMatch &&
+    crypto
+      .createHash(digestMatch[1].toLowerCase() === 'sha-512' ? 'sha512' : 'sha256')
+      .update(rawBody, 'utf8')
+      .digest('base64');
+  if (!digestMatch || digestMatch[2] !== expectedDigest) {
+    throw new Error('Content-Digest header does not match request body');
+  }
+
+  const host = headers['host'];
+  if (!host) throw new Error('Missing Host header');
+  const derived: Record<string, string> = {
+    '@method': method.toUpperCase(),
+    '@target-uri': `https://${host}${pathname}`,
+    '@authority': host.toLowerCase(),
+    '@scheme': 'https',
+    '@path': pathname,
+  };
+
+  const lines = sig.components.map((name) => {
+    const value = name.startsWith('@') ? derived[name] : headers[name]?.trim();
+    if (value === undefined) throw new Error(`Signed component absent from request: ${name}`);
+    return `"${name}": ${value}`;
+  });
+  lines.push(`"@signature-params": ${sig.params}`);
+
+  return ownerOfValidSignature(sig.keyId, Buffer.from(lines.join('\n'), 'utf8'), sig.signature);
 }
 
 export async function signAndDeliver(

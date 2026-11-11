@@ -4,6 +4,7 @@ import { kv } from '@vercel/kv';
 import { verifySignature, signAndDeliver } from '@/lib/http-signatures';
 import { getInboxUrl, removeFollowerIfGone } from '@/lib/ap-posting';
 import { actorForHost, OLD_ACTOR, type ActorIdentity } from '@/lib/ap-identity';
+import { addRecord, removeRecords, mentionsActor, buildReplyRecord } from '@/lib/ap-interactions';
 
 const ACCEPT_QUOTE_CONTEXT = { QuoteRequest: 'https://w3id.org/fep/044f#QuoteRequest' };
 const QUOTE_AUTH_CONTEXT = {
@@ -192,41 +193,97 @@ async function handleFollowReject(us: ActorIdentity, activity: Record<string, un
   console.log(`Inbox: follow of ${signerActorUrl} rejected or removed (${us.domain})`);
 }
 
-// Records an incoming boost (Announce) of one of our own posts, for our own
-// record-keeping — this is separate from, and has no effect on, the
-// booster-list Mastodon's own UI already shows natively for any post viewed
-// there. No response is sent back: unlike Follow/QuoteRequest, Announce
-// isn't a request awaiting an Accept/Reject. Silently ignored if the
-// announced object isn't verifiably one of our real posts, same defensive
-// pattern as handleQuoteRequest.
-async function handleAnnounce(us: ActorIdentity, activity: Record<string, unknown>, signerActorUrl: string) {
-  const claimedActor =
-    typeof activity.actor === 'string' ? activity.actor : (activity.actor as { id?: string } | undefined)?.id;
-  if (claimedActor !== signerActorUrl) {
-    console.error(`Inbox: Announce actor mismatch — body claims ${claimedActor}, signed by ${signerActorUrl}`);
+// Whether a URL is one of this actor's own published posts.
+async function isOurPost(us: ActorIdentity, url: string): Promise<boolean> {
+  const suffix = noteSuffixFromUrl(url, us.base);
+  if (!suffix) return false;
+  const stored = await kv.get<{ object?: { id?: string } }>(`cybw:post:${suffix}`);
+  return stored?.object?.id === url;
+}
+
+// Records an incoming boost (Announce) or Like of one of our own posts, for
+// our own record-keeping — this is separate from, and has no effect on,
+// the counts Mastodon's own UI already shows natively for any post viewed
+// there. No response is sent back: unlike Follow/QuoteRequest, these
+// aren't requests awaiting an Accept/Reject. Silently ignored if the object
+// isn't verifiably one of our real posts, same defensive pattern as
+// handleQuoteRequest.
+async function handleReaction(
+  us: ActorIdentity,
+  kind: 'boost' | 'like',
+  activity: Record<string, unknown>,
+  signerActorUrl: string,
+) {
+  if (instrumentUrl(activity.actor) !== signerActorUrl) {
+    console.error(`Inbox: ${activity.type} actor mismatch — signed by ${signerActorUrl}`);
     return;
   }
 
   const objectUrl = instrumentUrl(activity.object);
   if (!objectUrl) return;
-
-  const suffix = noteSuffixFromUrl(objectUrl, us.base);
-  const stored = suffix
-    ? await kv.get<{ object?: { id?: string } }>(`cybw:post:${suffix}`)
-    : null;
-  if (!stored?.object?.id || stored.object.id !== objectUrl) {
-    console.log(`Inbox: Announce for unknown/mismatched post ${objectUrl} — ignoring`);
+  if (!(await isOurPost(us, objectUrl))) {
+    console.log(`Inbox: ${activity.type} for unknown/mismatched post ${objectUrl} — ignoring`);
     return;
   }
 
-  const record = JSON.stringify({
-    actor: signerActorUrl,
-    object: objectUrl,
-    published: new Date().toISOString(),
-  });
-  await kv.lpush(us.boostsKey, record);
-  await kv.ltrim(us.boostsKey, 0, 199);
-  console.log(`Inbox: boost recorded — ${signerActorUrl} announced ${objectUrl} (${us.domain})`);
+  await addRecord(
+    kind === 'boost' ? us.boostsKey : us.likesKey,
+    {
+      ...(typeof activity.id === 'string' ? { id: activity.id } : {}),
+      actor: signerActorUrl,
+      object: objectUrl,
+      published: new Date().toISOString(),
+    },
+    (r) => r.actor === signerActorUrl && r.object === objectUrl,
+  );
+  console.log(`Inbox: ${kind} recorded — ${signerActorUrl} on ${objectUrl} (${us.domain})`);
+}
+
+// Someone took back a boost or a like: drop our record of it. Only the
+// signer's own records can be removed.
+async function handleUndoReaction(us: ActorIdentity, activity: Record<string, unknown>, signerActorUrl: string) {
+  if (instrumentUrl(activity.actor) !== signerActorUrl) return;
+
+  const undone = activity.object as { type?: string; object?: unknown } | string | undefined;
+  const undoneId = instrumentUrl(undone);
+  const undoneType = typeof undone === 'object' ? undone?.type : undefined;
+  const target = typeof undone === 'object' ? instrumentUrl(undone?.object) : null;
+  const matches = (r: { id?: string; actor: string; object?: string }) =>
+    r.actor === signerActorUrl && ((!!undoneId && r.id === undoneId) || (!!target && r.object === target));
+
+  let removed = 0;
+  if (undoneType !== 'Like') removed += await removeRecords(us.boostsKey, matches);
+  if (undoneType !== 'Announce') removed += await removeRecords(us.likesKey, matches);
+  if (removed) console.log(`Inbox: ${signerActorUrl} undid a boost/like (${us.domain})`);
+}
+
+// A new post from someone else. Kept only if it's a reply to one of our
+// posts or addressed to us (a mention). The bot doesn't answer; this is
+// so replies aren't silently lost.
+async function handleCreate(us: ActorIdentity, activity: Record<string, unknown>, signerActorUrl: string) {
+  if (instrumentUrl(activity.actor) !== signerActorUrl) {
+    console.error(`Inbox: Create actor mismatch — signed by ${signerActorUrl}`);
+    return;
+  }
+
+  const record = buildReplyRecord(activity.object, signerActorUrl, new Date());
+  if (!record) return;
+
+  const post = activity.object as Record<string, unknown>;
+  const isReply = typeof record.inReplyTo === 'string' && (await isOurPost(us, record.inReplyTo));
+  if (!isReply && !mentionsActor(post, us.actorId)) return;
+
+  await addRecord(us.repliesKey, record, (r) => r.id === record.id);
+  console.log(`Inbox: ${isReply ? 'reply' : 'mention'} recorded — ${record.id} (${us.domain})`);
+}
+
+// The author deleted a post: if it's a reply we recorded, drop it.
+async function handleDeletePost(us: ActorIdentity, activity: Record<string, unknown>, signerActorUrl: string) {
+  if (instrumentUrl(activity.actor) !== signerActorUrl) return;
+  const postId = instrumentUrl(activity.object);
+  if (!postId) return;
+  const removed = await removeRecords(us.repliesKey, (r) => r.id === postId && r.actor === signerActorUrl);
+  if (removed) console.log(`Inbox: removed deleted reply ${postId} (${us.domain})`);
 }
 
 // When an account is deleted, its server sends a Delete of the actor itself
@@ -299,7 +356,7 @@ export async function POST(req: NextRequest) {
   // duplicate log line.
   const claimedActor = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
   const followerUrl = claimedActor === signerActorUrl ? claimedActor : undefined;
-  const selfHandledTypes = ['QuoteRequest', 'Accept', 'Reject', 'Announce'];
+  const selfHandledTypes = ['QuoteRequest', 'Accept', 'Reject', 'Announce', 'Like', 'Create', 'Delete', 'Undo'];
   if (claimedActor && !followerUrl && !selfHandledTypes.includes(activity.type)) {
     console.error(`Inbox: actor mismatch — body claims ${claimedActor}, signed by ${signerActorUrl}`);
   }
@@ -332,9 +389,19 @@ export async function POST(req: NextRequest) {
     } else if (activity.type === 'Reject' && (objectType === 'Follow' || objectType === undefined)) {
       await handleFollowReject(us, activity, signerActorUrl);
     } else if (activity.type === 'Announce') {
-      await handleAnnounce(us, activity, signerActorUrl);
+      await handleReaction(us, 'boost', activity, signerActorUrl);
+    } else if (activity.type === 'Like') {
+      await handleReaction(us, 'like', activity, signerActorUrl);
+    } else if (activity.type === 'Undo') {
+      // Undo{Follow} was handled above; this is a boost or like taken back.
+      await handleUndoReaction(us, activity, signerActorUrl);
+    } else if (activity.type === 'Create') {
+      await handleCreate(us, activity, signerActorUrl);
+    } else if (activity.type === 'Delete') {
+      // Account deletions were answered before signature checks; this is a post.
+      await handleDeletePost(us, activity, signerActorUrl);
     }
-    // All other activity types (Delete, etc.) are silently accepted per AP spec
+    // All other activity types (Update, etc.) are silently accepted per AP spec
   } catch (err) {
     console.error('Inbox: error processing activity:', (err as Error).message);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });

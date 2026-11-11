@@ -17,6 +17,10 @@ export interface ActorIdentity {
   postsListKey: string;
   /** KV list key of recorded Announce (boost) events on this actor's posts — internal record-keeping only, not exposed via any AP collection. */
   boostsKey: string;
+  /** KV list of recorded Likes on this actor's posts. Internal record-keeping, like boosts. */
+  likesKey: string;
+  /** KV list of recorded replies to, and mentions of, this actor. Internal record-keeping, like boosts. */
+  repliesKey: string;
   publicKeyEnvVar: string;
   privateKeyEnvVar: string;
   /** When the actor was created, shown as its "joined" date. */
@@ -35,6 +39,8 @@ export const OLD_ACTOR: ActorIdentity = {
   followingKey: "cybw:ap:following",
   postsListKey: "cybw:posts",
   boostsKey: "cybw:ap:boosts",
+  likesKey: "cybw:ap:likes",
+  repliesKey: "cybw:ap:replies",
   publicKeyEnvVar: "AP_PUBLIC_KEY",
   privateKeyEnvVar: "AP_PRIVATE_KEY",
 };
@@ -56,6 +62,8 @@ export const NEW_ACTOR: ActorIdentity = {
   followingKey: "cybw:ap:following:new",
   postsListKey: "cybw:posts:new",
   boostsKey: "cybw:ap:boosts:new",
+  likesKey: "cybw:ap:likes:new",
+  repliesKey: "cybw:ap:replies:new",
   publicKeyEnvVar: "AP_PUBLIC_KEY_NEW",
   privateKeyEnvVar: "AP_PRIVATE_KEY_NEW",
   published: "2026-08-09T00:00:00Z",

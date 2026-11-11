@@ -10,12 +10,6 @@ import { NEW_ACTOR, OLD_ACTOR, type ActorIdentity } from "./ap-identity";
 // deliverToFollowers() below.
 const BASE = NEW_ACTOR.base;
 const ACTOR_ID = NEW_ACTOR.actorId;
-// The Note's `url` — "a link to a representation of this object" per the
-// ActivityStreams spec, i.e. what Mastodon's "view on the web" link opens.
-// Unlike the actor/note id (which must stay on the AP-pinned domain), this
-// is just a human-facing pointer, so it goes to the new domain.
-const SITE_URL = "https://canyoubeatwellington.nz";
-
 // FEP-044f quote-post context terms, copied verbatim from a live Mastodon
 // post's own ActivityPub JSON (fetched directly, not from third-party docs,
 // since third-party write-ups disagreed on the exact namespace). Mastodon
@@ -312,7 +306,10 @@ export async function postToFollowers(
     to: ["https://www.w3.org/ns/activitystreams#Public"],
     cc: [`${ACTOR_ID}/followers`],
     tag: hashtags.map((name) => ({ type: "Hashtag", name: `#${name}` })),
-    url: SITE_URL,
+    // "A link to a representation of this object" — what Mastodon's "open
+    // original page" opens. The note's own URL serves a page to browsers
+    // (see notes/[id]/route.ts), so each post has its own permalink.
+    url: noteId,
     interactionPolicy: QUOTABLE_BY_ANYONE,
   };
 
