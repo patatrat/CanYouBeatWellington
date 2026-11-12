@@ -59,6 +59,7 @@ export function renderNoteHtml(note: NoteForPage): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(description || title)} — ${title}</title>
 <meta name="description" content="${escapeHtml(description)}">
+<meta name="robots" content="noindex">
 <link rel="canonical" href="${escapeHtml(note.id)}">
 <link rel="alternate" type="application/activity+json" href="${escapeHtml(note.id)}">
 <meta property="og:type" content="article">

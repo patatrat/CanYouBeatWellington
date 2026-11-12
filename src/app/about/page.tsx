@@ -4,12 +4,15 @@ import { ExternalLink } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
 import FediverseHandle from "@/components/FediverseHandle";
 import SiteNav from "@/components/SiteNav";
+import { pageMetadata } from "@/lib/page-metadata";
 
-export const metadata: Metadata = {
-  title: "Why Though? Can You Really Beat Wellington on a Good Day?",
-  description: "How a good day in Wellington is judged: the temperature, wind and rain rules for each of the six Wellington seasons, from Summer through to Shitsville.",
-  alternates: { canonical: "/about" },
-};
+// Leads with the saying exactly as people search it. Search Console shows the
+// slogan searches landing on this page far more than on any other.
+export const metadata: Metadata = pageMetadata({
+  title: "You Can't Beat Wellington on a Good Day: How Often Is That True?",
+  description: "Wellington's most famous weather saying, put on trial. The temperature, wind and rain a day needs to count as a good one in each of the six Wellington seasons.",
+  path: "/about",
+});
 
 const SEASONS = [
   { season: "Summer", months: "Jan, Feb, Mar", temp: "19°C", wind: "30 km/h", rain: "0 mm" },
@@ -96,8 +99,8 @@ export default function AboutPage() {
           </p>
           <p>
             Some months naturally produce very few good days under these rules, and the rules don&apos;t try
-            to paper over that. June averages zero. Shitsville (October and November) produces good days
-            about 6% of the time. That&apos;s not the app being harsh. That&apos;s Wellington being Wellington.
+            to paper over that. October manages one about 7% of the time, and Shitsville as a whole (October and
+            November) about 13%. That&apos;s not the app being harsh. That&apos;s Wellington being Wellington.
           </p>
 
           <h2 className="text-xl font-bold text-gray-800 pt-4">Follow on the fediverse</h2>

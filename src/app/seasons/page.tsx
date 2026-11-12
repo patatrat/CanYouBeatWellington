@@ -6,12 +6,13 @@ import { getTodaysNZTDate } from "@/lib/weather";
 import { getSeasonLabel } from "@/utils/rulesStorage";
 import { getSeasonClockAngle, CLOCK_CENTRE } from "@/utils/seasonClock";
 import SiteNav from "@/components/SiteNav";
+import { pageMetadata } from "@/lib/page-metadata";
 
-export const metadata: Metadata = {
-  title: "Wellington's Six Seasons, Including Shitsville — Can You Beat Wellington?",
-  description: "Where are we in the Wellington year? A seasons clock for Summer, Autumn, Winter, Spring 1, Shitsville and Spring 2, with a hand that moves every single day.",
-  alternates: { canonical: "/seasons" },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Shitsville and the Six Wellington Seasons — Can You Beat Wellington?",
+  description: "What is Shitsville? October and November in Wellington. A seasons clock for Summer, Autumn, Winter, Spring 1, Shitsville and Spring 2, with a hand that moves daily.",
+  path: "/seasons",
+});
 
 // No DB call here, so this costs nothing in Neon compute. Hourly keeps the
 // hand at most an hour late after NZ midnight, same as the home page.
@@ -63,6 +64,29 @@ export default function SeasonsPage() {
           exactly how much of the current season is left. Each season has its own bar for a{" "}
           <Link href="/about" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
             good day
+          </Link>.
+        </p>
+
+        <h2 className="text-xl font-bold text-gray-800 mt-10 mb-3">What is Shitsville?</h2>
+        <p className="text-gray-700">
+          Shitsville is October and November in Wellington: the stretch between Spring 1 and
+          Spring 2 when it ought to be warming up and mostly isn&apos;t. The name comes from{" "}
+          <a href="https://adam.nz/realistic-calendar" target="_blank" rel="noopener" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+            Adam Shand&apos;s realistic Wellington calendar <ExternalLink className="inline-block w-3.5 h-3.5 ml-0.5" />
+          </a>
+          , which this clock is drawn from.
+        </p>
+        <p className="text-gray-700 mt-4">
+          The weather backs the name up. Since 2020, the wind has been over this site&apos;s
+          30 km/h limit on about four Shitsville days in ten, and only about one day in eight has
+          been warm, calm and dry enough to count as a good day. October is the worst month of
+          the whole year. See{" "}
+          <Link href="/history" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+            the record
+          </Link>{" "}
+          for every season&apos;s numbers, or check whether{" "}
+          <Link href="/" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">
+            today is a good day
           </Link>.
         </p>
 

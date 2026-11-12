@@ -10,12 +10,13 @@ import SeasonBreakdown from "@/components/SeasonBreakdown";
 import MonthlyAveragesChart from "@/components/MonthlyAveragesChart";
 import CalendarHistory from "@/components/CalendarHistory";
 import SiteNav from "@/components/SiteNav";
+import { pageMetadata } from "@/lib/page-metadata";
 
-export const metadata: Metadata = {
-  title: "The Record — Can You Beat Wellington?",
+export const metadata: Metadata = pageMetadata({
+  title: "How Often Is It a Good Day in Wellington? The Record Since 2020",
   description: "Every Wellington day since 2020, judged good or bad: good days by month and season, monthly weather averages, fun facts and a full calendar of the record.",
-  alternates: { canonical: "/history" },
-};
+  path: "/history",
+});
 
 export const revalidate = 3600;
 

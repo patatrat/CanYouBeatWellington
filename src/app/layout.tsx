@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
 import { OLD_ACTOR, NEW_ACTOR } from '@/lib/ap-identity';
+import { SITE_URL as CANONICAL_URL, SITE_NAME, OG_IMAGE } from '@/lib/page-metadata';
 import './globals.css';
 
 const TITLE = "You Can't Beat Wellington on a Good Day — Can You Beat Wellington?";
@@ -10,11 +11,11 @@ const TITLE = "You Can't Beat Wellington on a Good Day — Can You Beat Wellingt
 // an apostrophe, and this string is what most platforms fall back to for
 // share-preview text when no explicit og:description is read correctly.
 const DESCRIPTION = "Can you beat Wellington today? A daily verdict on the weather in Wellington, New Zealand, judged against the six Wellington seasons, including Shitsville.";
-// Human-facing canonical URL for Open Graph/Twitter cards — distinct from
-// the rel="me" links below, which are about ActivityPub actor identity
-// verification, not social-preview metadata.
-const CANONICAL_URL = 'https://canyoubeatwellington.nz';
-const OG_IMAGE = `${CANONICAL_URL}/canyoubeatwellington_og_image.jpg`;
+// CANONICAL_URL is the human-facing address used for Open Graph/Twitter
+// cards — distinct from the rel="me" links below, which are about ActivityPub
+// actor identity verification, not social-preview metadata. These are the
+// home page's tags and the fallback for any page without its own; the other
+// pages set theirs through pageMetadata().
 
 export const metadata: Metadata = {
   // Resolves each page's relative alternates.canonical. Every page sets its
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
     url: CANONICAL_URL,
-    siteName: 'Can You Beat Wellington?',
+    siteName: SITE_NAME,
     images: [{ url: OG_IMAGE, width: 1200, height: 630 }],
     locale: 'en_NZ',
     type: 'website',
