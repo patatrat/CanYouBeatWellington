@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { isBearerAuthorized } from '@/lib/auth';
 import { fetchAndStoreBatch, getTodaysNZTDate } from '@/lib/weather';
 import { isGoodWeatherDay } from '@/utils/rulesStorage';
@@ -42,6 +43,14 @@ export async function GET(req: NextRequest) {
 
   // Fetch 92 days from Open-Meteo and upsert to Neon.
   const { stored, todayRecord } = await fetchAndStoreBatch();
+
+  // The batch re-writes past days with observed readings, which can flip a
+  // day's verdict after the fact. Without this, each page kept its own
+  // hour-old copy and they disagreed: the home page's streak quip counted
+  // the revised day as good while the History calendar still showed it as
+  // bad. Both pages rebuild on their next visit.
+  revalidatePath('/');
+  revalidatePath('/history');
 
   if (!todayRecord) {
     return NextResponse.json({ ok: true, stored, retries, fanout: 'skipped — no record for today' });
