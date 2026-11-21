@@ -99,8 +99,8 @@ export default function AboutPage() {
           </p>
           <p>
             Some months naturally produce very few good days under these rules, and the rules don&apos;t try
-            to paper over that. October manages one about 7% of the time, and Shitsville as a whole (October and
-            November) about 13%. That&apos;s not the app being harsh. That&apos;s Wellington being Wellington.
+            to paper over that. October manages one about 9% of the time, and Shitsville as a whole (October and
+            November) about 16%. That&apos;s not the app being harsh. That&apos;s Wellington being Wellington.
           </p>
 
           <h2 className="text-xl font-bold text-gray-800 pt-4">Follow on the fediverse</h2>

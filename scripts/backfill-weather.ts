@@ -13,10 +13,19 @@
  *   DATABASE_URL=... npx jiti scripts/backfill-weather.ts --from 2026-01-01 --to 2026-08-31
  * Then, to actually write:
  *   DATABASE_URL=... npx jiti scripts/backfill-weather.ts --from 2026-01-01 --to 2026-08-31 --apply
+ *
+ * --rain-only: a second repair. The original April 2026 backfill stored each
+ * day's full 24-hour rain total for 2020–2025, but the good-day rule (and
+ * everything the cron writes) uses 6am–6pm rain. This mode rewrites ONLY
+ * the rain column, for existing rows, to the archive's daytime sum, and
+ * reports which verdicts would change. Temperature, wind and votes are left
+ * alone. Same dry-run/--apply pattern:
+ *   DATABASE_URL=... npx jiti scripts/backfill-weather.ts --from 2020-01-01 --to 2025-12-31 --rain-only
  */
 
 import { sql } from "../src/lib/db";
 import { buildDailyRecords, upsertWeatherRecord, type OpenMeteoBatchResponse } from "../src/lib/weather";
+import { isGoodWeatherDay } from "../src/utils/rulesStorage";
 
 const arg = (name: string): string | undefined => {
   const i = process.argv.indexOf(`--${name}`);
@@ -26,10 +35,11 @@ const arg = (name: string): string | undefined => {
 const from = arg("from");
 const to = arg("to");
 const apply = process.argv.includes("--apply");
+const rainOnly = process.argv.includes("--rain-only");
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 if (!from || !to || !ISO_DATE.test(from) || !ISO_DATE.test(to) || from > to) {
-  console.error("Usage: npx jiti scripts/backfill-weather.ts --from YYYY-MM-DD --to YYYY-MM-DD [--apply]");
+  console.error("Usage: npx jiti scripts/backfill-weather.ts --from YYYY-MM-DD --to YYYY-MM-DD [--rain-only] [--apply]");
   process.exit(1);
 }
 if (!process.env.DATABASE_URL) {
@@ -56,6 +66,32 @@ const existing = (await sql`
   WHERE date >= ${from} AND date <= ${to}
 `) as { date: string; temperature: number; wind_speed: number; rain: number }[];
 const byDate = new Map(existing.map((r) => [r.date, r]));
+
+if (rainOnly) {
+  const fetchedByDate = new Map(fetched.map((r) => [r.date, r]));
+  const verdict = (row: { date: string; temperature: number; wind_speed: number }, rain: number) =>
+    isGoodWeatherDay({ temperature: row.temperature, windSpeed: row.wind_speed, rain }, row.date);
+  const changes = existing
+    .map((row) => ({ row, rain: fetchedByDate.get(row.date)?.rain }))
+    .filter((c): c is { row: typeof c.row; rain: number } => c.rain !== undefined && Math.abs(c.row.rain - c.rain) >= 0.01);
+  const flips = changes.filter((c) => verdict(c.row, c.row.rain) !== verdict(c.row, c.rain));
+
+  console.log(`${existing.length} rows in range; ${changes.length} would get new daytime rain figures.`);
+  console.log(`${changes.filter((c) => c.rain < c.row.rain).length} lower, ${changes.filter((c) => c.rain > c.row.rain).length} higher.`);
+  console.log(`${flips.length} verdicts would change:`);
+  for (const { row, rain } of flips) {
+    console.log(`  ${row.date}  ${row.rain} -> ${rain} mm  now ${verdict(row, rain) ? "good" : "bad"}`);
+  }
+  if (!apply) {
+    console.log("\nDry run: nothing written. Re-run with --apply to update the rain column.");
+    process.exit(0);
+  }
+  for (const { row, rain } of changes) {
+    await sql`UPDATE daily_weather_records SET rain = ${rain} WHERE date = ${row.date}`;
+  }
+  console.log(`\nUpdated rain on ${changes.length} rows.`);
+  process.exit(0);
+}
 
 const isZeroPlaceholder = (r: { temperature: number; wind_speed: number; rain: number }) =>
   r.temperature === 0 && r.wind_speed === 0 && r.rain === 0;

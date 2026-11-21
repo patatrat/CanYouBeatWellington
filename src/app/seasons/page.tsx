@@ -78,7 +78,7 @@ export default function SeasonsPage() {
         </p>
         <p className="text-gray-700 mt-4">
           The weather backs the name up. Since 2020, the wind has been over this site&apos;s
-          30 km/h limit on about four Shitsville days in ten, and only about one day in eight has
+          30 km/h limit on about four Shitsville days in ten, and only about one day in six has
           been warm, calm and dry enough to count as a good day. October is the worst month of
           the whole year. See{" "}
           <Link href="/history" className="text-amber-700 hover:text-amber-900 underline underline-offset-2">

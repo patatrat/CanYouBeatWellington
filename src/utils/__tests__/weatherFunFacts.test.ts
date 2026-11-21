@@ -95,7 +95,7 @@ describe('calculateNotSoFunFacts', () => {
   it('counts finished months with no good day, ignoring the current month', () => {
     const history = run('2026-01-01', 70, () => false);
     const facts = gloomy(history, '2026-03-11');
-    expect(facts).toContain("[All time] 2 whole months went by without a single good day, most recently February 2026.");
+    expect(facts).toContain("[All time] 2 separate months went without a single good day: January 2026 and February 2026.");
   });
 
   it('counts weeks with a good weekday but no good weekend day', () => {
@@ -112,5 +112,11 @@ describe('calculateNotSoFunFacts', () => {
       record('2026-02-02', { ...GOOD, temperature: 17 }),
     ];
     expect(gloomy(history, '2026-03-01')).toContain('[All time] 1 day was calm and dry, and missed out by less than a degree. So close.');
+  });
+
+  it('says every year when a date has always been bad, and keeps a zero out of the fun facts', () => {
+    const history = [...run('2024-01-01', 40, () => false), ...run('2025-01-01', 40, () => false), ...run('2026-01-01', 40, () => true)];
+    expect(gloomy(history, '2026-01-10')).toContain('[On this day] 10 January has been a bad day in every one of the last 2 years.');
+    expect(texts(history, '2026-01-10').some((f) => f.includes('has been a good day in 0'))).toBe(false);
   });
 });

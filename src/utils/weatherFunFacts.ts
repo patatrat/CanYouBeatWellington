@@ -33,6 +33,8 @@ const longDate = (date: string) => format(parseISO(date), 'd MMMM yyyy');
 const shortDate = (date: string) => format(parseISO(date), 'd MMMM');
 const one = (n: number) => n.toFixed(1);
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+// "A, B and C"
+const listOf = (items: string[]) => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`);
 
 const maxBy = <T,>(items: T[], value: (item: T) => number) =>
   items.reduce((best, item) => (value(item) > value(best) ? item : best));
@@ -122,7 +124,7 @@ export const calculateFunFacts = (history: DailyWeatherRecord[], today: string):
   const wettest = maxBy(days, (d) => d.rain);
   allTime(`The hottest day on record reached ${one(hottest.temperature)}°C, on ${longDate(hottest.date)}.`);
   allTime(`The coldest day on record only got to ${one(coldest.temperature)}°C, on ${longDate(coldest.date)}.`);
-  allTime(`The windiest day on record hit ${Math.round(windiest.wind_speed)} km/h, on ${longDate(windiest.date)}.`);
+  allTime(`The windiest day on record averaged ${Math.round(windiest.wind_speed)} km/h from 6am to 6pm, on ${longDate(windiest.date)}.`);
   if (wettest.rain > 0) allTime(`The wettest day on record dropped ${one(wettest.rain)}mm of rain in daylight hours, on ${longDate(wettest.date)}.`);
 
   // Rain and wind
@@ -130,7 +132,7 @@ export const calculateFunFacts = (history: DailyWeatherRecord[], today: string):
   const calm = days.filter((d) => d.wind_speed < 10).length;
   allTime(`Properly calm days, with wind under 10 km/h, make up just ${pct(calm, days.length)} of the record.`);
   const gales = days.filter((d) => d.wind_speed > 50).length;
-  if (gales > 0) allTime(`Winds top 50 km/h on ${pct(gales, days.length)} of days. That's about ${Math.round((gales / days.length) * 365)} days a year.`);
+  if (gales > 0) allTime(`On about ${Math.round((gales / days.length) * 365)} days a year, the wind averages over 50 km/h from 6am to 6pm.`);
 
   const avg = (ds: Day[]) => ds.reduce((sum, d) => sum + d.temperature, 0) / ds.length;
   const windy = days.filter((d) => d.wind_speed > 30);
@@ -193,7 +195,7 @@ export const calculateFunFacts = (history: DailyWeatherRecord[], today: string):
         : ` ${share > avgShare ? 'Better' : 'Worse'} than the ${rate(avgShare)} a typical year manages by now.`;
     facts.push({ scope, text: `${plural(yearGood, 'good day')} out of ${thisYear.length} (${pct(yearGood, thisYear.length)}).${comparison}` });
     const yearWindiest = maxBy(thisYear, (d) => d.wind_speed);
-    facts.push({ scope, text: `The windiest day this year hit ${Math.round(yearWindiest.wind_speed)} km/h, on ${shortDate(yearWindiest.date)}.` });
+    facts.push({ scope, text: `The windiest day this year averaged ${Math.round(yearWindiest.wind_speed)} km/h from 6am to 6pm, on ${shortDate(yearWindiest.date)}.` });
     const yearHottest = maxBy(thisYear, (d) => d.temperature);
     facts.push({ scope, text: `The warmest day this year reached ${one(yearHottest.temperature)}°C, on ${shortDate(yearHottest.date)}.` });
   }
@@ -203,7 +205,9 @@ export const calculateFunFacts = (history: DailyWeatherRecord[], today: string):
   if (sameDate.length >= 2) {
     const scope = 'On this day';
     const dateGood = sameDate.filter(isGood).length;
-    facts.push({ scope, text: `${shortDate(today)} has been a good day in ${dateGood} of the last ${sameDate.length} years.` });
+    if (dateGood > 0) {
+      facts.push({ scope, text: `${shortDate(today)} has been a good day in ${dateGood} of the last ${sameDate.length} years.` });
+    }
     const warmest = maxBy(sameDate, (d) => d.temperature);
     facts.push({ scope, text: `The warmest ${shortDate(today)} on record was ${one(warmest.temperature)}°C, in ${warmest.date.slice(0, 4)}.` });
   }
@@ -266,7 +270,11 @@ export const calculateNotSoFunFacts = (history: DailyWeatherRecord[], today: str
   if (blankMonths.length === 1) {
     allTime(`${monthName(blankMonths[0])} didn't have a single good day.`);
   } else if (blankMonths.length > 1) {
-    allTime(`${blankMonths.length} whole months went by without a single good day, most recently ${monthName(blankMonths.at(-1)!)}.`);
+    allTime(
+      blankMonths.length <= 5
+        ? `${blankMonths.length} separate months went without a single good day: ${listOf(blankMonths.map(monthName))}.`
+        : `${blankMonths.length} separate months went without a single good day, most recently ${monthName(blankMonths.at(-1)!)}.`,
+    );
   }
 
   // Weeks (Monday to Sunday, fully recorded) with a good weekday but a
@@ -355,7 +363,12 @@ export const calculateNotSoFunFacts = (history: DailyWeatherRecord[], today: str
     const scope = 'On this day';
     const dateBad = sameDate.filter((d) => !isGood(d)).length;
     if (dateBad > 0) {
-      facts.push({ scope, text: `${shortDate(today)} has been a bad day in ${dateBad} of the last ${sameDate.length} years.` });
+      facts.push({
+        scope,
+        text: dateBad === sameDate.length
+          ? `${shortDate(today)} has been a bad day in every one of the last ${sameDate.length} years.`
+          : `${shortDate(today)} has been a bad day in ${dateBad} of the last ${sameDate.length} years.`,
+      });
     }
     const coldest = minBy(sameDate, (d) => d.temperature);
     facts.push({ scope, text: `The coldest ${shortDate(today)} on record only got to ${one(coldest.temperature)}°C, in ${coldest.date.slice(0, 4)}.` });
