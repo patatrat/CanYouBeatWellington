@@ -329,7 +329,7 @@ export const calculateNotSoFunFacts = (history: DailyWeatherRecord[], today: str
   const summer = days.filter((d) => getSeasonLabel(d.date) === 'Summer');
   if (summer.length >= 30) {
     const coldSummer = minBy(summer, (d) => d.temperature);
-    allTime(`The coldest summer day on record only reached ${one(coldSummer.temperature)}°C, on ${longDate(coldSummer.date)}.`);
+    allTime(`The coldest day of summer (January to March) on record only reached ${one(coldSummer.temperature)}°C, on ${longDate(coldSummer.date)}.`);
   }
 
   // This year so far

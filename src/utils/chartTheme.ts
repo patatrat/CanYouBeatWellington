@@ -9,3 +9,15 @@ export const CHART = {
   axis: "#64748b",
   cursor: "#f1f5f9",
 } as const;
+
+// One colour per season, used wherever a chart is split by season. Late
+// Autumn is a deeper shade of Autumn's orange; Shitsville is suitably grey.
+export const SEASON_COLOURS: Record<string, string> = {
+  Summer: "#f59e0b",
+  Autumn: "#fb923c",
+  "Late Autumn": "#ea580c",
+  Winter: "#60a5fa",
+  "Spring 1": "#34d399",
+  Shitsville: "#94a3b8",
+  "Spring 2": "#a78bfa",
+};

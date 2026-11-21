@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Cell } from "recharts";
 import { getThresholds, getSeasonLabel } from "@/utils/rulesStorage";
 import type { DailyWeatherRecord } from "@/types/db";
-import { CHART } from "@/utils/chartTheme";
+import { CHART, SEASON_COLOURS } from "@/utils/chartTheme";
 import ChartTooltip from "./ChartTooltip";
 import PanelHeader from "./PanelHeader";
 
@@ -68,7 +68,10 @@ const SeasonBreakdown = ({ history }: SeasonBreakdownProps) => {
           />
           <YAxis type="category" dataKey="name" width={84} tick={{ fontSize: 12, fill: "#374151" }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: CHART.cursor }} />
-          <Bar dataKey="pct" fill={CHART.good} radius={[0, 2, 2, 0]} maxBarSize={18}>
+          <Bar dataKey="pct" radius={[0, 2, 2, 0]} maxBarSize={18}>
+            {data.map((d) => (
+              <Cell key={d.name} fill={SEASON_COLOURS[d.name] ?? CHART.good} />
+            ))}
             <LabelList dataKey="pct" position="right" formatter={(v) => `${v}%`} style={{ fontSize: 11, fill: CHART.axis }} />
           </Bar>
         </BarChart>

@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { getSeasonLabel, getThresholds } from "@/utils/rulesStorage";
 import type { DailyWeatherRecord } from "@/types/db";
-import { CHART } from "@/utils/chartTheme";
+import { CHART, SEASON_COLOURS } from "@/utils/chartTheme";
 import ChartTooltip from "./ChartTooltip";
 import PanelHeader from "./PanelHeader";
 
@@ -75,9 +75,22 @@ const MonthlyAveragesChart = ({ history }: MonthlyAveragesChartProps) => {
             tickFormatter={(v) => `${v}%`}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: CHART.cursor }} />
-          <Bar dataKey="pct" fill={CHART.good} radius={[2, 2, 0, 0]} maxBarSize={28} />
+          <Bar dataKey="pct" radius={[2, 2, 0, 0]} maxBarSize={28}>
+            {data.map((d) => (
+              <Cell key={d.month} fill={SEASON_COLOURS[d.season] ?? CHART.good} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
+      {/* Bars are coloured by season, so name each colour. */}
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-500">
+        {[...new Set(data.map((d) => d.season))].map((season) => (
+          <span key={season} className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-[11px] w-[11px] rounded-sm" style={{ background: SEASON_COLOURS[season] }} />
+            {season}
+          </span>
+        ))}
+      </div>
     </div>
   );
 };
