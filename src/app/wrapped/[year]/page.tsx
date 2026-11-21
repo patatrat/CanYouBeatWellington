@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { getHistoricalRecords, getTodaysNZTDate } from "@/lib/weather";
-import { getSpecialDatesForRange } from "@/lib/special-dates";
+import { getRecordedWarnings } from "@/lib/warning-history";
+import { warningsByDay } from "@/lib/weather-warnings";
 import { canViewWrapped, isWrappedReleased } from "@/lib/wrapped-release";
 import { computeWrapped, type Streak, type VoteReason, type VotedDay } from "@/utils/wrappedStats";
 import SiteNav from "@/components/SiteNav";
 import WrappedBarChart from "@/components/WrappedBarChart";
+import YearGrid from "@/components/YearGrid";
 import {
+  CalendarDays,
   CloudRain,
   Equal,
   Feather,
@@ -143,11 +146,12 @@ export default async function WrappedPage({ params }: Params) {
   if (year === null || !canViewWrapped(year)) notFound();
 
   const today = getTodaysNZTDate();
-  const [records, specialDates] = await Promise.all([
+  const [records, recordedWarnings] = await Promise.all([
     getHistoricalRecords(`${year}-01-01`, `${year}-12-31`),
-    getSpecialDatesForRange(`${year}-01-01`, `${year}-12-31`),
+    getRecordedWarnings(),
   ]);
-  const s = computeWrapped(year, records, specialDates, today);
+  const warningDays = warningsByDay(recordedWarnings);
+  const s = computeWrapped(year, records, today);
   const released = isWrappedReleased(year);
 
   const topSeason = s.seasons[0];
@@ -195,6 +199,18 @@ export default async function WrappedPage({ params }: Params) {
                 That&apos;s {pct(s.goodPct)} of the {plural(s.recordedDays, "day")} on record. The other{" "}
                 {plural(s.badDays, "day")}? Well. Wellington.
               </p>
+            </Card>
+
+            <Card className="bg-slate-800" kicker="The year at a glance" icon={CalendarDays}>
+              <p className="text-slate-300 mb-6">Every day of {year}, judged on the weather alone.</p>
+              <YearGrid
+                records={records}
+                warningDays={warningDays}
+                today={today}
+                initialYear={year}
+                tone="dark"
+                showStats={false}
+              />
             </Card>
 
             {s.longestGoodStreak || s.longestBadStreak || s.longestRainStreak ? (

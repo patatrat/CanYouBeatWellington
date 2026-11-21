@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { computeWrapped, isPlaceholderRecord } from '../wrappedStats';
 import { canViewWrapped, isWrappedReleased } from '@/lib/wrapped-release';
 import type { DailyWeatherRecord } from '@/types/db';
-import type { ActiveSpecialDate } from '@/lib/special-dates-logic';
 
 // Summer (Jan–Mar) rules: temp >= 19, wind < 30, rain <= 0.1.
 const GOOD = { temperature: 22, wind_speed: 10, rain: 0 };
@@ -22,13 +21,6 @@ const rec = (date: string, weather: Partial<DailyWeatherRecord>, votes: [number,
   ...weather,
 });
 
-const special = (overrides: Partial<ActiveSpecialDate>): ActiveSpecialDate => ({
-  def_id: 1, slug: 'test', title: 'Test Date', kind: 'sporting', recurrence_rule: null,
-  recurring: false, quip_override: null, scenario_quips: null, background_key: null,
-  effect: 'none', link_url: null, link_label: null, active: true, occurrence_id: 1,
-  start_date: '2026-01-01', end_date: '2026-01-01', status: 'confirmed',
-  verdict_override: null, outcome_note: null, ...overrides,
-});
 
 describe('computeWrapped', () => {
   const records = [
@@ -44,7 +36,7 @@ describe('computeWrapped', () => {
   ];
 
   it('counts good/bad days and treats placeholders and gaps as missing', () => {
-    const s = computeWrapped(2026, records, [], '2026-01-08');
+    const s = computeWrapped(2026, records, '2026-01-08');
     expect(s.isPartialYear).toBe(true);
     expect(s.daysElapsed).toBe(8);
     expect(s.recordedDays).toBe(6);
@@ -54,13 +46,13 @@ describe('computeWrapped', () => {
   });
 
   it('finds the longest run of rainy days', () => {
-    const s = computeWrapped(2026, records, [], '2026-01-08');
+    const s = computeWrapped(2026, records, '2026-01-08');
     // BAD days have rain; 01-04 is cut off from 01-06 by the missing 01-05,
     // and 01-07 is a placeholder, so no run is longer than one day.
     expect(s.longestRainStreak?.length).toBe(1);
     const wet = computeWrapped(2026, [
       rec('2026-03-01', BAD), rec('2026-03-02', { ...BAD, rain: 0.2 }), rec('2026-03-03', BAD), rec('2026-03-04', GOOD),
-    ], [], '2026-12-31');
+    ], '2026-12-31');
     expect(wet.longestRainStreak).toEqual({ length: 3, start: '2026-03-01', end: '2026-03-03' });
   });
 
@@ -70,40 +62,38 @@ describe('computeWrapped', () => {
       rec('2026-03-02', { temperature: 30, wind_speed: 50, rain: 20 }),
       rec('2026-03-03', { temperature: 20, wind_speed: 30, rain: 10 }), // exactly the mean
       rec('2026-03-04', { temperature: 20, wind_speed: 10, rain: 10 }), // average temp and rain only
-    ], [], '2026-12-31');
+    ], '2026-12-31');
     expect(s.averages).toEqual({ temperature: 20, windSpeed: 25, rain: 10 });
     expect(s.mostAverageDay?.date).toBe('2026-03-03');
     expect(s.mostAverageDay?.good).toBe(false);
   });
 
   it('has no most average day without data', () => {
-    const s = computeWrapped(2026, [], [], '2026-12-31');
+    const s = computeWrapped(2026, [], '2026-12-31');
     expect(s.averages).toBeNull();
     expect(s.mostAverageDay).toBeNull();
   });
 
+  it('judges days on the weather alone, ignoring special-date overrides', () => {
+    // Bad weather stays bad even on a day the site forced good (e.g. a Hurricanes win).
+    const s = computeWrapped(2026, [rec('2026-01-01', BAD)], '2026-12-31');
+    expect(s.goodDays).toBe(0);
+  });
+
   it('breaks streaks across missing days', () => {
-    const s = computeWrapped(2026, records, [], '2026-01-08');
+    const s = computeWrapped(2026, records, '2026-01-08');
     expect(s.longestGoodStreak).toEqual({ length: 3, start: '2026-01-01', end: '2026-01-03' });
     // 01-04 bad, 01-05 missing, 01-06 bad: the gap stops the run at 1.
     expect(s.longestBadStreak?.length).toBe(1);
   });
 
   it('compares disagreement on good vs bad days', () => {
-    const s = computeWrapped(2026, records, [], '2026-01-08');
+    const s = computeWrapped(2026, records, '2026-01-08');
     expect(s.votes.agree).toBe(6);
     expect(s.votes.disagree).toBe(4);
     expect(s.votes.firstVoteDate).toBe('2026-01-01');
     expect(s.votes.onGoodDays.disagreeRate).toBeCloseTo(1 / 6);
     expect(s.votes.onBadDays.disagreeRate).toBeCloseTo(3 / 4);
-  });
-
-  it('applies special-date verdict overrides', () => {
-    const s = computeWrapped(2026, records, [
-      special({ start_date: '2026-01-04', end_date: '2026-01-04', verdict_override: true, title: 'Hurricanes win' }),
-    ], '2026-01-08');
-    expect(s.goodDays).toBe(4);
-    expect(s.longestGoodStreak?.length).toBe(4);
   });
 
   it('bins wind speeds with the lower bound inclusive', () => {
@@ -112,7 +102,7 @@ describe('computeWrapped', () => {
       rec('2026-01-02', { ...GOOD, wind_speed: 10 }),
       rec('2026-01-03', { ...GOOD, wind_speed: 30 }),
       rec('2026-01-04', { ...GOOD, wind_speed: 72 }),
-    ], [], '2026-12-31');
+    ], '2026-12-31');
     expect(s.windBins.map((b) => b.count)).toEqual([1, 1, 0, 1, 1]);
   });
 
@@ -122,7 +112,7 @@ describe('computeWrapped', () => {
       rec('2026-07-10', { temperature: 14, wind_speed: 5, rain: 0 }), // good Winter day
       rec('2026-07-11', { temperature: 14, wind_speed: 5, rain: 0 }),
       rec('2026-07-12', { temperature: 9, wind_speed: 50, rain: 22, snowfall: 0.7 }),
-    ], [], '2026-12-31');
+    ], '2026-12-31');
     expect(s.isPartialYear).toBe(false);
     // Summer 1 of 1 (100%) beats Winter 2 of 3 (67%) despite fewer good days.
     expect(s.seasons.map((x) => x.label)).toEqual(['Summer', 'Winter']);
@@ -148,7 +138,7 @@ describe('vote insights', () => {
     rec('2026-07-04', WINTER_GOOD, [9, 1]),
     rec('2026-07-05', WINTER_GOOD, [1, 0]),
   ];
-  const s = computeWrapped(2026, records, [], '2026-12-31');
+  const s = computeWrapped(2026, records, '2026-12-31');
 
   it('groups votes by why a day failed, most disputed first', () => {
     expect(s.votes.byReason.map((g) => g.reason)).toEqual(['cold', 'good', 'wind', 'rain']);
@@ -161,7 +151,7 @@ describe('vote insights', () => {
   });
 
   it('drops reason groups below the vote floor', () => {
-    const thin = computeWrapped(2026, [rec('2026-07-01', COLD_CALM_DRY, [3, 3])], [], '2026-12-31');
+    const thin = computeWrapped(2026, [rec('2026-07-01', COLD_CALM_DRY, [3, 3])], '2026-12-31');
     expect(thin.votes.byReason).toEqual([]);
   });
 
@@ -170,13 +160,6 @@ describe('vote insights', () => {
     // 07-03 (12-0) beats 07-05 (1-0), which is under the per-day floor.
     expect(s.votes.mostUnanimous?.date).toBe('2026-07-03');
     expect(s.votes.busiest?.date).toBe('2026-07-01');
-  });
-
-  it('excludes days an override ruled bad despite good weather', () => {
-    const o = computeWrapped(2026, [rec('2026-07-01', WINTER_GOOD, [4, 8])], [
-      special({ start_date: '2026-07-01', end_date: '2026-07-01', verdict_override: false }),
-    ], '2026-12-31');
-    expect(o.votes.byReason).toEqual([]);
   });
 });
 

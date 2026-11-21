@@ -9,6 +9,7 @@ import MonthlyGoodDaysChart from "@/components/MonthlyGoodDaysChart";
 import SeasonBreakdown from "@/components/SeasonBreakdown";
 import MonthlyAveragesChart from "@/components/MonthlyAveragesChart";
 import CalendarHistory from "@/components/CalendarHistory";
+import YearGrid from "@/components/YearGrid";
 import SiteNav from "@/components/SiteNav";
 import { pageMetadata } from "@/lib/page-metadata";
 
@@ -48,6 +49,8 @@ export default async function HistoryPage() {
   const nztNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Pacific/Auckland" }));
   const todayYear = nztNow.getFullYear();
   const todayMonth = nztNow.getMonth();
+  const firstYear = Number(earliestDate.slice(0, 4));
+  const gridYears = Array.from({ length: todayYear - firstYear + 1 }, (_, i) => firstYear + i);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200">
@@ -83,6 +86,18 @@ export default async function HistoryPage() {
             initialYear={todayYear}
             initialMonth={todayMonth}
           />
+        </Section>
+
+        <Section title="The year at a glance" subtitle="Every day of the year, judged on the weather alone.">
+          <div className="rounded-2xl bg-white/80 p-4 sm:p-6 shadow-sm">
+            <YearGrid
+              records={history}
+              warningDays={warningDays}
+              today={today}
+              initialYear={todayYear}
+              years={gridYears}
+            />
+          </div>
         </Section>
       </div>
     </div>

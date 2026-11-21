@@ -4,11 +4,6 @@
 // the page at /wrapped/[year] fetches the rows and calls computeWrapped().
 
 import { getSeasonLabel, getThresholds } from "./rulesStorage";
-import {
-  pickPrimarySpecialDate,
-  resolveVerdict,
-  type ActiveSpecialDate,
-} from "@/lib/special-dates-logic";
 import type { DailyWeatherRecord } from "@/types/db";
 
 export interface WrappedDay {
@@ -23,10 +18,9 @@ export interface WrappedDay {
   tempMet: boolean;
   windMet: boolean;
   rainMet: boolean;
-  weatherGood: boolean;
+  // Weather only: Wrapped ignores special-date verdict overrides, which
+  // are a joke for the day rather than part of the year's weather.
   good: boolean;
-  specialTitle: string | null;
-  override: boolean | null;
 }
 
 export interface Streak {
@@ -230,12 +224,9 @@ const toVotedDay = (d: WrappedDay): VotedDay => ({
 // Which group a day's votes count towards. Good days form one baseline
 // group. A bad day counts towards every rule it failed ("cold" only when
 // it was calm and dry, i.e. temperature was the sole reason), so a windy
-// wet day counts under both "wind" and "rain". Days whose verdict came from
-// a special-date override aren't about the weather rules, so they're
-// excluded from the bad-day reasons.
+// wet day counts under both "wind" and "rain".
 const reasonsFor = (d: WrappedDay): VoteReason[] => {
   if (d.good) return ["good"];
-  if (d.weatherGood) return [];
   const reasons: VoteReason[] = [];
   if (!d.tempMet && d.windMet && d.rainMet) reasons.push("cold");
   if (!d.windMet) reasons.push("wind");
@@ -272,10 +263,7 @@ const voteInsights = (days: WrappedDay[]) => {
   };
 };
 
-export function buildWrappedDays(
-  records: DailyWeatherRecord[],
-  specialDates: ActiveSpecialDate[],
-): WrappedDay[] {
+export function buildWrappedDays(records: DailyWeatherRecord[]): WrappedDay[] {
   return [...records]
     .filter((r) => !isPlaceholderRecord(r))
     .sort((a, b) => (a.date < b.date ? -1 : 1))
@@ -286,11 +274,6 @@ export function buildWrappedDays(
       const tempMet = r.temperature >= minTemp;
       const windMet = r.wind_speed < maxWind;
       const rainMet = r.rain <= maxRain;
-      const weatherGood = tempMet && windMet && rainMet;
-      const special = pickPrimarySpecialDate(
-        specialDates.filter((d) => d.start_date <= r.date && r.date <= d.end_date),
-      );
-      const override = special?.verdict_override ?? null;
       return {
         date: r.date,
         temperature: r.temperature,
@@ -302,10 +285,7 @@ export function buildWrappedDays(
         tempMet,
         windMet,
         rainMet,
-        weatherGood,
-        good: resolveVerdict(weatherGood, override),
-        specialTitle: special?.title ?? null,
-        override,
+        good: tempMet && windMet && rainMet,
       };
     });
 }
@@ -315,7 +295,6 @@ export function buildWrappedDays(
 export function computeWrapped(
   year: number,
   records: DailyWeatherRecord[],
-  specialDates: ActiveSpecialDate[],
   today: string,
 ): WrappedStats {
   const yearStart = `${year}-01-01`;
@@ -323,10 +302,7 @@ export function computeWrapped(
   const throughDate = today < yearEnd ? today : yearEnd;
   const isPartialYear = throughDate < yearEnd;
 
-  const days = buildWrappedDays(
-    records.filter((r) => r.date >= yearStart && r.date <= throughDate),
-    specialDates,
-  );
+  const days = buildWrappedDays(records.filter((r) => r.date >= yearStart && r.date <= throughDate));
 
   const daysElapsed = Math.max(0, daysInclusive(yearStart, throughDate));
   const recorded = new Set(days.map((d) => d.date));
