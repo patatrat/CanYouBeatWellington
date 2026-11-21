@@ -69,20 +69,14 @@ const longestRun = (days: Day[], predicate: (d: Day) => boolean): Run | null => 
 
 // history may arrive in any order; today is the NZ date (YYYY-MM-DD). Today
 // itself is left out of every fact, since its record is still partly forecast.
-export const calculateFunFacts = (history: DailyWeatherRecord[], today: string): FunFact[] => {
+const prepare = (history: DailyWeatherRecord[], today: string): Day[] | null => {
   const days: Day[] = history
     .filter((d) => d.date < today && !isPlaceholder(d))
     .sort((a, b) => a.date.localeCompare(b.date));
-  if (days.length < 30) return [];
+  return days.length < 30 ? null : days;
+};
 
-  const facts: FunFact[] = [];
-  const allTime = (text: string) => facts.push({ scope: 'All time', text });
-  const firstYear = days[0].date.slice(0, 4);
-  const good = days.filter(isGood);
-
-  // Good days overall and by season
-  allTime(`Only ${pct(good.length, days.length)} of days since ${firstYear} have been can't-beat-Wellington days.`);
-
+const seasonShares = (days: Day[]) => {
   const bySeason = new Map<string, { total: number; good: number }>();
   for (const d of days) {
     const label = getSeasonLabel(d.date);
@@ -91,11 +85,29 @@ export const calculateFunFacts = (history: DailyWeatherRecord[], today: string):
     if (isGood(d)) s.good += 1;
     bySeason.set(label, s);
   }
+  return bySeason;
+};
+
+const daysBetween = (from: string, to: string) =>
+  Math.round((parseISO(to).getTime() - parseISO(from).getTime()) / 86_400_000);
+
+export const calculateFunFacts = (history: DailyWeatherRecord[], today: string): FunFact[] => {
+  const days = prepare(history, today);
+  if (!days) return [];
+
+  const facts: FunFact[] = [];
+  const allTime = (text: string) => facts.push({ scope: 'All time', text });
+  const firstYear = days[0].date.slice(0, 4);
+  const good = days.filter(isGood);
+
+  // Good days overall and by season
+  allTime(`There have been ${good.length.toLocaleString('en-NZ')} can't-beat-Wellington days since ${firstYear}.`);
+
+  const bySeason = seasonShares(days);
   const seasons = [...bySeason.entries()].filter(([, s]) => s.total >= 30);
   if (seasons.length >= 2) {
     const [bestName, best] = maxBy(seasons, ([, s]) => s.good / s.total);
-    const [worstName, worst] = minBy(seasons, ([, s]) => s.good / s.total);
-    allTime(`${bestName} is the best season for good days (${pct(best.good, best.total)}). ${worstName} is the worst, at ${pct(worst.good, worst.total)}.`);
+    allTime(`${bestName} is the best season for good days, delivering one ${pct(best.good, best.total)} of the time.`);
   }
   const shitsville = bySeason.get('Shitsville');
   if (shitsville && shitsville.total >= 30) {
@@ -134,8 +146,6 @@ export const calculateFunFacts = (history: DailyWeatherRecord[], today: string):
   if (goodRun && goodRun.length > 1) {
     allTime(`The longest run of good days was ${goodRun.length} in a row, from ${longDate(goodRun.start)}.`);
   }
-  const badRun = longestRun(days, (d) => !isGood(d));
-  if (badRun) allTime(`The longest stretch without a good day lasted ${badRun.length} days, ending ${longDate(badRun.end)}.`);
 
   const months = new Map<string, number>();
   for (const d of good) months.set(d.date.slice(0, 7), (months.get(d.date.slice(0, 7)) ?? 0) + 1);
@@ -211,10 +221,159 @@ export const calculateFunFacts = (history: DailyWeatherRecord[], today: string):
         scope: 'Right now',
         text: streak === 1 ? 'Yesterday was a good day.' : `The last ${streak} days have all been good days.`,
       });
-    } else {
-      const ago = Math.round((parseISO(today).getTime() - parseISO(lastGood.date).getTime()) / 86_400_000);
-      facts.push({ scope: 'Right now', text: `The last good day was ${longDate(lastGood.date)}, ${plural(ago, 'day')} ago.` });
     }
+  }
+
+  return facts;
+};
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// The gloomy twin of calculateFunFacts: same data, same weather-only rule,
+// shown in its own card beside the fun facts.
+export const calculateNotSoFunFacts = (history: DailyWeatherRecord[], today: string): FunFact[] => {
+  const days = prepare(history, today);
+  if (!days) return [];
+
+  const facts: FunFact[] = [];
+  const allTime = (text: string) => facts.push({ scope: 'All time', text });
+  const firstYear = days[0].date.slice(0, 4);
+  const bad = days.filter((d) => !isGood(d));
+
+  allTime(`${pct(bad.length, days.length)} of days since ${firstYear} haven't been good days. You've been warned.`);
+
+  const badRun = longestRun(days, (d) => !isGood(d));
+  if (badRun && badRun.length > 1) {
+    allTime(`The longest stretch without a good day lasted ${badRun.length} days, from ${shortDate(badRun.start)} to ${longDate(badRun.end)}.`);
+  }
+
+  // Whole months without a single good day. A month only counts once it's
+  // over and nearly fully recorded, so a gap or the current month can't
+  // fake one.
+  const months = new Map<string, { total: number; good: number }>();
+  for (const d of days) {
+    const key = d.date.slice(0, 7);
+    const m = months.get(key) ?? { total: 0, good: 0 };
+    m.total += 1;
+    if (isGood(d)) m.good += 1;
+    months.set(key, m);
+  }
+  const blankMonths = [...months.entries()]
+    .filter(([key, m]) => key < today.slice(0, 7) && m.total >= 25 && m.good === 0)
+    .map(([key]) => key)
+    .sort();
+  const monthName = (key: string) => format(parseISO(`${key}-01`), 'MMMM yyyy');
+  if (blankMonths.length === 1) {
+    allTime(`${monthName(blankMonths[0])} didn't have a single good day.`);
+  } else if (blankMonths.length > 1) {
+    allTime(`${blankMonths.length} whole months went by without a single good day, most recently ${monthName(blankMonths.at(-1)!)}.`);
+  }
+
+  // Weeks (Monday to Sunday, fully recorded) with a good weekday but a
+  // weekend with none.
+  const weeks = new Map<string, { days: number; weekdayGood: boolean; weekendGood: boolean }>();
+  for (const d of days) {
+    const date = parseISO(d.date);
+    const dow = getDay(date);
+    const monday = format(subDays(date, (dow + 6) % 7), 'yyyy-MM-dd');
+    const w = weeks.get(monday) ?? { days: 0, weekdayGood: false, weekendGood: false };
+    w.days += 1;
+    if (isGood(d)) {
+      if (dow === 0 || dow === 6) w.weekendGood = true;
+      else w.weekdayGood = true;
+    }
+    weeks.set(monday, w);
+  }
+  const ruined = [...weeks.values()].filter((w) => w.days === 7 && w.weekdayGood && !w.weekendGood).length;
+  if (ruined > 0) allTime(`${ruined === 1 ? 'Once' : `${ruined} times`}, the week had a good day and the weekend didn't. Classic.`);
+
+  // Calm and dry, but a degree short.
+  const nearMisses = days.filter(
+    (d) => !isGood(d) && isGoodWeatherDay({ temperature: d.temperature + 1, windSpeed: d.wind_speed, rain: d.rain }, d.date),
+  ).length;
+  if (nearMisses > 0) {
+    allTime(`${nearMisses.toLocaleString('en-NZ')} ${nearMisses === 1 ? 'day was' : 'days were'} calm and dry, and missed out by less than a degree. So close.`);
+  }
+
+  const tooWindy = days.filter((d) => d.wind_speed >= 30).length;
+  allTime(`It's been too windy for a good day on ${pct(tooWindy, days.length)} of days. That's about ${Math.round((tooWindy / days.length) * 365)} days a year.`);
+
+  const rainRun = longestRun(days, (d) => d.rain > 0.1);
+  if (rainRun && rainRun.length > 2) {
+    allTime(`The longest run of rainy days was ${rainRun.length} in a row, ending ${longDate(rainRun.end)}.`);
+  }
+
+  const bySeason = seasonShares(days);
+  const seasons = [...bySeason.entries()].filter(([, s]) => s.total >= 30);
+  if (seasons.length >= 2) {
+    const [worstName, worst] = minBy(seasons, ([, s]) => s.good / s.total);
+    allTime(`${worstName} is the worst season, managing a good day just ${pct(worst.good, worst.total)} of the time.`);
+  }
+  const shitsville = bySeason.get('Shitsville');
+  if (shitsville && shitsville.total >= 30) {
+    allTime(`${pct(shitsville.total - shitsville.good, shitsville.total)} of Shitsville days are bad. It earned the name.`);
+  }
+
+  const byMonth = Array.from({ length: 12 }, () => ({ total: 0, good: 0 }));
+  for (const d of days) {
+    const m = byMonth[Number(d.date.slice(5, 7)) - 1];
+    m.total += 1;
+    if (isGood(d)) m.good += 1;
+  }
+  const monthStats = byMonth.map((m, i) => ({ i, ...m })).filter((m) => m.total >= 30);
+  if (monthStats.length >= 2) {
+    const worst = minBy(monthStats, (m) => m.good / m.total);
+    allTime(`${MONTH_NAMES[worst.i]} is the worst month, with a good day only ${pct(worst.good, worst.total)} of the time.`);
+  }
+
+  const summer = days.filter((d) => getSeasonLabel(d.date) === 'Summer');
+  if (summer.length >= 30) {
+    const coldSummer = minBy(summer, (d) => d.temperature);
+    allTime(`The coldest summer day on record only reached ${one(coldSummer.temperature)}°C, on ${longDate(coldSummer.date)}.`);
+  }
+
+  // This year so far
+  const year = today.slice(0, 4);
+  const thisYear = days.filter((d) => d.date.startsWith(year));
+  if (thisYear.length >= 14) {
+    const scope = `${year} so far`;
+    const yearBad = thisYear.filter((d) => !isGood(d)).length;
+    facts.push({ scope, text: `${plural(yearBad, 'bad day')} out of ${thisYear.length} this year.` });
+    const yearDrought = longestRun(thisYear, (d) => !isGood(d));
+    if (yearDrought && yearDrought.length > 1) {
+      facts.push({ scope, text: `The longest wait for a good day this year was ${yearDrought.length} days, ending ${shortDate(yearDrought.end)}.` });
+    }
+    const yearWettest = maxBy(thisYear, (d) => d.rain);
+    if (yearWettest.rain > 0.1) {
+      facts.push({ scope, text: `The wettest day this year dropped ${one(yearWettest.rain)}mm of rain in daylight hours, on ${shortDate(yearWettest.date)}.` });
+    }
+  }
+
+  // This date in earlier years
+  const sameDate = days.filter((d) => d.date.slice(5) === today.slice(5) && !d.date.startsWith(year));
+  if (sameDate.length >= 2) {
+    const scope = 'On this day';
+    const dateBad = sameDate.filter((d) => !isGood(d)).length;
+    if (dateBad > 0) {
+      facts.push({ scope, text: `${shortDate(today)} has been a bad day in ${dateBad} of the last ${sameDate.length} years.` });
+    }
+    const coldest = minBy(sameDate, (d) => d.temperature);
+    facts.push({ scope, text: `The coldest ${shortDate(today)} on record only got to ${one(coldest.temperature)}°C, in ${coldest.date.slice(0, 4)}.` });
+  }
+
+  // Right now
+  const yesterday = format(subDays(parseISO(today), 1), 'yyyy-MM-dd');
+  const lastGood = [...days].reverse().find(isGood);
+  if (lastGood && lastGood.date !== yesterday) {
+    const ago = daysBetween(lastGood.date, today);
+    facts.push({ scope: 'Right now', text: `It's been ${plural(ago, 'day')} since the last good day, on ${longDate(lastGood.date)}.` });
+  } else if (lastGood) {
+    // Average length of a run of good days, for when things are going well.
+    // A run starts on any good day whose previous day wasn't a recorded good day.
+    const goodDates = new Set(days.filter(isGood).map((d) => d.date));
+    const runs = [...goodDates].filter((date) => !goodDates.has(format(subDays(parseISO(date), 1), 'yyyy-MM-dd'))).length;
+    const average = goodDates.size / runs;
+    facts.push({ scope: 'Right now', text: `Enjoy it while it lasts. A run of good days lasts ${one(average)} days on average.` });
   }
 
   return facts;

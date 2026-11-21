@@ -11,7 +11,8 @@ import type { FunFact } from "@/utils/weatherFunFacts";
 //
 // The first fact is rendered invisible until the random pick is made, so
 // there's no flash of fact 0 and no hydration mismatch from Math.random().
-const FunFacts = ({ facts }: { facts: FunFact[] }) => {
+// Used twice on /history: the fun facts and their gloomy twin, side by side.
+const FunFacts = ({ title, facts }: { title: string; facts: FunFact[] }) => {
   const [index, setIndex] = useState(0);
   const [ready, setReady] = useState(false);
 
@@ -34,20 +35,23 @@ const FunFacts = ({ facts }: { facts: FunFact[] }) => {
   };
 
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div className={`min-w-0 flex-1 transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}>
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">{fact.scope}</p>
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-gray-800">{title}</p>
+        {facts.length > 1 && (
+          <button
+            type="button"
+            onClick={another}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-gray-300 bg-white/60 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-white"
+          >
+            <Shuffle className="h-3.5 w-3.5" aria-hidden /> Another fact
+          </button>
+        )}
+      </div>
+      <div className={`transition-opacity duration-300 motion-reduce:transition-none ${ready ? "opacity-100" : "opacity-0"}`} aria-live="polite">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">{fact.scope}</p>
         <p className="text-lg font-bold text-gray-800">{fact.text}</p>
       </div>
-      {facts.length > 1 && (
-        <button
-          type="button"
-          onClick={another}
-          className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
-        >
-          <Shuffle className="h-3.5 w-3.5" /> Another fact
-        </button>
-      )}
     </div>
   );
 };

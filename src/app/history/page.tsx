@@ -4,7 +4,7 @@ import { getSpecialDatesForRange } from "@/lib/special-dates";
 import { getRecordedWarnings } from "@/lib/warning-history";
 import { warningsByDay } from "@/lib/weather-warnings";
 import FunFacts from "@/components/FunFacts";
-import { calculateFunFacts } from "@/utils/weatherFunFacts";
+import { calculateFunFacts, calculateNotSoFunFacts } from "@/utils/weatherFunFacts";
 import MonthlyGoodDaysChart from "@/components/MonthlyGoodDaysChart";
 import SeasonBreakdown from "@/components/SeasonBreakdown";
 import MonthlyAveragesChart from "@/components/MonthlyAveragesChart";
@@ -21,11 +21,15 @@ export const metadata: Metadata = pageMetadata({
 
 export const revalidate = 3600;
 
-const Section = ({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) => (
+const PANEL = "rounded-2xl bg-white/80 p-4 sm:p-6 shadow-sm";
+
+// Sections sit on one white panel unless `bare`, for sections that lay out
+// their own panels.
+const Section = ({ title, subtitle, bare, children }: { title: string; subtitle?: string; bare?: boolean; children: React.ReactNode }) => (
   <section className="mb-14">
     <h2 className="text-lg font-bold uppercase tracking-widest text-gray-400 mb-1">{title}</h2>
     {subtitle ? <p className="text-sm text-gray-400 mb-5">{subtitle}</p> : <div className="mb-5" />}
-    <div className="rounded-2xl bg-white/80 p-4 sm:p-6 shadow-sm">{children}</div>
+    {bare ? children : <div className={PANEL}>{children}</div>}
   </section>
 );
 
@@ -62,8 +66,16 @@ export default async function HistoryPage() {
           <p className="text-gray-500">Every Wellington day, judged.</p>
         </header>
 
-        <Section title="Did you know">
-          <FunFacts facts={calculateFunFacts(history, today)} />
+        <Section title="Did you know" bare>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className={PANEL}>
+              <FunFacts title="Fun facts" facts={calculateFunFacts(history, today)} />
+            </div>
+            {/* The gloomy twin: same panel, a shade darker. */}
+            <div className="rounded-2xl bg-slate-200/90 p-4 sm:p-6 shadow-sm">
+              <FunFacts title="Not so fun facts" facts={calculateNotSoFunFacts(history, today)} />
+            </div>
+          </div>
         </Section>
 
         <Section title="Last 12 months" subtitle="Good days per month. Navigate with the arrows to go further back.">
