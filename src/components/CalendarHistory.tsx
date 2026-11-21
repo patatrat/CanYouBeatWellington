@@ -88,7 +88,12 @@ const CalendarHistory = ({ history, specialDates, warningDays = {}, initialYear,
   const firstDay = getFirstDayOfWeek(year, month);
 
   const prevMonth = () => setCurrent(month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 });
-  const nextMonth = () => setCurrent(month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 });
+  // initialYear/initialMonth are today's NZ month, so there's nothing to show past them.
+  const atCurrentMonth = year > initialYear || (year === initialYear && month >= initialMonth);
+  const nextMonth = () => {
+    if (atCurrentMonth) return;
+    setCurrent(month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 });
+  };
 
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
@@ -108,6 +113,7 @@ const CalendarHistory = ({ history, specialDates, warningDays = {}, initialYear,
           label={`${MONTH_SHORT[month]} ${year}`}
           onPrev={prevMonth}
           onNext={nextMonth}
+          canNext={!atCurrentMonth}
           prevLabel="Previous month"
           nextLabel="Next month"
         />
