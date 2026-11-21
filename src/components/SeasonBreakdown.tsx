@@ -1,20 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 import { getThresholds, getSeasonLabel } from "@/utils/rulesStorage";
 import type { DailyWeatherRecord } from "@/types/db";
+import { CHART } from "@/utils/chartTheme";
+import ChartTooltip from "./ChartTooltip";
+import PanelHeader from "./PanelHeader";
 
-const SEASON_COLORS: Record<string, string> = {
-  Summer: "#f59e0b",
-  "Spring 2": "#a78bfa",
-  "Spring 1": "#34d399",
-  Autumn: "#fb923c",
-  Shitsville: "#94a3b8",
-  Winter: "#60a5fa",
-};
-
-const SEASON_ORDER = ["Summer", "Autumn", "Winter", "Spring 1", "Shitsville", "Spring 2"];
+// Calendar order. Every label getSeasonLabel() can return must be here, or
+// that season's days silently drop out of the chart.
+const SEASON_ORDER = ["Summer", "Autumn", "Late Autumn", "Winter", "Spring 1", "Shitsville", "Spring 2"];
 
 interface SeasonDatum {
   name: string;
@@ -26,13 +22,7 @@ interface SeasonDatum {
 const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: { payload: SeasonDatum }[] }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm">
-      <p className="font-semibold text-gray-800">{d.name}</p>
-      <p style={{ color: SEASON_COLORS[d.name] ?? "#22c55e" }}>{d.pct}% good days</p>
-      <p className="text-gray-400">{d.good} of {d.total} days</p>
-    </div>
-  );
+  return <ChartTooltip title={d.name} lines={[`${d.pct}% good days`, `${d.good} of ${d.total} days`]} />;
 };
 
 interface SeasonBreakdownProps {
@@ -44,9 +34,8 @@ const SeasonBreakdown = ({ history }: SeasonBreakdownProps) => {
     if (!history) return [];
     const acc: Record<string, { good: number; total: number }> = {};
     history.forEach((r) => {
-      const date = new Date(r.date);
-      const season = getSeasonLabel(date);
-      const { minTemp, maxWind, maxRain } = getThresholds(date);
+      const season = getSeasonLabel(r.date);
+      const { minTemp, maxWind, maxRain } = getThresholds(r.date);
       const good = r.temperature >= minTemp && r.wind_speed < maxWind && r.rain <= maxRain;
       if (!acc[season]) acc[season] = { good: 0, total: 0 };
       acc[season].total++;
@@ -61,27 +50,30 @@ const SeasonBreakdown = ({ history }: SeasonBreakdownProps) => {
     }));
   }, [history]);
 
+  const best = data.reduce<SeasonDatum | null>((top, d) => (!top || d.pct > top.pct ? d : top), null);
+
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 48, bottom: 4, left: 72 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-        <XAxis
-          type="number"
-          domain={[0, 20]}
-          tick={{ fontSize: 11, fill: "#9ca3af" }}
-          axisLine={false}
-          tickLine={false}
-          tickFormatter={(v) => `${v}%`}
-        />
-        <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 12, fill: "#374151" }} axisLine={false} tickLine={false} />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f9fafb" }} />
-        <Bar dataKey="pct" radius={[0, 4, 4, 0]}>
-          {data.map((entry, i) => (
-            <Cell key={i} fill={SEASON_COLORS[entry.name] ?? "#22c55e"} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <div>
+      {best ? <PanelHeader title={`${best.name} has the best odds: ${best.pct}% good days`} /> : null}
+      <ResponsiveContainer width="100%" height={data.length * 34 + 24}>
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 40, bottom: 0, left: 8 }}>
+          <CartesianGrid stroke={CHART.grid} horizontal={false} />
+          <XAxis
+            type="number"
+            domain={[0, (max: number) => Math.max(10, Math.ceil(max / 5) * 5)]}
+            tick={{ fontSize: 11, fill: CHART.axis }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(v) => `${v}%`}
+          />
+          <YAxis type="category" dataKey="name" width={84} tick={{ fontSize: 12, fill: "#374151" }} axisLine={false} tickLine={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: CHART.cursor }} />
+          <Bar dataKey="pct" fill={CHART.good} radius={[0, 2, 2, 0]} maxBarSize={18}>
+            <LabelList dataKey="pct" position="right" formatter={(v) => `${v}%`} style={{ fontSize: 11, fill: CHART.axis }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 };
 

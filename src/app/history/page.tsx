@@ -25,7 +25,7 @@ const Section = ({ title, subtitle, children }: { title: string; subtitle?: stri
   <section className="mb-14">
     <h2 className="text-lg font-bold uppercase tracking-widest text-gray-400 mb-1">{title}</h2>
     {subtitle ? <p className="text-sm text-gray-400 mb-5">{subtitle}</p> : <div className="mb-5" />}
-    {children}
+    <div className="rounded-2xl bg-white/80 p-4 sm:p-6 shadow-sm">{children}</div>
   </section>
 );
 
@@ -89,15 +89,13 @@ export default async function HistoryPage() {
         </Section>
 
         <Section title="The year at a glance" subtitle="Every day of the year, judged on the weather alone.">
-          <div className="rounded-2xl bg-white/80 p-4 sm:p-6 shadow-sm">
-            <YearGrid
-              records={history}
-              warningDays={warningDays}
-              today={today}
-              initialYear={todayYear}
-              years={gridYears}
-            />
-          </div>
+          <YearGrid
+            records={history}
+            warningDays={warningDays}
+            today={today}
+            initialYear={todayYear}
+            years={gridYears}
+          />
         </Section>
       </div>
     </div>

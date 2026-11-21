@@ -2,9 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getThresholds } from "@/utils/rulesStorage";
 import type { DailyWeatherRecord } from "@/types/db";
+import { CHART } from "@/utils/chartTheme";
+import ChartTooltip from "./ChartTooltip";
+import PanelHeader from "./PanelHeader";
+import StepNav from "./StepNav";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -25,11 +28,10 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
   const d = payload[0].payload;
   if (!d.hasData) return null;
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-sm">
-      <p className="font-semibold text-gray-800">{label}</p>
-      <p className="text-green-600">{d.goodDays} good {d.goodDays === 1 ? "day" : "days"}</p>
-      <p className="text-gray-400">{d.totalDays} days recorded</p>
-    </div>
+    <ChartTooltip
+      title={label ?? ""}
+      lines={[`${d.goodDays} good ${d.goodDays === 1 ? "day" : "days"}`, `${d.totalDays} days recorded`]}
+    />
   );
 };
 
@@ -125,37 +127,35 @@ const MonthlyGoodDaysChart = ({ history }: MonthlyGoodDaysChartProps) => {
     return months;
   }, [history, windowEnd]);
 
-  const windowLabel = `${MONTH_SHORT[startYM.month]} ${startYM.year} – ${MONTH_SHORT[windowEnd.month]} ${windowEnd.year}`;
+  const windowLabel = `${MONTH_SHORT[startYM.month]} '${String(startYM.year).slice(2)} – ${MONTH_SHORT[windowEnd.month]} '${String(windowEnd.year).slice(2)}`;
+  const totalGood = data.reduce((sum, d) => sum + d.goodDays, 0);
+  const title = canGoNext
+    ? `${totalGood} good ${totalGood === 1 ? "day" : "days"}, ${windowLabel}`
+    : `${totalGood} good ${totalGood === 1 ? "day" : "days"} in the last 12 months`;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={() => shiftWindow(-12)}
-          disabled={!canGoPrev}
-          className="p-1.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <span className="text-sm text-gray-500">{windowLabel}</span>
-        <button
-          onClick={() => shiftWindow(12)}
-          disabled={!canGoNext}
-          className="p-1.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
+      <PanelHeader title={title}>
+        <StepNav
+          label={windowLabel}
+          onPrev={() => shiftWindow(-12)}
+          onNext={() => shiftWindow(12)}
+          canPrev={canGoPrev}
+          canNext={canGoNext}
+          prevLabel="Previous 12 months"
+          nextLabel="Next 12 months"
+        />
+      </PanelHeader>
 
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f9fafb" }} />
-          <Bar dataKey="goodDays" radius={[4, 4, 0, 0]}>
+          <CartesianGrid stroke={CHART.grid} vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: CHART.axis }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: CHART.axis }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: CHART.cursor }} />
+          <Bar dataKey="goodDays" radius={[2, 2, 0, 0]} maxBarSize={28}>
             {data.map((entry, i) => (
-              <Cell key={i} fill={entry.hasData ? "#22c55e" : "#e5e7eb"} />
+              <Cell key={i} fill={entry.hasData ? CHART.good : CHART.neutral} />
             ))}
           </Bar>
         </BarChart>

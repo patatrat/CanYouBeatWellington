@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Check, X, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, Sparkles, AlertTriangle } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Sparkles } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { isGoodWeatherDay } from "@/utils/rulesStorage";
@@ -12,8 +12,14 @@ import {
   type ActiveSpecialDate,
 } from "@/lib/special-dates-logic";
 import type { WarningDay } from "@/lib/weather-warnings";
+import { CHART } from "@/utils/chartTheme";
+import PanelHeader from "./PanelHeader";
+import StepNav from "./StepNav";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// MetService's CAP colours, for the legend swatches.
+const WARNING_SWATCHES = ["#FFEB18", "#FF8918", "#E3000F"];
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
@@ -41,18 +47,12 @@ const isGoodDay = (r: DailyWeatherRecord, special: ActiveSpecialDate | null) =>
     special?.verdict_override ?? null,
   );
 
-// Tailwind green-500, matching the good-day tick.
-const GOOD_RING = "#22c55e";
-
-// A good day gets a green border and a warning day one in the warning's
-// colour. A good day under a warning gets both: warning outside, green inside.
-const ringStyle = (good: boolean, warningColour?: string) => {
-  const rings = [
-    warningColour && `inset 0 0 0 2px ${warningColour}`,
-    good && `inset 0 0 0 ${warningColour ? 4 : 2}px ${GOOD_RING}`,
-  ].filter(Boolean);
-  return rings.length ? { boxShadow: rings.join(", ") } : undefined;
-};
+// Same treatment as the year grid: good days filled green, bad days slate,
+// and a warning day ringed in the warning's colour.
+const cellStyle = (good: boolean | null, warningColour?: string) => ({
+  background: good === null ? undefined : good ? CHART.good : CHART.neutral,
+  boxShadow: warningColour ? `inset 0 0 0 2px ${warningColour}` : undefined,
+});
 
 const CalendarHistory = ({ history, specialDates, warningDays = {}, initialYear, initialMonth }: CalendarHistoryProps) => {
   // Initial state comes from the server component (NZT date) so SSR and client
@@ -95,103 +95,86 @@ const CalendarHistory = ({ history, specialDates, warningDays = {}, initialYear,
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
+  const monthGood = [...historyMap.values()].filter(
+    (r) => r.date.startsWith(monthPrefix) && isGoodDay(r, specialMap.get(r.date) ?? null),
+  ).length;
+  const swatch = "inline-block h-[11px] w-[11px] rounded-sm";
+
   return (
-    <div className="flex flex-col items-center space-y-4 text-gray-800">
-      {/* Legend */}
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
-        <span className="flex items-center gap-1">
-          <span className="inline-flex h-4 w-4 items-center justify-center rounded" style={{ boxShadow: `inset 0 0 0 2px ${GOOD_RING}` }}>
-            <Check className="w-3 h-3 text-green-500" />
-          </span>
-          Good Day
-        </span>
-        <span className="flex items-center gap-1"><X className="w-4 h-4 text-red-500" /> Not a Good Day</span>
-        <span className="flex items-center gap-1"><ThumbsUp className="w-4 h-4 text-green-600" /> Most Agree</span>
-        <span className="flex items-center gap-1"><ThumbsDown className="w-4 h-4 text-red-600" /> Most Disagree</span>
-        <span className="flex items-center gap-1"><Sparkles className="w-4 h-4 text-purple-500" /> Special date</span>
-        <span className="flex items-center gap-1"><AlertTriangle className="w-4 h-4 text-orange-500" /> Weather warning</span>
-        <span className="text-gray-500">No symbol = No data</span>
-      </div>
+    <div className="text-gray-800">
+      <PanelHeader title={`${monthGood} good ${monthGood === 1 ? "day" : "days"} in ${MONTHS[month]} ${year}`}>
+        <StepNav
+          label={`${MONTH_SHORT[month]} ${year}`}
+          onPrev={prevMonth}
+          onNext={nextMonth}
+          prevLabel="Previous month"
+          nextLabel="Next month"
+        />
+      </PanelHeader>
 
-      {/* Month navigation */}
-      <div className="flex items-center gap-4">
-        <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100">
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <span className="text-sm font-medium w-36 text-center">{MONTHS[month]} {year}</span>
-        <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100">
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1 w-full max-w-sm">
+      <div className="mx-auto grid w-full max-w-md grid-cols-7 gap-1">
         {DAYS.map((d) => (
-          <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</div>
+          <div key={d} className="py-1 text-center text-xs font-medium text-slate-500">{d}</div>
         ))}
         {cells.map((day, i) => {
           if (!day) return <div key={`empty-${i}`} />;
 
-          const mm = String(month + 1).padStart(2, "0");
-          const dd = String(day).padStart(2, "0");
-          const dateStr = `${year}-${mm}-${dd}`;
+          const dateStr = `${monthPrefix}${String(day).padStart(2, "0")}`;
           const record = historyMap.get(dateStr);
           const special = specialMap.get(dateStr) ?? null;
           const warning = warningDays[dateStr];
           const good = record ? isGoodDay(record, special) : null;
           const agreeCount = record?.agree_count ?? 0;
           const disagreeCount = record?.disagree_count ?? 0;
-          const totalVotes = agreeCount + disagreeCount;
-          const majorityAgree = agreeCount > disagreeCount;
+          const showVotes = agreeCount + disagreeCount > 0 && agreeCount !== disagreeCount;
 
-          const weatherTitle = record
-            ? `🌡️ ${record.temperature}°C  💨 ${record.wind_speed} km/h  🌧️ ${record.rain}mm rain`
-            : undefined;
-          const votesTitle = totalVotes > 0 && agreeCount !== disagreeCount
-            ? `👍 ${agreeCount} | 👎 ${disagreeCount}`
-            : undefined;
-          const specialTitle = special
-            ? special.title + (special.outcome_note ? ` — ${special.outcome_note}` : "")
-            : undefined;
+          const title = [
+            record && `${record.temperature}°C · ${record.wind_speed} km/h · ${record.rain}mm rain`,
+            showVotes && `${agreeCount} agreed, ${disagreeCount} disagreed`,
+            special && special.title + (special.outcome_note ? `: ${special.outcome_note}` : ""),
+            warning && warning.headline,
+          ].filter(Boolean).join("\n");
 
           return (
             <div
               key={dateStr}
-              className={cn("relative h-12 w-full flex items-center justify-center rounded text-sm", record && "hover:bg-gray-50")}
-              style={ringStyle(good === true, warning?.colour)}
+              title={title || undefined}
+              className={cn(
+                "relative flex h-11 w-full items-center justify-center rounded-md text-sm tabular-nums",
+                good === true ? "font-semibold text-white" : good === false ? "text-gray-700" : "text-gray-400",
+              )}
+              style={cellStyle(good, warning?.colour)}
             >
               <span>{day}</span>
-              {(record || special || warning) && (
-                <div className="absolute top-0.5 right-0.5 flex flex-col items-center gap-0.5">
-                  {record && (
-                    <span title={weatherTitle}>
-                      {good
-                        ? <Check className="w-3 h-3 text-green-500" />
-                        : <X className="w-3 h-3 text-red-500" />}
-                    </span>
-                  )}
-                  {votesTitle && (
-                    <span title={votesTitle}>
-                      {majorityAgree
-                        ? <ThumbsUp className="w-2.5 h-2.5 text-green-600" />
-                        : <ThumbsDown className="w-2.5 h-2.5 text-red-600" />}
-                    </span>
-                  )}
-                  {special && (
-                    <span title={specialTitle}>
-                      <Sparkles className="w-2.5 h-2.5 text-purple-500" />
-                    </span>
-                  )}
-                  {warning && (
-                    <span title={warning.headline}>
-                      <AlertTriangle className="w-2.5 h-2.5" style={{ color: warning.colour }} />
-                    </span>
-                  )}
+              {(showVotes || special) && (
+                <div className="absolute right-1 top-1 flex flex-col items-center gap-0.5 opacity-80">
+                  {showVotes && (agreeCount > disagreeCount
+                    ? <ThumbsUp className="h-2.5 w-2.5" aria-label="Most agreed" />
+                    : <ThumbsDown className="h-2.5 w-2.5" aria-label="Most disagreed" />)}
+                  {special && <Sparkles className="h-2.5 w-2.5" aria-label={special.title} />}
                 </div>
               )}
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
+        <span className="inline-flex items-center gap-1.5"><span className={swatch} style={{ background: CHART.good }} />Good day</span>
+        <span className="inline-flex items-center gap-1.5"><span className={swatch} style={{ background: CHART.neutral }} />Not a good day</span>
+        <span className="inline-flex items-center gap-1.5">
+          <ThumbsUp className="h-3 w-3" /><ThumbsDown className="h-3 w-3" />Most agreed / disagreed
+        </span>
+        <span className="inline-flex items-center gap-1.5"><Sparkles className="h-3 w-3" />Special date</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex gap-0.5">
+            {WARNING_SWATCHES.map((c) => (
+              <span key={c} className={swatch} style={{ boxShadow: `inset 0 0 0 2px ${c}` }} />
+            ))}
+          </span>
+          MetService warning
+        </span>
       </div>
     </div>
   );

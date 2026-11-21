@@ -6,6 +6,8 @@ import { AlertTriangle, Check, Droplet, Thermometer, Wind, X } from "lucide-reac
 import { buildYearGrid, type YearGridCell } from "@/utils/yearGrid";
 import type { DailyWeatherRecord } from "@/types/db";
 import type { WarningDay } from "@/lib/weather-warnings";
+import { CHART } from "@/utils/chartTheme";
+import StepNav from "./StepNav";
 
 // GitHub-style year grid, weather only (see utils/yearGrid.ts). Used on
 // /history (with a year picker) and on Wrapped (one year, dark card).
@@ -25,8 +27,8 @@ const TOP = 18;
 // tones. Good days stay one green so the shading only grades bad days.
 const PALETTE = {
   light: {
-    good: "#22a356", bad: "#e3e8ed", failed: ["", "#d5dde6", "#98a8ba", "#435466"],
-    empty: "#cbd5e1", label: "#64748b",
+    good: CHART.good, bad: CHART.neutral, failed: ["", "#d5dde6", "#98a8ba", "#435466"],
+    empty: "#cbd5e1", label: CHART.axis,
   },
   dark: {
     good: "#2fbf68", bad: "#475569", failed: ["", "#94a3b8", "#64748b", "#334155"],
@@ -91,6 +93,11 @@ export default function YearGrid({
     };
   }, [tip]);
 
+  const changeYear = (y: number) => {
+    setYear(y);
+    setTip(null);
+  };
+
   const show = (cell: YearGridCell, target: Element) => {
     if (cell.status === "empty") return setTip(null);
     const r = target.getBoundingClientRect();
@@ -111,8 +118,8 @@ export default function YearGrid({
 
   return (
     <div className={dark ? "text-white" : "text-gray-800"}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 mb-3">
-        <p className="text-lg font-bold">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-4">
+        <p className={`text-lg font-bold ${dark ? "" : "text-gray-800"}`}>
           {stats.goodDays} good {stats.goodDays === 1 ? "day" : "days"} in {year}
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
@@ -137,24 +144,15 @@ export default function YearGrid({
             Bad day detail
           </button>
           {years && years.length > 1 ? (
-            <div className="flex flex-wrap gap-1" aria-label="Year">
-              {years.map((y) => (
-                <button
-                  key={y}
-                  type="button"
-                  aria-pressed={y === year}
-                  onClick={() => {
-                    setYear(y);
-                    setTip(null);
-                  }}
-                  className={`rounded-md border px-2 py-0.5 ${
-                    y === year ? "border-gray-800 bg-gray-800 text-white" : "border-gray-300 text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  {y}
-                </button>
-              ))}
-            </div>
+            <StepNav
+              label={String(year)}
+              onPrev={() => changeYear(year - 1)}
+              onNext={() => changeYear(year + 1)}
+              canPrev={year > Math.min(...years)}
+              canNext={year < Math.max(...years)}
+              prevLabel="Previous year"
+              nextLabel="Next year"
+            />
           ) : null}
         </div>
       </div>

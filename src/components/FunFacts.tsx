@@ -34,16 +34,16 @@ const FunFacts = ({ facts }: { facts: FunFact[] }) => {
   };
 
   return (
-    <div className="text-center py-6 px-4 rounded-xl bg-white/60 border border-gray-100">
-      <div className={`transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">{fact.scope}</p>
-        <p className="text-lg font-medium text-gray-700">{fact.text}</p>
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className={`min-w-0 flex-1 transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}>
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">{fact.scope}</p>
+        <p className="text-lg font-bold text-gray-800">{fact.text}</p>
       </div>
       {facts.length > 1 && (
         <button
           type="button"
           onClick={another}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white/80 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-white hover:border-gray-400"
+          className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
         >
           <Shuffle className="h-3.5 w-3.5" /> Another fact
         </button>
