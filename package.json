@@ -43,7 +43,7 @@
     "vitest": "^4.1.9"
   },
   "engines": {
-    "node": ">=24"
+    "node": "24.x"
   },
   "overrides": {
     "postcss": "8.5.25",
