@@ -69,11 +69,11 @@ export default async function HistoryPage() {
         <Section title="Did you know" bare>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className={PANEL}>
-              <FunFacts title="Fun facts" facts={calculateFunFacts(history, today)} />
+              <FunFacts title="Fun facts" card="fun" facts={calculateFunFacts(history, today)} />
             </div>
             {/* The gloomy twin: same panel, a shade darker. */}
             <div className="rounded-2xl bg-slate-200/90 p-4 sm:p-6 shadow-sm">
-              <FunFacts title="Not so fun facts" facts={calculateNotSoFunFacts(history, today)} />
+              <FunFacts title="Not so fun facts" card="not_so_fun" facts={calculateNotSoFunFacts(history, today)} />
             </div>
           </div>
         </Section>

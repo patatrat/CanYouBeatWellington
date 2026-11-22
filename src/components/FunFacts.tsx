@@ -12,7 +12,8 @@ import type { FunFact } from "@/utils/weatherFunFacts";
 // The first fact is rendered invisible until the random pick is made, so
 // there's no flash of fact 0 and no hydration mismatch from Math.random().
 // Used twice on /history: the fun facts and their gloomy twin, side by side.
-const FunFacts = ({ title, facts }: { title: string; facts: FunFact[] }) => {
+// `card` names which one in the Umami event sent on each "Another fact".
+const FunFacts = ({ title, card, facts }: { title: string; card: "fun" | "not_so_fun"; facts: FunFact[] }) => {
   const [index, setIndex] = useState(0);
   const [ready, setReady] = useState(false);
 
@@ -32,6 +33,8 @@ const FunFacts = ({ title, facts }: { title: string; facts: FunFact[] }) => {
     let next = index;
     while (next === index) next = Math.floor(Math.random() * facts.length);
     setIndex(next);
+    // Optional: an ad-blocked tracker must never stop the button working.
+    window.umami?.track("fact_shuffle", { card, scope: facts[next].scope });
   };
 
   return (
