@@ -12,6 +12,7 @@ import {
   isAlmostGoodDay,
   pickAlmostGoodDayQuip,
   pickStreakQuip,
+  pickStreakBrokenQuip,
 } from "@/utils/quips";
 import {
   getTodaysRecord,
@@ -136,26 +137,28 @@ export default async function HomePage() {
   // Streak only means anything on a day that's itself good — reuses the same
   // weather-plus-override verdict as everywhere else via
   // countRecentGoodDayStreak(), not a separate weather-only definition.
-  const streak = isGood
-    ? countRecentGoodDayStreak(
-        precedingRecords.map((r) => ({ date: r.date, temperature: r.temperature, windSpeed: r.wind_speed, rain: r.rain })),
-        precedingSpecialDates,
-      ) + 1
-    : 0;
+  // Good days in a row up to yesterday. On a good day it extends into today's
+  // streak; on a bad day it's the run today just ended.
+  const priorStreak = countRecentGoodDayStreak(
+    precedingRecords.map((r) => ({ date: r.date, temperature: r.temperature, windSpeed: r.wind_speed, rain: r.rain })),
+    precedingSpecialDates,
+  );
+  const streak = isGood ? priorStreak + 1 : 0;
   // Precedence: a special date's fixed quip_override always wins (sporting
   // results etc, where the weather is beside the point); then an extreme
   // wind/rain reading; then a special date's own scenario-specific line
   // (e.g. Christmas Day's rainy-day quip), if it has one for today's
   // scenario; then a multi-day good streak (a bigger surprise than today
-  // alone being extra good); then a day that clears the good-day bar by a
-  // wide margin gets its own celebratory line; then a razor-thin
-  // temperature-only miss gets its own near-miss line; otherwise the
-  // standard scenario quip.
+  // alone being extra good), or on a bad day the good run it just ended;
+  // then a day that clears the good-day bar by a wide margin gets its own
+  // celebratory line; then a razor-thin temperature-only miss gets its own
+  // near-miss line; otherwise the standard scenario quip.
   const verdictLine =
     special?.quip_override ??
     pickSeverityQuip(effectiveWeather) ??
     (special ? getSpecialDayQuip(special, effectiveWeather, rules) : null) ??
     pickStreakQuip(streak) ??
+    (isGood ? null : pickStreakBrokenQuip(priorStreak, tempMet, windMet, rainMet)) ??
     (isGreatDay(effectiveWeather, rules.minTemp) ? pickGreatDayQuip() : null) ??
     (isAlmostGoodDay(effectiveWeather.temperature, rules.minTemp, windMet, rainMet)
       ? pickAlmostGoodDayQuip()

@@ -291,6 +291,79 @@ export const pickStreakQuip = (streak: number): string | null => {
   return pool ? pick([...pool]) : null;
 };
 
+// ── Streak-broken quips ──────────────────────────────────────────────────────
+// A bad day straight after one or more good days. Keyed by how long the run
+// that just ended was (5+ share the last tier). Lines can use {culprit}
+// (whatever failed today: "wind", "rain and cold", ...) and {n} (the run's
+// length). The scenario lines below join the pool when today's failure
+// matches, at any run length.
+export const STREAK_BROKEN_QUIPS: Record<number, readonly string[]> = {
+  1: [
+    "And now, back to our regularly scheduled weather.",
+    "Well, yesterday was nice.",
+    "That was fun while it lasted. All twenty-four hours of it.",
+    "Yesterday was a good day. Today's here to even things out.",
+    "One good day, and Wellington's already taken it back.",
+  ],
+  2: [
+    "The day that denied us the hat trick.",
+    "It would have been three in a row, if it weren't for that meddling {culprit}.",
+    "So close to a hat trick. Two will have to do.",
+    "Two good days was apparently the limit.",
+  ],
+  3: [
+    "We can't have Wellington getting too used to good days.",
+    "Three good days in a row, so here's a reminder of what we haven't been missing.",
+    "Three in a row was nice. Normal service has resumed.",
+    "The hat trick happened. Let's not get greedy.",
+  ],
+  4: [
+    "Four in a row! We were starting to think it was just good days forever. It wasn't.",
+    "So close to the mythical good working week.",
+    "Four good days in a row. It had to end sometime, and today's the day.",
+  ],
+  5: [
+    "The good days started coming, and now they've stopped coming.",
+    "{n} good days in a row. Enjoy the memories.",
+    "After a run like that, Wellington owes us nothing. Well, almost nothing.",
+  ],
+} as const satisfies Record<number, readonly string[]>;
+
+export const STREAK_BROKEN_SCENARIO_QUIPS: Partial<Record<Scenario, readonly string[]>> = {
+  WIND_ONLY: [
+    "Of course the wind came back. It always comes back.",
+    "The wind's been saving itself up for today.",
+  ],
+  RAIN_ONLY: ["The good run's been rained off."],
+  TEMP_ONLY: ["Still dry, still calm, just not warm enough to count. So close to keeping it going."],
+  ALL_BAD: ["If you're going to end a streak, end it properly. Cold, windy and wet."],
+};
+
+// What failed today, for {culprit}. All three failing reads as "weather".
+export const streakCulprit = (tempMet: boolean, windMet: boolean, rainMet: boolean): string => {
+  const failed = [!windMet && "wind", !rainMet && "rain", !tempMet && "cold"].filter(Boolean) as string[];
+  return failed.length === 3 ? "weather" : failed.join(" and ");
+};
+
+// priorStreak: good days in a row up to yesterday. Null when there was no run
+// to break, or when nothing failed (a bad verdict forced by a special date),
+// so the caller falls through to the usual quips.
+export const pickStreakBrokenQuip = (
+  priorStreak: number,
+  tempMet: boolean,
+  windMet: boolean,
+  rainMet: boolean,
+): string | null => {
+  if (priorStreak < 1 || (tempMet && windMet && rainMet)) return null;
+  const pool = [
+    ...STREAK_BROKEN_QUIPS[Math.min(priorStreak, 5)],
+    ...(STREAK_BROKEN_SCENARIO_QUIPS[getScenario(tempMet, windMet, rainMet)] ?? []),
+  ];
+  return pick(pool)
+    .replace("{culprit}", streakCulprit(tempMet, windMet, rainMet))
+    .replace("{n}", String(priorStreak));
+};
+
 // Priority waterfall, most severe/specific condition first — each check
 // "claims" the day before a less specific one gets a chance, so exactly one
 // tier ever matches. Snow sits at the very top — rarer and more newsworthy

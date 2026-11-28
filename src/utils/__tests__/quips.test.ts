@@ -11,6 +11,10 @@ import {
   ALMOST_GOOD_DAY_QUIPS,
   pickStreakQuip,
   STREAK_QUIPS,
+  pickStreakBrokenQuip,
+  streakCulprit,
+  STREAK_BROKEN_QUIPS,
+  STREAK_BROKEN_SCENARIO_QUIPS,
   type SeverityWeather,
 } from "../quips";
 
@@ -176,5 +180,47 @@ describe("isAlmostGoodDay", () => {
 describe("pickAlmostGoodDayQuip", () => {
   it("returns a quip from the almost-good-day list", () => {
     expect(ALMOST_GOOD_DAY_QUIPS).toContain(pickAlmostGoodDayQuip());
+  });
+});
+
+describe("pickStreakBrokenQuip", () => {
+  // Fill a template the same way the picker does, so pool membership can be checked.
+  const filled = (lines: readonly string[], culprit: string, n: number) =>
+    lines.map((l) => l.replace("{culprit}", culprit).replace("{n}", String(n)));
+
+  it("returns null with no run to break, or when nothing actually failed", () => {
+    expect(pickStreakBrokenQuip(0, false, false, false)).toBeNull();
+    expect(pickStreakBrokenQuip(3, true, true, true)).toBeNull();
+  });
+
+  it("picks from the run's tier plus the matching scenario lines, templates filled", () => {
+    for (let i = 0; i < 50; i++) {
+      const q = pickStreakBrokenQuip(2, true, false, true)!; // wind only
+      expect([
+        ...filled(STREAK_BROKEN_QUIPS[2], "wind", 2),
+        ...STREAK_BROKEN_SCENARIO_QUIPS.WIND_ONLY!,
+      ]).toContain(q);
+      expect(q).not.toMatch(/[{}]/);
+    }
+  });
+
+  it("runs of 5 or more share the last tier and use the real length", () => {
+    for (let i = 0; i < 50; i++) {
+      const q = pickStreakBrokenQuip(7, true, true, false)!; // rain only
+      expect([
+        ...filled(STREAK_BROKEN_QUIPS[5], "rain", 7),
+        ...STREAK_BROKEN_SCENARIO_QUIPS.RAIN_ONLY!,
+      ]).toContain(q);
+    }
+  });
+});
+
+describe("streakCulprit", () => {
+  it("names what failed", () => {
+    expect(streakCulprit(true, false, true)).toBe("wind");
+    expect(streakCulprit(false, true, true)).toBe("cold");
+    expect(streakCulprit(true, false, false)).toBe("wind and rain");
+    expect(streakCulprit(false, true, false)).toBe("rain and cold");
+    expect(streakCulprit(false, false, false)).toBe("weather");
   });
 });
