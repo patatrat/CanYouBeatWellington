@@ -15,6 +15,24 @@ import {
   streakCulprit,
   STREAK_BROKEN_QUIPS,
   STREAK_BROKEN_SCENARIO_QUIPS,
+  STREAK_BROKEN_ANY_QUIPS,
+  windQuarter,
+  WIND_DIRECTION_QUIPS,
+  pickDeadCalmQuip,
+  DEAD_CALM_QUIPS,
+  pickDroughtQuip,
+  pickDroughtOverQuip,
+  pickTomorrowQuip,
+  pickDayOfWeekGoodQuip,
+  WEEKEND_GOOD_QUIPS,
+  MONDAY_GOOD_QUIPS,
+  pickQuip,
+  QUIPS,
+  APRIL_GOOD_QUIPS,
+  WEDNESDAY_BAD_QUIPS,
+  pickForecastSummary,
+  FORECAST_SUMMARY,
+  FORECAST_ONE_THURSDAY,
   type SeverityWeather,
 } from "../quips";
 
@@ -199,6 +217,7 @@ describe("pickStreakBrokenQuip", () => {
       expect([
         ...filled(STREAK_BROKEN_QUIPS[2], "wind", 2),
         ...STREAK_BROKEN_SCENARIO_QUIPS.WIND_ONLY!,
+        ...STREAK_BROKEN_ANY_QUIPS,
       ]).toContain(q);
       expect(q).not.toMatch(/[{}]/);
     }
@@ -210,6 +229,7 @@ describe("pickStreakBrokenQuip", () => {
       expect([
         ...filled(STREAK_BROKEN_QUIPS[5], "rain", 7),
         ...STREAK_BROKEN_SCENARIO_QUIPS.RAIN_ONLY!,
+        ...STREAK_BROKEN_ANY_QUIPS,
       ]).toContain(q);
     }
   });
@@ -222,5 +242,88 @@ describe("streakCulprit", () => {
     expect(streakCulprit(true, false, false)).toBe("wind and rain");
     expect(streakCulprit(false, true, false)).toBe("rain and cold");
     expect(streakCulprit(false, false, false)).toBe("weather");
+  });
+});
+
+describe("wind direction quips", () => {
+  it("sorts directions into north, south or neither", () => {
+    expect(windQuarter(0)).toBe("north");
+    expect(windQuarter(330)).toBe("north");
+    expect(windQuarter(45)).toBe("north");
+    expect(windQuarter(180)).toBe("south");
+    expect(windQuarter(210)).toBe("south");
+    expect(windQuarter(90)).toBeNull();
+    expect(windQuarter(270)).toBeNull();
+    expect(windQuarter(null)).toBeNull();
+  });
+
+  it("only adds lines matching the direction to a strong-wind day", () => {
+    for (let i = 0; i < 50; i++) {
+      const q = pickSeverityQuip(weather({ windSpeed: 45, windDirection: 180 }))!;
+      expect([...SEVERE_QUIPS.WIND_40, ...WIND_DIRECTION_QUIPS.south]).toContain(q);
+    }
+  });
+
+  it("adds direction lines to a wind-only day but not to other scenarios", () => {
+    for (let i = 0; i < 50; i++) {
+      expect([...QUIPS.WIND_ONLY, ...WIND_DIRECTION_QUIPS.north]).toContain(pickQuip("WIND_ONLY", { windDirection: 0 }));
+      expect(QUIPS.RAIN_ONLY).toContain(pickQuip("RAIN_ONLY", { windDirection: 0 }));
+    }
+  });
+});
+
+describe("dead calm", () => {
+  it("fires under 5 km/h only", () => {
+    expect(DEAD_CALM_QUIPS).toContain(pickDeadCalmQuip(4.9));
+    expect(pickDeadCalmQuip(5)).toBeNull();
+  });
+});
+
+describe("long bad runs", () => {
+  it("needs a week or more, and fills in the count", () => {
+    expect(pickDroughtQuip(6)).toBeNull();
+    for (let i = 0; i < 30; i++) {
+      const q = pickDroughtQuip(16)!;
+      expect(q).not.toMatch(/[{}]/);
+      expect(q.startsWith("A week")).toBe(false);
+    }
+  });
+
+  it("the drought-over line needs 7+ bad days before it", () => {
+    expect(pickDroughtOverQuip(6)).toBeNull();
+    expect(pickDroughtOverQuip(9)).not.toMatch(/[{}]/);
+  });
+});
+
+describe("tomorrow and day-of-week quips", () => {
+  it("tomorrow's line only when tomorrow looks good", () => {
+    expect(pickTomorrowQuip(false)).toBeNull();
+    expect(pickTomorrowQuip(true)).toBeTruthy();
+  });
+
+  it("weekend and Monday lines, nothing midweek", () => {
+    expect(WEEKEND_GOOD_QUIPS).toContain(pickDayOfWeekGoodQuip(6));
+    expect(WEEKEND_GOOD_QUIPS).toContain(pickDayOfWeekGoodQuip(0));
+    expect(MONDAY_GOOD_QUIPS).toContain(pickDayOfWeekGoodQuip(1));
+    expect(pickDayOfWeekGoodQuip(3)).toBeNull();
+  });
+});
+
+describe("date-dependent lines", () => {
+  it("April and Wednesday lines only join the right pools", () => {
+    for (let i = 0; i < 50; i++) {
+      expect([...QUIPS.GOOD, ...APRIL_GOOD_QUIPS]).toContain(pickQuip("GOOD", { month: 4 }));
+      expect(QUIPS.GOOD).toContain(pickQuip("GOOD", { month: 5, dayOfWeek: 3 }));
+      expect([...QUIPS.RAIN_ONLY, ...WEDNESDAY_BAD_QUIPS]).toContain(pickQuip("RAIN_ONLY", { dayOfWeek: 3 }));
+      expect(QUIPS.RAIN_ONLY).toContain(pickQuip("RAIN_ONLY", { month: 4, dayOfWeek: 2 }));
+    }
+  });
+
+  it("the Thursday forecast line only when Thursday is the one good day", () => {
+    for (let i = 0; i < 50; i++) {
+      expect([...FORECAST_SUMMARY.one, ...FORECAST_ONE_THURSDAY]).toContain(pickForecastSummary(1, 4));
+      expect(FORECAST_SUMMARY.one).toContain(pickForecastSummary(1, 5));
+      expect(FORECAST_SUMMARY.few).toContain(pickForecastSummary(2, 4));
+    }
   });
 });

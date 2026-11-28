@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { isGoodWeatherDay } from "@/utils/rulesStorage";
 import type { DailyWeatherRecord } from "@/types/db";
 import {
+  isQuipOnlySpecialDate,
   pickPrimarySpecialDate,
   resolveVerdict,
   type ActiveSpecialDate,
@@ -67,7 +68,8 @@ const CalendarHistory = ({ history, specialDates, warningDays = {}, initialYear,
 
   const specialMap = useMemo(() => {
     const byDay = new Map<string, ActiveSpecialDate[]>();
-    specialDates?.forEach((s) => {
+    // Season-start dates carry quips only, so they get no sparkle.
+    specialDates?.filter((s) => !isQuipOnlySpecialDate(s)).forEach((s) => {
       for (let d = parseISO(s.start_date); d <= parseISO(s.end_date); d = addDays(d, 1)) {
         const key = format(d, "yyyy-MM-dd");
         byDay.set(key, [...(byDay.get(key) ?? []), s]);

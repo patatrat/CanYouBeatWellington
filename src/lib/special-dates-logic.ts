@@ -48,9 +48,17 @@ const daysBetween = (start: string, end: string): number =>
 // narrower (shorter) date range wins — a specific one-day event outranks a
 // multi-day festival backdrop — tie-broken by start date, then occurrence id.
 // Pure (no DB) so the precedence rule is independently testable.
+// Season-start dates (season-start-*) exist only for their weather quips:
+// no sparkle on History, no title line on the home page or in posts, and any
+// other occasion on the same day wins over them.
+export const isQuipOnlySpecialDate = (d: Pick<ActiveSpecialDate, "slug">): boolean =>
+  d.slug.startsWith("season-start-");
+
 export function pickPrimarySpecialDate(dates: ActiveSpecialDate[]): ActiveSpecialDate | null {
   if (dates.length === 0) return null;
   const sorted = [...dates].sort((a, b) => {
+    const quipOnlyDiff = Number(isQuipOnlySpecialDate(a)) - Number(isQuipOnlySpecialDate(b));
+    if (quipOnlyDiff !== 0) return quipOnlyDiff;
     const rangeDiff = daysBetween(a.start_date, a.end_date) - daysBetween(b.start_date, b.end_date);
     if (rangeDiff !== 0) return rangeDiff;
     if (a.start_date !== b.start_date) return a.start_date < b.start_date ? -1 : 1;
@@ -89,6 +97,25 @@ export function countRecentGoodDayStreak(
     streak++;
   }
   return streak;
+}
+
+// The mirror of countRecentGoodDayStreak(): how many days in a row before
+// today were bad, same verdict rule. Records newest first.
+export function countRecentBadDayRun(
+  records: { date: string; temperature: number; windSpeed: number; rain: number }[],
+  specialDates: ActiveSpecialDate[],
+): number {
+  let run = 0;
+  for (const record of records) {
+    const weatherIsGood = isGoodWeatherDay(record, record.date);
+    const activeOnDate = specialDates.filter(
+      (d) => d.start_date <= record.date && record.date <= d.end_date,
+    );
+    const override = pickPrimarySpecialDate(activeOnDate)?.verdict_override ?? null;
+    if (resolveVerdict(weatherIsGood, override)) break;
+    run++;
+  }
+  return run;
 }
 
 interface SeasonRules {

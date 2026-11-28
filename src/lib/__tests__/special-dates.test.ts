@@ -13,6 +13,8 @@ const {
   pickPrimarySpecialDate,
   resolveVerdict,
   countRecentGoodDayStreak,
+  countRecentBadDayRun,
+  isQuipOnlySpecialDate,
   getSpecialDayScenario,
   getSpecialDayQuip,
   getActiveSpecialDates,
@@ -329,5 +331,36 @@ describe('resolveSportingOccurrence', () => {
     await resolveSportingOccurrence(4, 'cancelled', 'Rained off');
     const sqlText = (mockSql.mock.calls[0][0] as string[]).join('');
     expect(sqlText).toMatch(/status = 'cancelled'/);
+  });
+});
+
+describe('countRecentBadDayRun', () => {
+  const good = (date: string) => ({ date, temperature: 22, windSpeed: 15, rain: 0 });
+  const bad = (date: string) => ({ date, temperature: 10, windSpeed: 15, rain: 0 });
+
+  it('counts consecutive bad days and stops at the first good one', () => {
+    const records = [bad('2026-01-10'), bad('2026-01-09'), good('2026-01-08'), bad('2026-01-07')];
+    expect(countRecentBadDayRun(records, [])).toBe(2);
+    expect(countRecentBadDayRun([good('2026-01-10')], [])).toBe(0);
+  });
+
+  it('an override forcing a good day ends the run', () => {
+    const records = [bad('2026-01-10'), bad('2026-01-09')];
+    const specials = [stub({ start_date: '2026-01-09', end_date: '2026-01-09', verdict_override: true })];
+    expect(countRecentBadDayRun(records, specials)).toBe(1);
+  });
+});
+
+describe('season-start (quip-only) special dates', () => {
+  it('are recognised by slug', () => {
+    expect(isQuipOnlySpecialDate({ slug: 'season-start-shitsville' })).toBe(true);
+    expect(isQuipOnlySpecialDate({ slug: 'wow' })).toBe(false);
+  });
+
+  it('lose to any other occasion on the same day, even a longer one', () => {
+    const season = stub({ slug: 'season-start-shitsville', start_date: '2026-10-01', end_date: '2026-10-01', occurrence_id: 1 });
+    const festival = stub({ slug: 'wow', start_date: '2026-09-25', end_date: '2026-10-11', occurrence_id: 2 });
+    expect(pickPrimarySpecialDate([season, festival])?.slug).toBe('wow');
+    expect(pickPrimarySpecialDate([season])?.slug).toBe('season-start-shitsville');
   });
 });

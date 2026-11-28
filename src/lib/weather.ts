@@ -203,6 +203,9 @@ export interface LiveWeather {
   rain: number;
   feelsLike: number;
   snowfall: number;
+  // Today's dominant wind direction in degrees (where it blows from), or
+  // null if Open-Meteo didn't send one. Only used to pick quips.
+  windDirection: number | null;
   timestamp: string;
   source: string;
   forecast: ForecastDay[];
@@ -215,7 +218,7 @@ export async function fetchLiveWeather(): Promise<LiveWeather> {
   const url =
     "https://api.open-meteo.com/v1/forecast" +
     "?latitude=-41.2866&longitude=174.7756" +
-    "&daily=weather_code,temperature_2m_max,snowfall_sum" +
+    "&daily=weather_code,temperature_2m_max,snowfall_sum,wind_direction_10m_dominant" +
     "&hourly=precipitation,wind_speed_10m,apparent_temperature" +
     "&timezone=Pacific%2FAuckland";
 
@@ -245,6 +248,7 @@ export async function fetchLiveWeather(): Promise<LiveWeather> {
     rain: calculateDaytimeRain(data.hourly.precipitation, 0),
     feelsLike: calculateDaytimeFeelsLike(data.hourly.apparent_temperature, 0),
     snowfall: data.daily.snowfall_sum[0] ?? 0,
+    windDirection: data.daily.wind_direction_10m_dominant?.[0] ?? null,
     timestamp: data.daily.time[0],
     source: "https://open-meteo.com/",
     // Days 1–6 (tomorrow → 6 days out). Day 0 is today, shown separately.

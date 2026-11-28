@@ -37,6 +37,7 @@ const ForecastStrip = ({ forecast, onDark = false, warnings = [] }: ForecastStri
 
     return {
       dayName: DAY_NAMES[date.getDay()],
+      dayOfWeek: date.getDay(),
       temp: day.temperature.toFixed(0),
       good,
       failures,
@@ -44,7 +45,8 @@ const ForecastStrip = ({ forecast, onDark = false, warnings = [] }: ForecastStri
     };
   });
 
-  const summaryQuip = pickForecastSummary(days.filter((d) => d.good).length);
+  const goodDays = days.filter((d) => d.good);
+  const summaryQuip = pickForecastSummary(goodDays.length, goodDays.length === 1 ? goodDays[0].dayOfWeek : null);
 
   return (
     <div className="w-full max-w-sm mt-6">
@@ -82,7 +84,7 @@ const ForecastStrip = ({ forecast, onDark = false, warnings = [] }: ForecastStri
         ))}
       </div>
 
-      {summaryQuip && <p className={`text-xs ${faintText} text-center mt-2 italic`}>{summaryQuip}</p>}
+      {summaryQuip && <p className={`text-xs ${faintText} text-center mt-2 italic text-balance`}>{summaryQuip}</p>}
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { postToFollowers, retryFailedDeliveries } from '@/lib/ap-posting';
 import {
   ensureUpcomingOccurrences,
   getActiveSpecialDates,
+  isQuipOnlySpecialDate,
   pickPrimarySpecialDate,
   resolveVerdict,
 } from '@/lib/special-dates';
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const specialLine = special
+  const specialLine = special && !isQuipOnlySpecialDate(special)
     ? `<p>${special.title}${special.outcome_note ? ` — ${special.outcome_note}` : ''}</p>`
     : '';
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { format, parseISO, subDays } from "date-fns";
+import { addDays, format, parseISO, subDays } from "date-fns";
 import { getThresholds, getSeasonLabel, isGoodWeatherDay } from "@/utils/rulesStorage";
 import {
   getScenario,
@@ -13,6 +13,11 @@ import {
   pickAlmostGoodDayQuip,
   pickStreakQuip,
   pickStreakBrokenQuip,
+  pickDeadCalmQuip,
+  pickDroughtQuip,
+  pickDroughtOverQuip,
+  pickTomorrowQuip,
+  pickDayOfWeekGoodQuip,
 } from "@/utils/quips";
 import {
   getTodaysRecord,
@@ -29,6 +34,8 @@ import {
   resolveVerdict,
   getSpecialDayQuip,
   countRecentGoodDayStreak,
+  countRecentBadDayRun,
+  isQuipOnlySpecialDate,
 } from "@/lib/special-dates";
 import { SPECIAL_BACKGROUNDS } from "@/utils/specialBackgrounds";
 import WeatherStat from "@/components/WeatherStat";
@@ -66,9 +73,10 @@ const WEBSITE_JSON_LD = {
 
 export default async function HomePage() {
   const today = getTodaysNZTDate();
-  // Streak lookback window — 6 days is enough to cover the 5-in-a-row quip
-  // tier plus one extra day to confirm the streak actually stops there.
-  const streakFrom = format(subDays(parseISO(today), 6), "yyyy-MM-dd");
+  // Lookback for the streak and long-bad-run quips. 90 days covers the
+  // longest bad run on record (48 days) with room to spare, and the rows
+  // are tiny.
+  const streakFrom = format(subDays(parseISO(today), 90), "yyyy-MM-dd");
   const streakTo = format(subDays(parseISO(today), 1), "yyyy-MM-dd");
   const [todaysRecord, liveWeather, activeSpecialDates, precedingRecords, precedingSpecialDates, warnings] =
     await Promise.all([
@@ -134,36 +142,54 @@ export default async function HomePage() {
   // good day regardless of temperature/wind/rain. WeatherStat below still
   // shows the real per-criterion facts unchanged either way.
   const isGood = resolveVerdict(weatherIsGood, special?.verdict_override ?? null);
-  // Streak only means anything on a day that's itself good — reuses the same
-  // weather-plus-override verdict as everywhere else via
-  // countRecentGoodDayStreak(), not a separate weather-only definition.
-  // Good days in a row up to yesterday. On a good day it extends into today's
+  // Good days in a row up to yesterday, with the same weather-plus-override
+  // verdict as everywhere else. On a good day it extends into today's
   // streak; on a bad day it's the run today just ended.
-  const priorStreak = countRecentGoodDayStreak(
-    precedingRecords.map((r) => ({ date: r.date, temperature: r.temperature, windSpeed: r.wind_speed, rain: r.rain })),
-    precedingSpecialDates,
-  );
+  const precedingWeather = precedingRecords.map((r) => ({
+    date: r.date, temperature: r.temperature, windSpeed: r.wind_speed, rain: r.rain,
+  }));
+  const priorStreak = countRecentGoodDayStreak(precedingWeather, precedingSpecialDates);
   const streak = isGood ? priorStreak + 1 : 0;
+  // Bad days in a row up to yesterday (0 when yesterday was good).
+  const priorBadRun = priorStreak > 0 ? 0 : countRecentBadDayRun(precedingWeather, precedingSpecialDates);
+  const dayOfWeek = parseISO(today).getDay();
+  const tomorrow = liveWeather.forecast[0];
+  const tomorrowLooksGood =
+    tomorrow?.date === format(addDays(parseISO(today), 1), "yyyy-MM-dd") &&
+    isGoodWeatherDay(tomorrow, tomorrow.date);
   // Precedence: a special date's fixed quip_override always wins (sporting
   // results etc, where the weather is beside the point); then an extreme
   // wind/rain reading; then a special date's own scenario-specific line
   // (e.g. Christmas Day's rainy-day quip), if it has one for today's
   // scenario; then a multi-day good streak (a bigger surprise than today
-  // alone being extra good), or on a bad day the good run it just ended;
-  // then a day that clears the good-day bar by a wide margin gets its own
-  // celebratory line; then a razor-thin temperature-only miss gets its own
-  // near-miss line; otherwise the standard scenario quip.
+  // alone being extra good). After that, a good day that ends a run of 7+
+  // bad ones gets a drought-over line; a bad day gets, in order, a line
+  // about the good run it just ended, the bad run it extends (7+ days), or
+  // tomorrow looking good. Then a day that clears the good-day bar by a
+  // wide margin; a good weekend day or Monday; a razor-thin
+  // temperature-only miss; otherwise the standard scenario quip. Dead calm
+  // (under 5 km/h) sits just after the extreme-weather tiers, being rarer.
   const verdictLine =
     special?.quip_override ??
-    pickSeverityQuip(effectiveWeather) ??
+    pickSeverityQuip({ ...effectiveWeather, windDirection: liveWeather.windDirection }) ??
+    pickDeadCalmQuip(effectiveWeather.windSpeed) ??
     (special ? getSpecialDayQuip(special, effectiveWeather, rules) : null) ??
     pickStreakQuip(streak) ??
-    (isGood ? null : pickStreakBrokenQuip(priorStreak, tempMet, windMet, rainMet)) ??
+    (isGood
+      ? (weatherIsGood ? pickDroughtOverQuip(priorBadRun) : null)
+      : pickStreakBrokenQuip(priorStreak, tempMet, windMet, rainMet, dayOfWeek === 6) ??
+        pickDroughtQuip(priorBadRun + 1) ??
+        pickTomorrowQuip(tomorrowLooksGood, (dayOfWeek + 1) % 7)) ??
     (isGreatDay(effectiveWeather, rules.minTemp) ? pickGreatDayQuip() : null) ??
+    (isGood && weatherIsGood ? pickDayOfWeekGoodQuip(dayOfWeek) : null) ??
     (isAlmostGoodDay(effectiveWeather.temperature, rules.minTemp, windMet, rainMet)
       ? pickAlmostGoodDayQuip()
       : null) ??
-    pickQuip(getScenario(tempMet, windMet, rainMet));
+    pickQuip(getScenario(tempMet, windMet, rainMet), {
+      windDirection: liveWeather.windDirection,
+      month: Number(today.slice(5, 7)),
+      dayOfWeek,
+    });
   const specialBg = special?.background_key ? SPECIAL_BACKGROUNDS[special.background_key] : undefined;
   // Dark special backgrounds (matariki, rugby) need light text — the default
   // grays below are designed for the light gradients and vanish on near-black.
@@ -188,7 +214,7 @@ export default async function HomePage() {
         <WeatherWarnings warnings={warnings} />
 
         {/* Special-date banner */}
-        {special && (special.title || special.link_url) && (
+        {special && !isQuipOnlySpecialDate(special) && (special.title || special.link_url) && (
           <p className={`text-xs ${mutedText} text-center mb-3`}>
             {special.title}
             {special.outcome_note && ` — ${special.outcome_note}`}
@@ -232,8 +258,10 @@ export default async function HomePage() {
           {isGood ? "NO" : "YES"}
         </p>
 
-        {/* Cheeky line — no max-width so quips stay on one line */}
-        <p className={`text-sm ${mutedText} text-center mb-8 italic whitespace-nowrap`}>{verdictLine}</p>
+        {/* Cheeky line. Wraps on narrow screens (many quips are longer than
+            a phone is wide); text-balance keeps the two lines even. Short
+            quips still sit on one line on desktop. */}
+        <p className={`text-sm ${mutedText} text-center mb-8 italic max-w-xl text-balance`}>{verdictLine}</p>
 
         {/* Weather stats */}
         <div className="grid grid-cols-3 gap-3 sm:gap-10 mb-6">
